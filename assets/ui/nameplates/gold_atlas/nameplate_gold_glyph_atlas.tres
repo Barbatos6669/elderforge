@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="NameplateGlyphAtlas" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/nameplates/nameplate_glyph_atlas.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/ui/nameplates/gold_atlas/nameplate_gold_atlas.png" id="2_texture"]
+
+[resource]
+script = ExtResource("1_script")
+texture = ExtResource("2_texture")
+metadata_path = "res://assets/ui/nameplates/gold_atlas/nameplate_gold_glyph_regions.json"
+space_advance_ratio = 0.35

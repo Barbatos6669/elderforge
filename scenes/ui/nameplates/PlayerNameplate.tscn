@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://cau0c3siiap2k"]
+
+[ext_resource type="Script" uid="uid://giga6tl2dw0p" path="res://scripts/ui/nameplates/player_nameplate.gd" id="1_script"]
+[ext_resource type="FontFile" uid="uid://duqej81bv3uq5" path="res://assets/ui/nameplates/fonts/unifraktur_maguntia/UnifrakturMaguntia-Book.ttf" id="2_blackletter"]
+
+[node name="PlayerNameplate" type="Node3D" unique_id=1804261769]
+script = ExtResource("1_script")
+player_name = "FoxieTrap"
+world_pixel_size = 0.007
+name_text_offset = Vector2(84.895, 7.625)
+guild_line_offset = Vector2(64.355, 48)
+status_bars_offset = Vector2(24.205, 72)
+first_letter_offset = Vector2(51.815, 0)
+first_letter_label_size = Vector2(31.3, 36)
+first_letter_font = ExtResource("2_blackletter")
+first_letter_font_size = 32
+first_letter_outline_size = 7
+name_outline_size = 10
+guild_outline_size = 10
+status_bar_size = Vector2(200, 15)
+status_bar_gap = 20.0

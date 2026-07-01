@@ -70,6 +70,7 @@ scripts/
   debug/     Debug helper behavior.
   effects/   Effect behavior.
   player/    Player-specific systems.
+  ui/        UI and world-space display helpers.
 ```
 
 ## Player Prefab
@@ -91,6 +92,7 @@ Current child nodes:
 - `CollisionShape3D` defines the player collision capsule.
 - `CameraTarget` is the point the camera follows.
 - `CameraRig` is the perspective isometric camera instance.
+- `Nameplate` renders a temporary player name above the character.
 
 The root `Player` node uses `scripts/player/controllers/player_controller.gd`.
 That controller should stay small. Its job is to coordinate the modules, not to
@@ -268,6 +270,66 @@ stats.get_stat_ids()
 
 The values are intentionally zeroed for now. Later, equipment, buffs,
 progression, food, mounts, and server data should write into this system.
+
+## Nameplates
+
+`scenes/ui/nameplates/PlayerNameplate.tscn`
+`scripts/ui/nameplates/player_nameplate.gd`
+
+The player prefab has a `Nameplate` child above the character. It currently
+renders a prototype player nameplate with:
+
+- A colored emblem behind the first letter.
+- The first letter rendered as a centered UI label using a blackletter font.
+- The rest of the player name in white UI text.
+- A placeholder alliance tag before the guild name.
+- A placeholder guild name.
+- Five-segment health and mana bars.
+
+Because the game camera is perspective, `PlayerNameplate` can compensate for
+zoom by adjusting its generated `Sprite3D.pixel_size` every frame. Keep
+`keep_screen_size_on_zoom` enabled when the nameplate should stay the same
+apparent size as the camera scrolls in and out. `compensate_height_on_zoom`
+also lowers the local nameplate position during zoom-in so the plate stays
+visually attached to the character.
+
+The health and mana bars use `status_bar_segments` and
+`status_bar_segment_gap` so combat readability can be tuned without changing
+the rest of the nameplate layout.
+
+The first-letter font currently comes from:
+
+```text
+assets/ui/nameplates/fonts/unifraktur_maguntia/
+```
+
+It uses the SIL Open Font License and is only assigned to
+`first_letter_font`, so the rest of the player name stays legible. Tune the
+badge letter with `first_letter_font_size`, `first_letter_outline_size`, and
+`first_letter_label_size`; increase the label size if a larger letter clips.
+
+The imported gold glyph atlas is parked for later art experiments, but the live
+nameplate does not use it right now. The atlas files live in:
+
+```text
+assets/ui/nameplates/gold_atlas/
+```
+
+Important files:
+
+- `nameplate_gold_source.png` keeps the original green-background image.
+- `nameplate_gold_atlas.png` is the transparent runtime texture.
+- `nameplate_gold_glyph_regions.json` maps `A-Z` and `0-9` to atlas regions.
+- `nameplate_gold_glyph_atlas.tres` is the Godot resource for future atlas work.
+- `scripts/ui/nameplates/nameplate_glyph_atlas.gd` loads the atlas metadata.
+
+Later, a character identity or networking system can call:
+
+```gdscript
+nameplate.set_player_name("LARRY")
+nameplate.set_guild_info("GUILD NAME", "TAG")
+nameplate.set_vitals(0.85, 0.6)
+```
 
 ## Click Feedback
 

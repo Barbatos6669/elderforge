@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/controllers/player_controller.gd" id="1_controller"]
 [ext_resource type="Script" path="res://scripts/player/input/player_input.gd" id="2_input"]
@@ -14,6 +14,7 @@
 [ext_resource type="Script" path="res://scripts/player/audio/player_footstep_audio.gd" id="12_footstep_audio"]
 [ext_resource type="Resource" path="res://assets/audio/footsteps/sets/grass_footsteps.tres" id="13_footstep_set"]
 [ext_resource type="Script" path="res://scripts/player/stats/player_stats.gd" id="14_stats"]
+[ext_resource type="PackedScene" path="res://scenes/ui/nameplates/PlayerNameplate.tscn" id="15_nameplate"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -65,6 +66,9 @@ click_indicator_scene = ExtResource("7_click_indicator")
 
 [node name="BaseCharacter" parent="Visuals" instance=ExtResource("8_base_character")]
 rotation = Vector3(0, 3.14159, 0)
+
+[node name="Nameplate" parent="." instance=ExtResource("15_nameplate")]
+position = Vector3(0, 3, 0)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 position = Vector3(0, 0.9, 0)
