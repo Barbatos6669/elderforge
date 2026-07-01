@@ -28,6 +28,23 @@ func set_moving(is_moving: bool) -> void:
 	_play_current_state()
 
 
+func is_playing_move_animation() -> bool:
+	return (
+		_animation_player != null
+		and _animation_player.current_animation == move_animation_name
+	)
+
+
+func get_current_animation_progress() -> float:
+	if _animation_player == null or _animation_player.current_animation_length <= 0.0:
+		return 0.0
+
+	return fposmod(
+		_animation_player.current_animation_position / _animation_player.current_animation_length,
+		1.0
+	)
+
+
 func _setup_animation_player() -> void:
 	var model_root := get_node_or_null(model_root_path) as Node
 	if model_root == null or source_animation_scene == null:

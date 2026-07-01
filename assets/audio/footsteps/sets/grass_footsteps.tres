@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="FootstepSurfaceSet" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/audio/footsteps/footstep_surface_set.gd" id="1_set"]
+[ext_resource type="AudioStream" path="res://assets/audio/footsteps/footstep_grass_01.ogg" id="2_step_01"]
+[ext_resource type="AudioStream" path="res://assets/audio/footsteps/footstep_grass_02.ogg" id="3_step_02"]
+[ext_resource type="AudioStream" path="res://assets/audio/footsteps/footstep_grass_03.ogg" id="4_step_03"]
+
+[resource]
+script = ExtResource("1_set")
+streams = Array[AudioStream]([ExtResource("2_step_01"), ExtResource("3_step_02"), ExtResource("4_step_03")])
+volume_db = -2.0
+fallback_step_interval = 0.56
+pitch_variation = 0.08

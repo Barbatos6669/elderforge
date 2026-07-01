@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/controllers/player_controller.gd" id="1_controller"]
 [ext_resource type="Script" path="res://scripts/player/input/player_input.gd" id="2_input"]
@@ -11,6 +11,9 @@
 [ext_resource type="Script" path="res://scripts/player/visuals/player_visual_style.gd" id="9_visual_style"]
 [ext_resource type="Script" path="res://scripts/player/animation/player_animation_controller.gd" id="10_animation"]
 [ext_resource type="PackedScene" path="res://assets/animations/universal_animation_library_1/UAL1_Standard.glb" id="11_animation_library"]
+[ext_resource type="Script" path="res://scripts/player/audio/player_footstep_audio.gd" id="12_footstep_audio"]
+[ext_resource type="Resource" path="res://assets/audio/footsteps/sets/grass_footsteps.tres" id="13_footstep_set"]
+[ext_resource type="Script" path="res://scripts/player/stats/player_stats.gd" id="14_stats"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -21,6 +24,9 @@ script = ExtResource("1_controller")
 
 [node name="Input" type="Node" parent="."]
 script = ExtResource("2_input")
+
+[node name="Stats" type="Node" parent="."]
+script = ExtResource("14_stats")
 
 [node name="Movement" type="Node" parent="."]
 script = ExtResource("3_movement")
@@ -44,6 +50,12 @@ source_animation_scene = ExtResource("11_animation_library")
 idle_animation_name = "Idle"
 move_animation_name = "Jog_Fwd"
 move_speed_scale = 0.68
+
+[node name="FootstepAudio" type="AudioStreamPlayer" parent="."]
+max_polyphony = 1
+script = ExtResource("12_footstep_audio")
+surface_set = ExtResource("13_footstep_set")
+animation_controller_path = NodePath("../Animation")
 
 [node name="ClickFeedback" type="Node" parent="."]
 script = ExtResource("6_feedback")
