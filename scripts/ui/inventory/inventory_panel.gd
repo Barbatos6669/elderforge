@@ -1,8 +1,8 @@
 ## Toggleable inventory window for the current local prototype.
 ##
-## This script owns only presentation state: placeholder slots, selected slot UI,
-## and the keyboard toggle. A later PlayerInventory module should become the
-## authoritative item source and call set_slots() when its data changes.
+## This script owns presentation state only: window visibility, selected slot UI,
+## drag/drop forwarding, and details rendering. `PlayerInventory` owns item and
+## currency state, then this panel mirrors that data through signals.
 class_name InventoryPanel
 extends CanvasLayer
 
@@ -10,8 +10,11 @@ const EMPTY_SLOT := {}
 const EquipmentPanelScene := preload("res://scenes/ui/inventory/EquipmentPanel.tscn")
 const InventoryItemIconScript := preload("res://scripts/ui/inventory/inventory_item_icon.gd")
 const InventorySlotButtonScript := preload("res://scripts/ui/inventory/inventory_slot_button.gd")
+const PlayerInventoryScript := preload("res://scripts/inventory/player_inventory.gd")
 const SLOT_DRAG_TYPE := "elderforge_inventory_slot"
 
+## Optional external inventory node. Main.tscn points this at PlayerInventory.
+@export var inventory_path: NodePath
 ## Keyboard key used to open and close the inventory.
 @export var toggle_key: Key = KEY_I
 ## Number of visible inventory slots.
@@ -20,9 +23,9 @@ const SLOT_DRAG_TYPE := "elderforge_inventory_slot"
 @export_range(1, 10, 1) var columns: int = 6
 ## Shows the panel when the scene starts. Keep off for normal gameplay.
 @export var start_visible: bool = false
-## Prototype silver amount until currency data is wired in.
+## Fallback silver amount when this panel creates a local preview inventory.
 @export var starting_silver: int = 0
-## Prototype gold amount until currency data is wired in.
+## Fallback gold amount when this panel creates a local preview inventory.
 @export var starting_gold: int = 0
 
 var _root: Control
@@ -35,6 +38,7 @@ var _detail_category: Label
 var _detail_stack: Label
 var _detail_description: Label
 var _equipment_panel: Node
+var _inventory: Node
 var _slot_buttons: Array[Button] = []
 var _slot_item_icons: Array[Control] = []
 var _slots: Array = []
@@ -47,12 +51,10 @@ var _selected_equipment_slot_id := ""
 
 func _ready() -> void:
 	visible = start_visible
-	_silver_amount = maxi(starting_silver, 0)
-	_gold_amount = maxi(starting_gold, 0)
-	_create_placeholder_slots()
+	_bind_inventory()
 	_create_placeholder_equipment()
 	_build_window()
-	_refresh_currency_display()
+	_sync_from_inventory()
 	_refresh_all_slots()
 	_select_first_filled_slot()
 
@@ -84,8 +86,8 @@ func toggle() -> void:
 
 ## Replaces the displayed slots with external inventory data.
 ##
-## Each filled slot should be a Dictionary with keys such as:
-## name, quantity, max_stack, category, color, and description.
+## This remains for compatibility with simple UI previews. Normal gameplay
+## should update PlayerInventory instead.
 func set_slots(new_slots: Array) -> void:
 	_slots = new_slots.duplicate(true)
 	_normalize_slot_count()
@@ -99,7 +101,7 @@ func set_slots(new_slots: Array) -> void:
 
 ## Replaces the displayed equipped gear slots.
 ##
-## The expected shape is a Dictionary keyed by equipment slot id.
+## Normal gameplay should update PlayerInventory once equipment storage exists.
 func set_equipped_slots(new_equipped_slots: Dictionary) -> void:
 	_equipped_slots = new_equipped_slots.duplicate(true)
 	if _equipment_panel != null:
@@ -109,9 +111,121 @@ func set_equipped_slots(new_equipped_slots: Dictionary) -> void:
 
 ## Updates the displayed currency totals.
 func set_currency(silver: int, gold: int) -> void:
+	if _inventory != null and _inventory.has_method("set_currency"):
+		_inventory.call("set_currency", silver, gold)
+		return
+
 	_silver_amount = maxi(silver, 0)
 	_gold_amount = maxi(gold, 0)
 	_refresh_currency_display()
+
+
+## Binds this UI panel to the authoritative inventory node.
+func set_inventory(inventory: Node) -> void:
+	if _inventory == inventory:
+		return
+
+	_disconnect_inventory_signals()
+	_inventory = inventory
+	_connect_inventory_signals()
+	if _inventory != null and _inventory.has_method("get_slot_count"):
+		slot_count = int(_inventory.call("get_slot_count"))
+	_sync_from_inventory()
+	if _root != null:
+		_rebuild_slot_grid()
+		_refresh_all_slots()
+		_select_first_filled_slot()
+
+
+func _bind_inventory() -> void:
+	var target_inventory: Node = null
+	if not inventory_path.is_empty():
+		target_inventory = get_node_or_null(inventory_path)
+
+	if target_inventory == null:
+		target_inventory = _create_local_inventory()
+
+	set_inventory(target_inventory)
+
+
+func _create_local_inventory() -> Node:
+	var inventory := Node.new()
+	inventory.name = "LocalInventory"
+	inventory.set_script(PlayerInventoryScript)
+	add_child(inventory)
+	inventory.call("initialize_default_resources", slot_count, starting_silver, starting_gold)
+	return inventory
+
+
+func _connect_inventory_signals() -> void:
+	if _inventory == null:
+		return
+
+	if _inventory.has_signal("slots_changed") and not _inventory.is_connected("slots_changed", Callable(self, "_on_inventory_slots_changed")):
+		_inventory.connect("slots_changed", Callable(self, "_on_inventory_slots_changed"))
+	if _inventory.has_signal("currency_changed") and not _inventory.is_connected("currency_changed", Callable(self, "_on_inventory_currency_changed")):
+		_inventory.connect("currency_changed", Callable(self, "_on_inventory_currency_changed"))
+	if _inventory.has_signal("equipped_slots_changed") and not _inventory.is_connected("equipped_slots_changed", Callable(self, "_on_inventory_equipped_slots_changed")):
+		_inventory.connect("equipped_slots_changed", Callable(self, "_on_inventory_equipped_slots_changed"))
+
+
+func _disconnect_inventory_signals() -> void:
+	if _inventory == null:
+		return
+
+	var slots_callable := Callable(self, "_on_inventory_slots_changed")
+	if _inventory.has_signal("slots_changed") and _inventory.is_connected("slots_changed", slots_callable):
+		_inventory.disconnect("slots_changed", slots_callable)
+
+	var currency_callable := Callable(self, "_on_inventory_currency_changed")
+	if _inventory.has_signal("currency_changed") and _inventory.is_connected("currency_changed", currency_callable):
+		_inventory.disconnect("currency_changed", currency_callable)
+
+	var equipped_callable := Callable(self, "_on_inventory_equipped_slots_changed")
+	if _inventory.has_signal("equipped_slots_changed") and _inventory.is_connected("equipped_slots_changed", equipped_callable):
+		_inventory.disconnect("equipped_slots_changed", equipped_callable)
+
+
+func _sync_from_inventory() -> void:
+	if _inventory == null:
+		_silver_amount = maxi(starting_silver, 0)
+		_gold_amount = maxi(starting_gold, 0)
+		_refresh_currency_display()
+		return
+
+	if _inventory.has_method("get_slot_count"):
+		slot_count = int(_inventory.call("get_slot_count"))
+	if _inventory.has_method("get_display_slots"):
+		_slots = _inventory.call("get_display_slots")
+		_normalize_slot_count()
+	if _inventory.has_method("get_equipped_slots"):
+		_equipped_slots = _inventory.call("get_equipped_slots")
+		if _equipment_panel != null:
+			_equipment_panel.call("set_equipped_slots", _equipped_slots)
+	if _inventory.has_method("get_silver"):
+		_silver_amount = int(_inventory.call("get_silver"))
+	if _inventory.has_method("get_gold"):
+		_gold_amount = int(_inventory.call("get_gold"))
+	_refresh_currency_display()
+
+
+func _on_inventory_slots_changed() -> void:
+	_sync_from_inventory()
+	_refresh_all_slots()
+
+
+func _on_inventory_currency_changed(silver: int, gold: int) -> void:
+	_silver_amount = maxi(silver, 0)
+	_gold_amount = maxi(gold, 0)
+	_refresh_currency_display()
+
+
+func _on_inventory_equipped_slots_changed() -> void:
+	if _inventory != null and _inventory.has_method("get_equipped_slots"):
+		_equipped_slots = _inventory.call("get_equipped_slots")
+	if _equipment_panel != null:
+		_equipment_panel.call("set_equipped_slots", _equipped_slots)
+	_refresh_details()
 
 
 ## Returns drag payload for a filled bag slot.
@@ -177,6 +291,15 @@ func drop_slot_data(target_index: int, data: Variant) -> void:
 
 	var drag_data := data as Dictionary
 	var source_index := int(drag_data.get("source_index", -1))
+	if _inventory != null and _inventory.has_method("move_or_swap_slots"):
+		if bool(_inventory.call("move_or_swap_slots", source_index, target_index)):
+			_selected_index = target_index
+			_selected_equipment_slot_id = ""
+			if _equipment_panel != null:
+				_equipment_panel.call("clear_selection")
+			_refresh_details()
+		return
+
 	var source_slot := _slot_at(source_index).duplicate(true)
 	var target_slot := _slot_at(target_index).duplicate(true)
 	if source_slot.is_empty():
@@ -409,6 +532,18 @@ func _create_slot_buttons() -> void:
 		_slot_item_icons.append(item_icon)
 
 
+func _rebuild_slot_grid() -> void:
+	if _grid == null:
+		return
+
+	for child in _grid.get_children():
+		child.queue_free()
+	_slot_buttons.clear()
+	_slot_item_icons.clear()
+	_grid.columns = columns
+	_create_slot_buttons()
+
+
 func _refresh_all_slots() -> void:
 	if _slot_buttons.is_empty():
 		return
@@ -567,219 +702,8 @@ func _normalize_slot_count() -> void:
 		_slots.resize(slot_count)
 
 
-func _create_placeholder_slots() -> void:
-	_slots = []
-	_normalize_slot_count()
-	var log_names := [
-		"Crude Logs",
-		"Rough Logs",
-		"Sturdy Logs",
-		"Seasoned Logs",
-		"Hardened Logs",
-		"Emberwood Logs",
-		"Sunheart Logs",
-		"Kingswood Logs",
-	]
-	var rock_names := [
-		"Crude Stone",
-		"Rough Stone",
-		"Sturdy Stone",
-		"Dense Stone",
-		"Hardened Stone",
-		"Runed Stone",
-		"Sunstone",
-		"Kingsstone",
-	]
-	var ore_names := [
-		"Crude Ore",
-		"Rough Ore",
-		"Sturdy Ore",
-		"Dense Ore",
-		"Hardened Ore",
-		"Runed Ore",
-		"Star Ore",
-		"Kingsmetal Ore",
-	]
-	var cotton_names := [
-		"Crude Cotton",
-		"Rough Cotton",
-		"Coarse Cotton",
-		"Soft Cotton",
-		"Fine Cotton",
-		"Lustrous Cotton",
-		"Sunspun Cotton",
-		"Kingsweave Cotton",
-	]
-	var hide_names := [
-		"Crude Hide",
-		"Rough Hide",
-		"Thick Hide",
-		"Cured Hide",
-		"Hardened Hide",
-		"Pristine Hide",
-		"Royal Hide",
-		"Elder Hide",
-	]
-
-	for tier_index in range(log_names.size()):
-		var tier := tier_index + 1
-		_slots[tier_index] = _create_log_stack(log_names[tier_index], tier, 999 - tier_index * 83)
-
-	for tier_index in range(rock_names.size()):
-		var tier := tier_index + 1
-		_slots[log_names.size() + tier_index] = _create_rock_stack(rock_names[tier_index], tier, 999 - tier_index * 71)
-
-	for tier_index in range(ore_names.size()):
-		var tier := tier_index + 1
-		var slot_index := log_names.size() + rock_names.size() + tier_index
-		_slots[slot_index] = _create_ore_stack(ore_names[tier_index], tier, 999 - tier_index * 59)
-
-	for tier_index in range(cotton_names.size()):
-		var tier := tier_index + 1
-		var slot_index := log_names.size() + rock_names.size() + ore_names.size() + tier_index
-		_slots[slot_index] = _create_cotton_stack(cotton_names[tier_index], tier, 999 - tier_index * 47)
-
-	for tier_index in range(hide_names.size()):
-		var tier := tier_index + 1
-		var slot_index := log_names.size() + rock_names.size() + ore_names.size() + cotton_names.size() + tier_index
-		_slots[slot_index] = _create_hide_stack(hide_names[tier_index], tier, 999 - tier_index * 53)
-
-
 func _create_placeholder_equipment() -> void:
 	_equipped_slots = {}
-
-
-func _create_log_stack(display_name: String, tier: int, quantity: int) -> Dictionary:
-	var tier_roman := _to_roman(tier)
-	return {
-		"id": "logs_t%d" % tier,
-		"name": "%s %s" % [display_name, tier_roman],
-		"quantity": quantity,
-		"max_stack": 999,
-		"category": "Resource",
-		"tier": tier,
-		"tier_roman": tier_roman,
-		"icon": "logs",
-		"unit_weight": 0.03 + float(tier - 1) * 0.01,
-		"color": _tier_color(tier),
-		"description": "Tier %s timber used for woodworking, crafting, and construction prototypes." % tier_roman,
-	}
-
-
-func _create_rock_stack(display_name: String, tier: int, quantity: int) -> Dictionary:
-	var tier_roman := _to_roman(tier)
-	return {
-		"id": "stone_t%d" % tier,
-		"name": "%s %s" % [display_name, tier_roman],
-		"quantity": quantity,
-		"max_stack": 999,
-		"category": "Resource",
-		"tier": tier,
-		"tier_roman": tier_roman,
-		"icon": "rocks",
-		"unit_weight": 0.06 + float(tier - 1) * 0.015,
-		"color": _tier_color(tier),
-		"description": "Tier %s stone used for masonry, construction, and refining prototypes." % tier_roman,
-	}
-
-
-func _create_ore_stack(display_name: String, tier: int, quantity: int) -> Dictionary:
-	var tier_roman := _to_roman(tier)
-	return {
-		"id": "ore_t%d" % tier,
-		"name": "%s %s" % [display_name, tier_roman],
-		"quantity": quantity,
-		"max_stack": 999,
-		"category": "Resource",
-		"tier": tier,
-		"tier_roman": tier_roman,
-		"icon": "ores",
-		"unit_weight": 0.08 + float(tier - 1) * 0.02,
-		"color": _tier_color(tier),
-		"description": "Tier %s ore used for smelting, weapon crafting, and refining prototypes." % tier_roman,
-	}
-
-
-func _create_cotton_stack(display_name: String, tier: int, quantity: int) -> Dictionary:
-	var tier_roman := _to_roman(tier)
-	return {
-		"id": "cotton_t%d" % tier,
-		"name": "%s %s" % [display_name, tier_roman],
-		"quantity": quantity,
-		"max_stack": 999,
-		"category": "Resource",
-		"tier": tier,
-		"tier_roman": tier_roman,
-		"icon": "cotton",
-		"unit_weight": 0.02 + float(tier - 1) * 0.006,
-		"color": _tier_color(tier),
-		"description": "Tier %s cotton used for tailoring, cloth crafting, and refining prototypes." % tier_roman,
-	}
-
-
-func _create_hide_stack(display_name: String, tier: int, quantity: int) -> Dictionary:
-	var tier_roman := _to_roman(tier)
-	return {
-		"id": "hide_t%d" % tier,
-		"name": "%s %s" % [display_name, tier_roman],
-		"quantity": quantity,
-		"max_stack": 999,
-		"category": "Resource",
-		"tier": tier,
-		"tier_roman": tier_roman,
-		"icon": "hide",
-		"unit_weight": 0.04 + float(tier - 1) * 0.012,
-		"color": _tier_color(tier),
-		"description": "Tier %s hide used for leatherworking, armor crafting, and refining prototypes." % tier_roman,
-	}
-
-
-func _item_abbreviation(item_name: String) -> String:
-	var words := item_name.strip_edges().split(" ", false)
-	if words.size() >= 2:
-		return "%s%s" % [words[0].substr(0, 1).to_upper(), words[1].substr(0, 1).to_upper()]
-
-	return item_name.substr(0, 2).to_upper()
-
-
-func _quantity_text(quantity: int) -> String:
-	return str(quantity) if quantity > 1 else ""
-
-
-func _to_roman(value: int) -> String:
-	var roman_values := {
-		1: "I",
-		2: "II",
-		3: "III",
-		4: "IV",
-		5: "V",
-		6: "VI",
-		7: "VII",
-		8: "VIII",
-	}
-	return String(roman_values.get(value, str(value)))
-
-
-func _tier_color(tier: int) -> Color:
-	match tier:
-		1:
-			return Color(0.72, 0.72, 0.72, 1.0)
-		2:
-			return Color(0.72, 0.50, 0.30, 1.0)
-		3:
-			return Color(0.20, 0.62, 0.25, 1.0)
-		4:
-			return Color(0.20, 0.42, 0.82, 1.0)
-		5:
-			return Color(0.78, 0.18, 0.16, 1.0)
-		6:
-			return Color(0.92, 0.48, 0.14, 1.0)
-		7:
-			return Color(0.95, 0.82, 0.18, 1.0)
-		8:
-			return Color(0.94, 0.94, 0.9, 1.0)
-		_:
-			return Color(0.72, 0.72, 0.72, 1.0)
 
 
 func _make_detail_label(text: String, font_size: int, font_color: Color) -> Label:

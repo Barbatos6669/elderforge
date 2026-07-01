@@ -39,6 +39,7 @@ That means pressing Play in Godot loads `Main.tscn`.
 - `Player`, an instance of the reusable player prefab.
 - `FriendlyTarget` and `HostileTarget`, selectable prototype targets for testing
   relationship-colored hover/selection.
+- `PlayerInventory`, local prototype item and currency storage.
 - `InventoryPanel`, the toggleable prototype inventory UI.
 - `Sun`, a directional light.
 
@@ -55,6 +56,7 @@ assets/
   characters/base/  Current placeholder character model and texture files.
 
 docs/
+  CODEBASE_INDEX.md     Fast lookup index for scenes, scripts, and systems.
   CODEBASE_GUIDE.md     This file.
   DESIGN_BOUNDARIES.md  What we can and cannot copy from other games.
   LICENSING.md          Asset and license rules.
@@ -75,6 +77,7 @@ scripts/
   debug/     Debug helper behavior.
   effects/   Effect behavior.
   interaction/ Shared interaction helpers such as hover detection.
+  inventory/ Prototype item definitions, stacks, and inventory storage.
   player/    Player-specific systems.
   ui/        UI and world-space display helpers.
 ```
@@ -457,10 +460,14 @@ nameplate.set_guild_info("GUILD NAME", "TAG")
 nameplate.set_vitals(0.85, 0.6)
 ```
 
-## Inventory UI
+## Inventory Data And UI
 
 `scenes/ui/inventory/InventoryPanel.tscn`
 `scenes/ui/inventory/EquipmentPanel.tscn`
+`scripts/inventory/item_definition.gd`
+`scripts/inventory/item_stack.gd`
+`scripts/inventory/player_inventory.gd`
+`scripts/inventory/prototype_item_catalog.gd`
 `scripts/ui/inventory/inventory_panel.gd`
 `scripts/ui/inventory/equipment_panel.gd`
 `scripts/ui/inventory/equipment_slot_icon.gd`
@@ -472,19 +479,28 @@ nameplate.set_vitals(0.85, 0.6)
 `assets/ui/inventory/cotton_icon.png`
 `assets/ui/inventory/hide_icon.png`
 
-`Main.tscn` has a standalone `InventoryPanel` scene instanced at the root. Press
-`I` to toggle it during play. The panel is intentionally UI-only right now: it
-seeds a few placeholder items, renders a fixed slot grid, shows selected item
-details, renders equipped gear slots, and calculates placeholder carry weight.
-The default bag grid is 42 slots arranged as 6 columns by 7 rows.
+`Main.tscn` has a `PlayerInventory` node and a standalone `InventoryPanel` scene
+instanced at the root. Press `I` to toggle the panel during play.
+`PlayerInventory` owns local prototype item stacks, currency, and equipped-slot
+state. `InventoryPanel` observes that node through signals and stays focused on
+rendering slots, selected item details, equipped gear placeholders, and carry
+weight. The default bag grid is 42 slots arranged as 6 columns by 7 rows.
 
 Bag slots can be dragged onto other bag slots. Dropping onto an empty slot moves
 the stack there; dropping onto a filled slot swaps the two stacks. The
 `InventorySlotButton` script owns only the Godot drag/drop event hooks, while
-`InventoryPanel` owns the actual slot data changes.
+`InventoryPanel` forwards the move request to `PlayerInventory`.
+
+Useful exported values on `PlayerInventory`:
+
+- `slot_count`
+- `seed_prototype_resources`
+- `starting_silver`
+- `starting_gold`
 
 Useful exported values on `InventoryPanel`:
 
+- `inventory_path`
 - `toggle_key`
 - `slot_count`
 - `columns`
@@ -492,17 +508,18 @@ Useful exported values on `InventoryPanel`:
 - `starting_silver`
 - `starting_gold`
 
-The future inventory data module should not live inside this UI script. When we
-add authoritative item storage, that module can call:
+The prototype data layer is split into small pieces:
 
-```gdscript
-inventory_panel.set_slots(item_slots)
-inventory_panel.set_equipped_slots(equipped_slots)
-inventory_panel.set_currency(silver, gold)
-```
+- `ItemDefinition` describes a kind of item: id, display name, tier, icon,
+  stack limit, unit weight, color, and description.
+- `ItemStack` stores a runtime quantity for one item definition.
+- `PrototypeItemCatalog` builds the temporary gathering resource definitions.
+- `PlayerInventory` owns slots and exposes commands such as
+  `move_or_swap_slots()`, `add_stack()`, and `set_currency()`.
 
-Each filled slot is currently expected to be a `Dictionary` with fields such as
-`name`, `quantity`, `max_stack`, `category`, `unit_weight`, `color`, and
+The current UI still reads display dictionaries from
+`PlayerInventory.get_display_slots()`. Each filled display slot contains fields
+such as `name`, `quantity`, `max_stack`, `category`, `unit_weight`, `color`, and
 `description`. Empty bag slots are empty dictionaries. Equipped gear is a
 `Dictionary` keyed by slot id, such as `bag`, `head`, `cape`, `main_hand`,
 `chest`, `off_hand`, `potion`, `shoes`, or `food`. The visual gear panel is a
@@ -514,12 +531,12 @@ Empty gear slots use code-drawn placeholder icons from
 replaces that slot's default icon. The prototype starts with no equipped gear
 so the full placeholder icon set is visible.
 
-Silver and gold are centered in the inventory header and start at `0`. Their
-labels use fixed-width space and comma formatting so larger currency totals stay
-readable. The values are display-only until an economy or wallet module owns
-currency state.
+Silver and gold are owned by `PlayerInventory`, centered in the inventory
+header, and start at `0`. Their labels use fixed-width space and comma
+formatting so larger currency totals stay readable. These values are still local
+prototype data until an economy, wallet, persistence, or server module exists.
 
-The first bag placeholder item pass seeds eight timber resources:
+`PrototypeItemCatalog` seeds eight timber resources:
 
 - `Crude Logs I`
 - `Rough Logs II`
@@ -697,12 +714,13 @@ split it.
 These are expected gaps, not bugs:
 
 - No server-authoritative networking yet.
-- No inventory/equipment system yet.
+- Inventory is local prototype data only; no persistence, trading, crafting,
+  equipment rules, or server authority yet.
 - Stats are tracked but not applied to movement/combat formulas yet.
 - No combat abilities yet.
 - No terrain surface detector yet.
 - No save/load persistence yet.
 - No character creation or account system yet.
 
-The next systems should stay small and testable: inventory data, equipment data,
-stat modifiers, terrain surface detection, or a first ability prototype.
+The next systems should stay small and testable: equipment data, stat modifiers,
+terrain surface detection, gathering nodes, or a first ability prototype.

@@ -1,9 +1,10 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/debug/IsometricGrid.tscn" id="3_grid"]
 [ext_resource type="PackedScene" path="res://scenes/entities/TargetDummy.tscn" id="4_target_dummy"]
 [ext_resource type="PackedScene" path="res://scenes/ui/inventory/InventoryPanel.tscn" id="5_inventory_panel"]
+[ext_resource type="Script" path="res://scripts/inventory/player_inventory.gd" id="6_player_inventory"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -90,4 +91,8 @@ rotation = Vector3(-0.872665, -0.523599, 0)
 shadow_enabled = true
 light_energy = 2.0
 
+[node name="PlayerInventory" type="Node" parent="."]
+script = ExtResource("6_player_inventory")
+
 [node name="InventoryPanel" parent="." instance=ExtResource("5_inventory_panel")]
+inventory_path = NodePath("../PlayerInventory")
