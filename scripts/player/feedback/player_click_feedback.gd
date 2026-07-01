@@ -1,9 +1,15 @@
+## Player-facing helper that spawns click-to-move destination feedback.
+##
+## Keeping this separate lets the controller ask for feedback without knowing
+## which effect scene is used.
 class_name PlayerClickFeedback
 extends Node
 
+## Effect scene spawned when a new click-move starts.
 @export var click_indicator_scene: PackedScene
 
 
+## Spawns the configured indicator at a world position.
 func spawn(world_position: Vector3, source_node: Node3D) -> void:
 	if click_indicator_scene == null:
 		return

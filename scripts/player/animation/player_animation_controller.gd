@@ -1,11 +1,22 @@
+## Runtime animation bridge for the placeholder player character.
+##
+## The model and animation pack are imported as separate scenes. This script
+## copies only the needed animations into a runtime AnimationPlayer under the
+## model, keeping the player prefab small and easy to swap later.
 class_name PlayerAnimationController
 extends Node
 
+## Root node of the instantiated character model.
 @export var model_root_path: NodePath = NodePath("../Visuals/BaseCharacter")
+## Scene that contains the source AnimationPlayer and animation clips.
 @export var source_animation_scene: PackedScene
+## Animation name used while standing still.
 @export var idle_animation_name: StringName = &"Idle"
+## Animation name used while moving.
 @export var move_animation_name: StringName = &"Jog_Fwd"
+## Blend time used when switching between idle and movement.
 @export var blend_time: float = 0.12
+## Playback speed for the movement animation.
 @export var move_speed_scale: float = 1.0
 
 var _animation_player: AnimationPlayer
@@ -16,6 +27,7 @@ func _ready() -> void:
 	call_deferred("_setup_animation_player")
 
 
+## Switches between idle and movement animation states.
 func set_moving(is_moving: bool) -> void:
 	if _animation_player == null:
 		_is_moving = is_moving
@@ -28,6 +40,7 @@ func set_moving(is_moving: bool) -> void:
 	_play_current_state()
 
 
+## Returns true when the runtime player is currently playing the move animation.
 func is_playing_move_animation() -> bool:
 	return (
 		_animation_player != null
@@ -35,6 +48,7 @@ func is_playing_move_animation() -> bool:
 	)
 
 
+## Returns normalized progress through the current animation, from 0.0 to 1.0.
 func get_current_animation_progress() -> float:
 	if _animation_player == null or _animation_player.current_animation_length <= 0.0:
 		return 0.0
@@ -50,6 +64,7 @@ func _setup_animation_player() -> void:
 	if model_root == null or source_animation_scene == null:
 		return
 
+	# Instantiate the source only long enough to copy animations from it.
 	var source_root := source_animation_scene.instantiate()
 	var source_player := _find_animation_player(source_root)
 	if source_player == null:
@@ -61,6 +76,7 @@ func _setup_animation_player() -> void:
 	_animation_player.root_node = NodePath("..")
 	model_root.add_child(_animation_player)
 
+	# Duplicating clips keeps imports untouched and allows runtime loop settings.
 	var library := AnimationLibrary.new()
 	_add_animation_to_library(library, source_player, idle_animation_name)
 	_add_animation_to_library(library, source_player, move_animation_name)

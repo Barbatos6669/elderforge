@@ -1,6 +1,11 @@
+## Runtime player stat container and stat metadata registry.
+##
+## All tracked values start at 0.0 for now. Equipment, buffs, progression, and
+## server state can later write into this module without changing UI code.
 class_name PlayerStats
 extends Node
 
+## Emitted when a stat value changes through set_stat() or add_to_stat().
 signal stat_changed(stat_id: StringName, value: float)
 
 const FORMAT_NUMBER := &"number"
@@ -61,6 +66,10 @@ const STONE_YIELD := &"stone_yield"
 const WOOD_YIELD := &"wood_yield"
 const FISHING_YIELD := &"fishing_yield"
 
+## Ordered stat metadata used by future UI and gameplay systems.
+##
+## Each definition stores a stable id, player-facing name, grouping category,
+## and display format. Runtime values are kept separately in _values.
 const STAT_DEFINITIONS := [
 	{"id": AVERAGE_ITEM_POWER, "name": "Average Item Power", "category": CATEGORY_POWER, "format": FORMAT_NUMBER},
 	{"id": BASE_AVERAGE_ITEM_POWER, "name": "Base Average Item Power", "category": CATEGORY_POWER, "format": FORMAT_NUMBER},
@@ -112,15 +121,18 @@ func _ready() -> void:
 	reset_all_to_zero()
 
 
+## Resets every registered stat value back to 0.0.
 func reset_all_to_zero() -> void:
 	for definition in STAT_DEFINITIONS:
 		_values[definition["id"]] = 0.0
 
 
+## Returns true if this stat has a runtime value entry.
 func has_stat(stat_id: StringName) -> bool:
 	return _values.has(stat_id)
 
 
+## Returns the current value for a stat, or 0.0 for unknown/uninitialized stats.
 func get_stat(stat_id: StringName) -> float:
 	if not has_stat(stat_id):
 		return 0.0
@@ -128,6 +140,7 @@ func get_stat(stat_id: StringName) -> float:
 	return _values[stat_id]
 
 
+## Sets a stat value and emits stat_changed when the value actually changes.
 func set_stat(stat_id: StringName, value: float) -> void:
 	if not _is_defined_stat(stat_id):
 		push_warning("Ignoring unknown player stat: %s" % stat_id)
@@ -143,14 +156,17 @@ func set_stat(stat_id: StringName, value: float) -> void:
 	stat_changed.emit(stat_id, value)
 
 
+## Adds amount to the current stat value.
 func add_to_stat(stat_id: StringName, amount: float) -> void:
 	set_stat(stat_id, get_stat(stat_id) + amount)
 
 
+## Returns a copy of all current stat values.
 func get_all_stats() -> Dictionary:
 	return _values.duplicate()
 
 
+## Returns the player-facing name for a stat id.
 func get_display_name(stat_id: StringName) -> String:
 	var definition := get_definition(stat_id)
 	if definition.is_empty():
@@ -159,6 +175,7 @@ func get_display_name(stat_id: StringName) -> String:
 	return definition["name"]
 
 
+## Returns the display format for a stat id.
 func get_format(stat_id: StringName) -> StringName:
 	var definition := get_definition(stat_id)
 	if definition.is_empty():
@@ -167,6 +184,7 @@ func get_format(stat_id: StringName) -> StringName:
 	return definition["format"]
 
 
+## Returns the grouping category for a stat id.
 func get_category(stat_id: StringName) -> StringName:
 	var definition := get_definition(stat_id)
 	if definition.is_empty():
@@ -175,6 +193,7 @@ func get_category(stat_id: StringName) -> StringName:
 	return definition["category"]
 
 
+## Returns a copy of the metadata definition for a stat id.
 func get_definition(stat_id: StringName) -> Dictionary:
 	for definition in STAT_DEFINITIONS:
 		if definition["id"] == stat_id:
@@ -183,6 +202,7 @@ func get_definition(stat_id: StringName) -> Dictionary:
 	return {}
 
 
+## Returns all registered stat ids in display order.
 func get_stat_ids() -> Array[StringName]:
 	var ids: Array[StringName] = []
 	for definition in STAT_DEFINITIONS:

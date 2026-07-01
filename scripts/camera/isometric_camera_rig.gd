@@ -1,12 +1,23 @@
+## Perspective isometric camera rig that follows a target and supports mouse
+## wheel zoom. The rig itself tracks the target position while the child camera
+## keeps the configured offset and looks back at the target.
 extends Node3D
 
+## Optional target path for scenes that want to configure the camera in-editor.
 @export var target_path: NodePath
+## How quickly the rig catches up to the target position.
 @export var follow_speed: float = 12.0
+## Camera position relative to the followed point at max zoom.
 @export var camera_offset: Vector3 = Vector3(6.0, 14.0, 6.0)
+## Height above the target position to look at. Zero keeps the feet centered.
 @export var look_at_height: float = 0.0
+## Perspective field of view for the child Camera3D.
 @export_range(20.0, 90.0, 1.0) var field_of_view: float = 45.0
+## Closest allowed zoom as a ratio of camera_offset.
 @export_range(0.25, 1.0, 0.01) var min_zoom_ratio: float = 0.45
+## Amount of zoom changed by each mouse wheel tick.
 @export_range(0.01, 0.25, 0.01) var zoom_step: float = 0.08
+## How quickly the camera interpolates to the requested zoom ratio.
 @export var zoom_smoothing: float = 14.0
 
 @onready var camera: Camera3D = $Camera3D
@@ -27,6 +38,8 @@ func _ready() -> void:
 	_update_camera_transform()
 
 
+## Assigns the node to follow. PlayerController calls this when the prefab
+## starts so any scene can drop in a player and get a working camera.
 func set_target(target: Node3D, snap_to_target: bool = true) -> void:
 	_target = target
 
@@ -56,6 +69,7 @@ func _physics_process(delta: float) -> void:
 	_update_zoom(delta)
 
 	if _target != null:
+		# Lerp the rig instead of the camera so zoom and follow smoothing stay independent.
 		var weight: float = min(follow_speed * delta, 1.0)
 		global_position = global_position.lerp(_target_focus_position(), weight)
 

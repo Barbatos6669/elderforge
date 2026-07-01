@@ -1,9 +1,17 @@
+## Applies a simple toon-like material style to the placeholder character.
+##
+## This is a prototype styling layer. Future character customization should move
+## toward data-driven materials, equipment visuals, and cosmetic overrides.
 class_name PlayerVisualStyle
 extends Node
 
+## Root node of the imported character model.
 @export var model_root_path: NodePath = NodePath("../Visuals/BaseCharacter")
+## Placeholder body material color.
 @export var body_color: Color = Color(0.42, 0.58, 0.64, 1.0)
+## Placeholder hair material color.
 @export var hair_color: Color = Color(0.16, 0.11, 0.08, 1.0)
+## Placeholder eye material color.
 @export var eye_color: Color = Color(0.95, 0.88, 0.58, 1.0)
 
 var _body_material: StandardMaterial3D
@@ -45,6 +53,7 @@ func _apply_to_mesh_instance(mesh_instance: MeshInstance3D) -> void:
 
 func _material_for_mesh(mesh_instance: MeshInstance3D) -> StandardMaterial3D:
 	var mesh_name := mesh_instance.name.to_lower()
+	# The placeholder model names are enough for this temporary material pass.
 	if mesh_name.contains("eye"):
 		return _eye_material
 	if mesh_name.contains("hair") or mesh_name.contains("eyebrow"):

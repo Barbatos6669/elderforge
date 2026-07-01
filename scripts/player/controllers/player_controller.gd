@@ -1,6 +1,11 @@
+## High-level coordinator for the reusable player prefab.
+##
+## This script intentionally delegates real work to child modules: input,
+## movement, facing, animation, audio, feedback, stats, and camera.
 class_name PlayerController
 extends CharacterBody3D
 
+## Allows scenes or tests to temporarily disable local player control.
 @export var input_enabled: bool = true
 
 @onready var input_reader = $Input
@@ -41,6 +46,9 @@ func _physics_process(delta: float) -> void:
 
 	var horizontal_velocity := Vector3(velocity.x, 0.0, velocity.z)
 	var is_moving := horizontal_velocity.length_squared() > 0.01
+
+	# Animation and footsteps use velocity, not destination intent, so stopping
+	# and arrival states stay visually/audio synchronized.
 	facing.face_direction(visual_direction)
 	animation.set_moving(is_moving)
 	footstep_audio.set_moving(is_moving)

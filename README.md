@@ -6,7 +6,7 @@ This project may take inspiration from the broad sandbox MMO genre, including ga
 
 ## Current Status
 
-The repository is at the foundation stage. We have a Godot project shell and contributor documentation, but the playable game, backend services, and content pipeline still need to be designed and implemented.
+The repository is in the early local prototype stage. We have a playable Godot scene with a reusable player prefab, click-to-move controls, an isometric camera, placeholder character visuals, animation, footsteps, and zeroed player stat tracking. Backend services, multiplayer authority, inventory, combat, persistence, and the content pipeline still need to be designed and implemented.
 
 ## Design Pillars
 
@@ -31,6 +31,13 @@ The repository is at the foundation stage. We have a Godot project shell and con
 4. Run the project from the editor.
 
 There is not yet a full game loop. See [docs/ROADMAP.md](docs/ROADMAP.md) for the first milestones.
+
+## Learning the Codebase
+
+If you want to understand how the current prototype is put together, start with
+[docs/CODEBASE_GUIDE.md](docs/CODEBASE_GUIDE.md). It explains the main scene,
+player prefab, movement, camera, animation, footsteps, stats, and where to make
+common changes.
 
 ## Contributing
 

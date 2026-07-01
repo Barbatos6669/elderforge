@@ -1,7 +1,13 @@
+## Reads local click-to-move input and converts screen clicks to world targets.
+##
+## This module owns input interpretation only; movement is handled by
+## PlayerMovementMotor.
 class_name PlayerInput
 extends Node
 
+## Maximum distance for the mouse raycast from the active camera.
 @export var click_ray_length: float = 1000.0
+## Physics collision mask used when looking for click-to-move ground hits.
 @export_flags_3d_physics var click_collision_mask: int = 1
 
 var _click_move_started := false
@@ -9,14 +15,17 @@ var _was_left_mouse_down := false
 var _was_right_mouse_down := false
 
 
+## Returns true while the stop key is held.
 func is_stop_requested() -> bool:
 	return Input.is_key_pressed(KEY_S)
 
 
+## Returns true only on the first frame of a left or right click-move press.
 func was_click_move_started() -> bool:
 	return _click_move_started
 
 
+## Returns the current click-move target, or null when no move button is held.
 func get_click_move_target(character: CharacterBody3D):
 	var is_left_mouse_down := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	var is_right_mouse_down := Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
@@ -41,6 +50,7 @@ func get_click_move_target(character: CharacterBody3D):
 	var ray_direction := camera.project_ray_normal(mouse_position)
 	var ray_end := ray_origin + ray_direction * click_ray_length
 	var direct_space_state := character.get_world_3d().direct_space_state
+	# Exclude the player so clicks pass through the character body to the ground.
 	var query := PhysicsRayQueryParameters3D.create(ray_origin, ray_end, click_collision_mask)
 	query.exclude = [character.get_rid()]
 	query.collide_with_areas = true
@@ -50,6 +60,7 @@ func get_click_move_target(character: CharacterBody3D):
 	if hit.has("position"):
 		return hit["position"]
 
+	# In very simple test scenes, movement can still work without ground collision.
 	return _intersect_character_floor(character, ray_origin, ray_direction)
 
 

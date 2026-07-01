@@ -1,41 +1,52 @@
 @tool
+## Editor/runtime debug grid for judging movement and camera framing.
+##
+## This is a visual reference only. It should not be used by gameplay logic.
 extends Node3D
 
+## Number of grid cells to draw away from the origin in each direction.
 @export_range(1, 128, 1) var half_size: int = 16:
 	set(value):
 		half_size = max(value, 1)
 		_rebuild_if_ready()
 
+## Size of each grid cell in world units.
 @export_range(0.25, 8.0, 0.25) var cell_size: float = 1.0:
 	set(value):
 		cell_size = max(value, 0.25)
 		_rebuild_if_ready()
 
+## Raises the grid above the floor to avoid z-fighting.
 @export var y_offset: float = 0.02:
 	set(value):
 		y_offset = value
 		_rebuild_if_ready()
 
+## Color used for ordinary grid lines.
 @export var minor_line_color: Color = Color(0.82, 0.9, 0.85, 0.22):
 	set(value):
 		minor_line_color = value
 		_rebuild_if_ready()
 
+## Color used every major_line_interval cells.
 @export var major_line_color: Color = Color(0.95, 0.98, 0.88, 0.38):
 	set(value):
 		major_line_color = value
 		_rebuild_if_ready()
 
+## Color used to highlight the world X axis.
 @export var x_axis_color: Color = Color(0.95, 0.22, 0.18, 0.7):
 	set(value):
 		x_axis_color = value
 		_rebuild_if_ready()
 
+## Color used to highlight the world Z axis.
 @export var z_axis_color: Color = Color(0.25, 0.52, 1.0, 0.7):
 	set(value):
 		z_axis_color = value
 		_rebuild_if_ready()
 
+## Draw a major grid line every N cells.
 @export_range(1, 16, 1) var major_line_interval: int = 4:
 	set(value):
 		major_line_interval = max(value, 1)
@@ -56,6 +67,7 @@ func _rebuild() -> void:
 	if mesh_instance == null:
 		return
 
+	# ImmediateMesh keeps this debug helper self-contained; no imported mesh asset is needed.
 	var grid_mesh := ImmediateMesh.new()
 	grid_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
 	_add_grid_lines(grid_mesh)

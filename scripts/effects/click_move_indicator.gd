@@ -1,13 +1,26 @@
+## Expanding double-ring marker shown at click-to-move destinations.
+##
+## The effect builds its rings procedurally, fades them with a tween, then frees
+## itself when the animation is finished.
 extends Node3D
 
+## Total lifetime of the indicator.
 @export var duration: float = 0.42
+## Starting scale radius before the expansion tween.
 @export var start_radius: float = 0.12
+## Ending scale radius for the expansion tween.
 @export var end_radius: float = 0.8
+## Raises the rings above the floor to avoid clipping.
 @export var y_offset: float = 0.08
+## Base ring color. Alpha is also multiplied per-ring in _create_material().
 @export var indicator_color: Color = Color(1.0, 0.82, 0.1, 0.62)
+## Number of segments used to approximate each ring.
 @export_range(16, 128, 1) var ring_segments: int = 72
+## Thickness of the outer ring.
 @export var outer_ring_width: float = 0.08
+## Thickness of the inner ring.
 @export var inner_ring_width: float = 0.06
+## Inner ring radius as a ratio of the procedural unit ring.
 @export_range(0.1, 0.95, 0.05) var inner_ring_radius: float = 0.55
 
 @onready var outer_ring: MeshInstance3D = $OuterRing
@@ -47,6 +60,7 @@ func _create_ring_mesh(radius: float, width: float) -> ImmediateMesh:
 
 	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
 	for index in range(ring_segments):
+		# Each segment is two triangles forming a small quad between the radii.
 		var angle_a := TAU * float(index) / float(ring_segments)
 		var angle_b := TAU * float(index + 1) / float(ring_segments)
 		var outer_a := Vector3(cos(angle_a) * outer_radius, 0.0, sin(angle_a) * outer_radius)
