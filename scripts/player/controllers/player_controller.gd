@@ -10,6 +10,8 @@ extends CharacterBody3D
 
 @onready var input_reader = $Input
 @onready var stats: PlayerStats = $Stats
+@onready var targeting = $Targeting
+@onready var auto_attack = $AutoAttack
 @onready var movement_motor = $Movement
 @onready var facing = $Facing
 @onready var animation = $Animation
@@ -21,6 +23,7 @@ extends CharacterBody3D
 
 func _ready() -> void:
 	camera_rig.set_target(camera_target)
+	auto_attack.attack_landed.connect(_on_auto_attack_landed)
 
 
 func _physics_process(delta: float) -> void:
@@ -28,21 +31,41 @@ func _physics_process(delta: float) -> void:
 		movement_motor.stop(self)
 		animation.set_moving(false)
 		footstep_audio.set_moving(false)
+		auto_attack.stop_attack()
 		return
 
 	if input_reader.is_stop_requested():
 		movement_motor.stop(self)
+		auto_attack.stop_attack()
 	else:
-		var move_target = input_reader.get_click_move_target(self)
-		if move_target != null:
-			movement_motor.set_destination(move_target)
-			if input_reader.was_click_move_started():
-				click_feedback.spawn(move_target, self)
+		var clicked_target: Node = targeting.try_select_on_click(self)
+		if clicked_target != null:
+			input_reader.block_click_move_until_mouse_release()
+			if auto_attack.start_attack(clicked_target, self):
+				movement_motor.stop(self)
+		else:
+			if input_reader.was_auto_attack_pressed():
+				if auto_attack.start_attack(targeting.get_current_target(), self):
+					movement_motor.stop(self)
+
+			var move_target = input_reader.get_click_move_target(self)
+			if move_target != null:
+				if input_reader.was_click_move_started():
+					auto_attack.stop_attack()
+				movement_motor.set_destination(move_target)
+				if input_reader.was_click_move_started():
+					click_feedback.spawn(move_target, self)
+
+	_update_auto_attack_movement()
 
 	var movement_direction: Vector3 = movement_motor.move_to_destination(self, delta)
 	var visual_direction: Vector3 = movement_motor.get_horizontal_velocity_direction(self)
 	if visual_direction == Vector3.ZERO:
 		visual_direction = movement_direction
+	if auto_attack.has_active_target() and auto_attack.is_target_in_range(self):
+		var target_direction: Vector3 = auto_attack.get_direction_to_target(self)
+		if target_direction != Vector3.ZERO:
+			visual_direction = target_direction
 
 	var horizontal_velocity := Vector3(velocity.x, 0.0, velocity.z)
 	var is_moving := horizontal_velocity.length_squared() > 0.01
@@ -52,3 +75,18 @@ func _physics_process(delta: float) -> void:
 	facing.face_direction(visual_direction)
 	animation.set_moving(is_moving)
 	footstep_audio.set_moving(is_moving)
+	auto_attack.update_attack(self, delta)
+
+
+func _update_auto_attack_movement() -> void:
+	if not auto_attack.has_active_target():
+		return
+
+	if auto_attack.is_target_in_range(self):
+		movement_motor.stop(self)
+	else:
+		movement_motor.set_destination(auto_attack.get_approach_destination(self))
+
+
+func _on_auto_attack_landed(_target: Node, _damage: float) -> void:
+	animation.play_attack()

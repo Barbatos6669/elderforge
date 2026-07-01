@@ -37,6 +37,9 @@ That means pressing Play in Godot loads `Main.tscn`.
 - `DebugGrid`, the isometric reference grid.
 - `Ground`, a flat walkable plane with collision.
 - `Player`, an instance of the reusable player prefab.
+- `FriendlyTarget` and `HostileTarget`, selectable prototype targets for testing
+  relationship-colored hover/selection.
+- `InventoryPanel`, the toggleable prototype inventory UI.
 - `Sun`, a directional light.
 
 This is still a prototype scene. It is useful for testing movement, camera,
@@ -60,7 +63,9 @@ docs/
 scenes/
   camera/    Reusable camera rig scene.
   debug/     Debug-only helper scenes.
+  entities/  Prototype gameplay entities such as target dummies.
   effects/   Visual effects such as click indicators.
+  ui/        Reusable UI scenes such as inventory and nameplates.
   main/      Current playable test scene.
   player/    Reusable player prefab.
 
@@ -69,6 +74,7 @@ scripts/
   camera/    Camera behavior.
   debug/     Debug helper behavior.
   effects/   Effect behavior.
+  interaction/ Shared interaction helpers such as hover detection.
   player/    Player-specific systems.
   ui/        UI and world-space display helpers.
 ```
@@ -81,10 +87,13 @@ scene can be dropped into any playable scene and work immediately.
 Current child nodes:
 
 - `Input` reads mouse/keyboard intent.
+- `Targeting` handles local click target selection.
+- `AutoAttack` runs the local-player prototype auto-attack loop.
 - `Stats` stores player stat values and metadata.
 - `Movement` moves the `CharacterBody3D` toward a destination.
 - `Facing` rotates the visual model toward movement direction.
 - `VisualStyle` applies the current toon-like placeholder material style.
+- `HoverSelectionRing` detects hover and applies the mesh outline highlight.
 - `Animation` loads idle/jog animations onto the character model.
 - `FootstepAudio` plays surface footsteps in sync with animation timing.
 - `ClickFeedback` spawns the yellow click marker.
@@ -104,15 +113,117 @@ Every physics frame, `PlayerController` does this:
 
 1. If input is disabled, stop movement, animation, and footsteps.
 2. If `S` is held, stop movement.
-3. Otherwise, ask `PlayerInput` whether the mouse is pointing at a movement
+3. Otherwise, ask `PlayerTargeting` whether the current left-click selected a
    target.
-4. If a new click started, ask `PlayerClickFeedback` to spawn the click marker.
-5. Ask `PlayerMovementMotor` to move toward the destination.
-6. Ask `PlayerFacing` to rotate the visual model.
-7. Tell animation and footstep audio whether the player is currently moving.
+4. If a hostile target was clicked, ask `PlayerAutoAttack` to start attacking.
+5. If Space was pressed while a hostile target is selected, ask `PlayerAutoAttack`
+   to start attacking.
+6. If targeting did not consume the click, ask `PlayerInput` whether the mouse
+   is pointing at a movement target.
+7. If a new click-move started, ask `PlayerClickFeedback` to spawn the click marker.
+8. Ask `PlayerMovementMotor` to move toward the destination.
+9. Ask `PlayerFacing` to rotate the visual model.
+10. Tell animation and footstep audio whether the player is currently moving.
+11. If auto-attack is active, chase the hostile target until melee range.
+12. Face the target once in range.
+13. Advance the auto-attack cooldown, play the attack animation, and apply
+    damage when a swing is ready.
 
 This means movement, visuals, animation, audio, and feedback can change without
 rewriting the whole player controller.
+
+## Hover Feedback
+
+`scripts/interaction/hover/hover_feedback_3d.gd`
+`assets/materials/hover/hover_outline_green.tres`
+`assets/materials/hover/hover_outline.gdshader`
+
+The player prefab has a `HoverHitbox` area on a hover-only physics layer and a
+`HoverSelectionRing` node. That node uses `HoverFeedback3D`, which owns the
+hover test and applies the mesh outline highlight.
+
+If the hover target has a `get_relationship_color()` method, hover feedback uses
+that color for the optional mesh outline. Current convention: friendly targets
+are green, hostile targets are red, and neutral/unknown targets fall back to
+gold.
+
+The hover hitbox is intentionally wider than the movement collision capsule so
+the fallback raycast can hit the visible character area. `HoverFeedback3D` also
+checks the projected mesh bounds of `Visuals/BaseCharacter`, and then falls
+back to a projected feet-to-head body line. This keeps hover detection tied to
+what the player sees on screen instead of depending only on exact physics hits.
+
+The generated hover ring is disabled by default; selected targets use
+`SelectionFeedback3D` for their persistent ground ring. Tune screen hover
+padding and ray fallback on the `HoverSelectionRing` node. If feedback does not
+appear, enable `force_hover` on that node to confirm hover detection and outline
+behavior before tuning detection.
+
+## Target Selection
+
+`scripts/interaction/selection/selectable_3d.gd`
+`scripts/interaction/selection/selection_feedback_3d.gd`
+`scripts/player/targeting/player_targeting.gd`
+`scenes/entities/TargetDummy.tscn`
+
+Target selection is split into reusable object-side and player-side pieces:
+
+- `Selectable3D` lives on a selectable `Area3D` hitbox, owns selected state, and
+  exposes the target relationship.
+- `SelectionFeedback3D` listens to a selectable and shows the
+  relationship-colored selected ring with a light translucent center fill.
+- `PlayerTargeting` raycasts from the active camera on left-click and selects
+  the first selectable hitbox on the selection physics layer.
+
+The player's left-click selection check runs before click-to-move. If a click
+selects a target, `PlayerInput` blocks movement until the mouse button is
+released so the same click does not also become a move command. Selected target
+rings stay visible while that target remains selected; clicking the ground does
+not clear selection, but clicking another selectable swaps the selected target.
+
+`TargetDummy.tscn` is the current test entity. `Main.tscn` instances it as a
+friendly target and a hostile target so hover/selection can be checked against
+both relationship colors. Its nameplate is hidden until selected, and then only
+shows a relationship-colored health bar: green for friendly and red for hostile.
+The visual is the same base character model used by the player, with the shared
+toon material pass tinted light green for friendly and light red for hostile.
+This gives us a small combat foundation before adding attacks or spells.
+
+Change a target's friendly/hostile behavior by selecting its `Selectable3D`
+node and editing `relationship` in the Inspector. The default colors are also
+exported there if we need to tune the exact green, red, or neutral gold later.
+Tune the selected ring fill on the `SelectedRing` node with `fill_color` and
+`fill_selection_color_mix`.
+
+## Prototype Combat
+
+`scripts/combat/combat_health.gd`
+`scripts/player/combat/player_auto_attack.gd`
+
+This is the first local-only combat prototype. It is not server authoritative
+yet and does not include ability formulas, attack animations, or pathfinding.
+
+- `CombatHealth` stores max/current health, applies damage, and emits health
+  ratio updates for UI.
+- `PlayerAutoAttack` validates that the target is hostile, exposes a melee
+  approach destination, checks attack range, applies damage on an interval, and
+  stops when the target is defeated.
+- Directly clicking a hostile selectable starts auto-attack.
+- Pressing Space starts auto-attack against the currently selected hostile
+  target.
+- Friendly and neutral targets cannot be auto-attacked by this module.
+- The player moves into melee range before the first hit, faces the target, and
+  plays the `Punch_Jab` one-shot animation when a hit lands.
+
+Current tuning lives on `Player/AutoAttack`:
+
+- `attack_damage`
+- `attack_interval`
+- `attack_range`
+- `approach_distance`
+
+`TargetDummy.tscn` has a `Health` child using `CombatHealth`. Its selected-only
+health bar reads that health source, so auto-attacks visibly lower the bar.
 
 ## Input
 
@@ -123,6 +234,8 @@ Responsibilities:
 - Reads left mouse and right mouse.
 - Allows holding either mouse button to keep updating the move destination.
 - Reads `S` as stop.
+- Reads Space as the one-shot auto-attack request.
+- Can suppress click-to-move after targeting consumes the current click.
 - Uses the active camera to raycast from mouse position into the 3D world.
 - Falls back to intersecting the player's floor plane if no physics hit exists.
 
@@ -188,6 +301,7 @@ Current animations:
 
 - `Idle`
 - `Jog_Fwd`
+- `Punch_Jab` for the first auto-attack prototype.
 
 Responsibilities:
 
@@ -286,6 +400,12 @@ renders a prototype player nameplate with:
 - A placeholder guild name.
 - Five-segment health and mana bars.
 
+Target entities can use the same `PlayerNameplate` script in a trimmed mob mode:
+set `show_when_unselected` off, hide `show_name_row`, `show_guild_line`, and
+`show_mana_bar`, then enable `use_relationship_health_color`. That makes the
+plate appear only when the target is selected and show only a friendly/hostile
+health bar.
+
 Because the game camera is perspective, `PlayerNameplate` can compensate for
 zoom by adjusting its generated `Sprite3D.pixel_size` every frame. Keep
 `keep_screen_size_on_zoom` enabled when the nameplate should stay the same
@@ -296,6 +416,12 @@ visually attached to the character.
 The health and mana bars use `status_bar_segments` and
 `status_bar_segment_gap` so combat readability can be tuned without changing
 the rest of the nameplate layout.
+
+Nameplate rows are measured after text is generated and recentered inside the
+viewport, so the name, guild line, and status bars stay anchored above the
+character even when player names have different lengths. When
+`auto_resize_viewport_width` is enabled, very long names expand the offscreen
+viewport width instead of clipping.
 
 The first-letter font currently comes from:
 
@@ -331,6 +457,130 @@ nameplate.set_guild_info("GUILD NAME", "TAG")
 nameplate.set_vitals(0.85, 0.6)
 ```
 
+## Inventory UI
+
+`scenes/ui/inventory/InventoryPanel.tscn`
+`scenes/ui/inventory/EquipmentPanel.tscn`
+`scripts/ui/inventory/inventory_panel.gd`
+`scripts/ui/inventory/equipment_panel.gd`
+`scripts/ui/inventory/equipment_slot_icon.gd`
+`scripts/ui/inventory/inventory_item_icon.gd`
+`scripts/ui/inventory/inventory_slot_button.gd`
+`assets/ui/inventory/logs_icon.png`
+`assets/ui/inventory/rocks_icon.png`
+`assets/ui/inventory/ores_icon.png`
+`assets/ui/inventory/cotton_icon.png`
+`assets/ui/inventory/hide_icon.png`
+
+`Main.tscn` has a standalone `InventoryPanel` scene instanced at the root. Press
+`I` to toggle it during play. The panel is intentionally UI-only right now: it
+seeds a few placeholder items, renders a fixed slot grid, shows selected item
+details, renders equipped gear slots, and calculates placeholder carry weight.
+The default bag grid is 42 slots arranged as 6 columns by 7 rows.
+
+Bag slots can be dragged onto other bag slots. Dropping onto an empty slot moves
+the stack there; dropping onto a filled slot swaps the two stacks. The
+`InventorySlotButton` script owns only the Godot drag/drop event hooks, while
+`InventoryPanel` owns the actual slot data changes.
+
+Useful exported values on `InventoryPanel`:
+
+- `toggle_key`
+- `slot_count`
+- `columns`
+- `start_visible`
+- `starting_silver`
+- `starting_gold`
+
+The future inventory data module should not live inside this UI script. When we
+add authoritative item storage, that module can call:
+
+```gdscript
+inventory_panel.set_slots(item_slots)
+inventory_panel.set_equipped_slots(equipped_slots)
+inventory_panel.set_currency(silver, gold)
+```
+
+Each filled slot is currently expected to be a `Dictionary` with fields such as
+`name`, `quantity`, `max_stack`, `category`, `unit_weight`, `color`, and
+`description`. Empty bag slots are empty dictionaries. Equipped gear is a
+`Dictionary` keyed by slot id, such as `bag`, `head`, `cape`, `main_hand`,
+`chest`, `off_hand`, `potion`, `shoes`, or `food`. The visual gear panel is a
+3x3 layout: Bag, Helmet, Cape / Main Hand, Chest, Off Hand / Potion, Shoes,
+Food.
+
+Empty gear slots use code-drawn placeholder icons from
+`equipment_slot_icon.gd`. Once an item is equipped, the item abbreviation
+replaces that slot's default icon. The prototype starts with no equipped gear
+so the full placeholder icon set is visible.
+
+Silver and gold are centered in the inventory header and start at `0`. Their
+labels use fixed-width space and comma formatting so larger currency totals stay
+readable. The values are display-only until an economy or wallet module owns
+currency state.
+
+The first bag placeholder item pass seeds eight timber resources:
+
+- `Crude Logs I`
+- `Rough Logs II`
+- `Sturdy Logs III`
+- `Seasoned Logs IV`
+- `Hardened Logs V`
+- `Emberwood Logs VI`
+- `Sunheart Logs VII`
+- `Kingswood Logs VIII`
+
+It also seeds eight stone resources:
+
+- `Crude Stone I`
+- `Rough Stone II`
+- `Sturdy Stone III`
+- `Dense Stone IV`
+- `Hardened Stone V`
+- `Runed Stone VI`
+- `Sunstone VII`
+- `Kingsstone VIII`
+
+And eight ore resources:
+
+- `Crude Ore I`
+- `Rough Ore II`
+- `Sturdy Ore III`
+- `Dense Ore IV`
+- `Hardened Ore V`
+- `Runed Ore VI`
+- `Star Ore VII`
+- `Kingsmetal Ore VIII`
+
+And eight cotton resources:
+
+- `Crude Cotton I`
+- `Rough Cotton II`
+- `Coarse Cotton III`
+- `Soft Cotton IV`
+- `Fine Cotton V`
+- `Lustrous Cotton VI`
+- `Sunspun Cotton VII`
+- `Kingsweave Cotton VIII`
+
+And eight hide resources:
+
+- `Crude Hide I`
+- `Rough Hide II`
+- `Thick Hide III`
+- `Cured Hide IV`
+- `Hardened Hide V`
+- `Pristine Hide VI`
+- `Royal Hide VII`
+- `Elder Hide VIII`
+
+`InventoryItemIcon` draws the item card frame, small tier marker, and
+bottom-right quantity. Log, stone, ore, cotton, and hide items use transparent
+bitmap art from `logs_icon.png`, `rocks_icon.png`, `ores_icon.png`,
+`cotton_icon.png`, and `hide_icon.png`. Tier colors fill the icon background
+behind the art: light gray, light brown, green, blue, red, orange, yellow, and
+white for tiers I through VIII.
+
 ## Click Feedback
 
 `scripts/player/feedback/player_click_feedback.gd`
@@ -364,8 +614,10 @@ touching player behavior.
 `scripts/player/visuals/player_visual_style.gd`
 
 This script applies simple toon-like materials to the placeholder character at
-runtime. It is a prototype styling pass, not the final character customization
-system.
+runtime. It is currently reused by the prototype target characters too, so the
+friendly and hostile test mobs use the same low-poly/toon material style as the
+player with different body colors. It is a prototype styling pass, not the final
+character customization system.
 
 Later refactor:
 

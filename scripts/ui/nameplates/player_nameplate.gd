@@ -27,6 +27,14 @@ extends Node3D
 ## Draw over world geometry so the local player name stays readable.
 @export var no_depth_test: bool = true
 
+@export_group("Visibility")
+## Keeps this nameplate visible even when it is not tied to a selected target.
+@export var show_when_unselected: bool = true
+## Optional selectable target used to show this nameplate only while selected.
+@export var selectable_path: NodePath
+## Optional health source used to drive the health bar ratio.
+@export var health_source_path: NodePath
+
 @export_group("Camera Scaling")
 ## Keeps the nameplate the same screen size while a perspective camera zooms.
 @export var keep_screen_size_on_zoom: bool = true
@@ -42,6 +50,14 @@ extends Node3D
 @export var content_width: float = 242.0
 ## Top Y position of the nameplate contents inside the viewport.
 @export var content_y: float = 24.0
+## Recenters the generated controls after text widths are known.
+@export var center_content_horizontally: bool = true
+## Centers each visual row, such as name, guild, and bars, around the anchor.
+@export var center_rows_horizontally: bool = true
+## Expands the viewport width when long names would otherwise clip.
+@export var auto_resize_viewport_width: bool = true
+## Empty pixels kept on each side after auto-resizing for long names.
+@export_range(0.0, 128.0, 1.0) var viewport_horizontal_padding: float = 24.0
 ## Offset from the first-letter emblem to the rest of the player name.
 @export var name_text_offset := Vector2(40.0, 5.0)
 ## Offset from the first-letter emblem to the alliance/guild line.
@@ -72,6 +88,10 @@ extends Node3D
 @export_range(0, 12, 1) var first_letter_outline_size: int = 2
 
 @export_group("Text")
+## Shows the first-letter badge and player name row.
+@export var show_name_row: bool = true
+## Shows the alliance/guild text row.
+@export var show_guild_line: bool = true
 ## Font size for the non-emblem portion of the player name.
 @export var name_font_size: int = 28
 ## Font size for alliance and guild text.
@@ -90,6 +110,16 @@ extends Node3D
 @export var guild_label_size := Vector2(188.0, 20.0)
 
 @export_group("Bars")
+## Shows the health bar row.
+@export var show_health_bar: bool = true
+## Shows the mana bar row.
+@export var show_mana_bar: bool = true
+## Uses the linked selectable relationship color for the health bar.
+@export var use_relationship_health_color: bool = false
+## Fallback health bar fill color.
+@export var health_fill_color := Color(0.86, 0.64, 0.17, 1.0)
+## Mana bar fill color.
+@export var mana_fill_color := Color(0.18, 0.48, 0.86, 1.0)
 ## Size of the health and mana bars.
 @export var status_bar_size := Vector2(132.0, 8.0)
 ## Vertical spacing between the health bar and mana bar.
@@ -105,12 +135,18 @@ var _sprite: Sprite3D
 var _last_editor_signature := ""
 var _base_local_position := Vector3.ZERO
 var _runtime_reference_camera_distance := 0.0
+var _center_rows := []
+var _selectable: Node
+var _health_source: Node
 
 
 func _ready() -> void:
 	_base_local_position = position
 	_create_viewport_renderer()
+	_connect_selectable()
+	_connect_health_source()
 	_rebuild()
+	_sync_selection_visibility()
 
 
 func _process(_delta: float) -> void:
@@ -172,6 +208,95 @@ func _create_viewport_renderer() -> void:
 	_sprite.centered = true
 	add_child(_sprite)
 	_apply_viewport_settings()
+
+
+func _connect_selectable() -> void:
+	_selectable = _find_selectable()
+	if _selectable == null:
+		return
+
+	if (
+		_selectable.has_signal("selection_changed")
+		and not _selectable.selection_changed.is_connected(_on_selection_changed)
+	):
+		_selectable.selection_changed.connect(_on_selection_changed)
+
+
+func _connect_health_source() -> void:
+	_health_source = _find_health_source()
+	if _health_source == null:
+		return
+
+	if (
+		_health_source.has_signal("health_changed")
+		and not _health_source.health_changed.is_connected(_on_health_changed)
+	):
+		_health_source.health_changed.connect(_on_health_changed)
+
+	_sync_health_ratio_from_source()
+
+
+func _find_selectable() -> Node:
+	if selectable_path != NodePath(""):
+		var explicit_selectable := get_node_or_null(selectable_path)
+		if explicit_selectable != null:
+			return explicit_selectable
+
+	var parent_node := get_parent()
+	if parent_node != null:
+		return parent_node.get_node_or_null("Selectable")
+
+	return null
+
+
+func _find_health_source() -> Node:
+	if health_source_path != NodePath(""):
+		var explicit_health_source := get_node_or_null(health_source_path)
+		if explicit_health_source != null:
+			return explicit_health_source
+
+	var parent_node := get_parent()
+	if parent_node != null:
+		return parent_node.get_node_or_null("Health")
+
+	return null
+
+
+func _on_selection_changed(_is_selected: bool) -> void:
+	_rebuild()
+	_sync_selection_visibility()
+
+
+func _on_health_changed(_current_health: float, _max_health: float, new_health_ratio: float) -> void:
+	health_ratio = clampf(new_health_ratio, 0.0, 1.0)
+	_rebuild()
+
+
+func _sync_health_ratio_from_source() -> void:
+	if _health_source == null:
+		return
+
+	if _health_source.has_method("get_health_ratio"):
+		health_ratio = clampf(_health_source.call("get_health_ratio"), 0.0, 1.0)
+
+
+func _sync_selection_visibility() -> void:
+	if show_when_unselected:
+		visible = true
+		return
+
+	if _selectable == null:
+		_connect_selectable()
+
+	visible = _is_selectable_selected()
+
+
+func _is_selectable_selected() -> bool:
+	return (
+		_selectable != null
+		and _selectable.has_method("is_selected")
+		and _selectable.call("is_selected") == true
+	)
 
 
 func _remove_generated_renderer() -> void:
@@ -250,16 +375,26 @@ func _rebuild() -> void:
 	if _root == null:
 		return
 
+	_apply_viewport_settings()
 	_clear_root()
+	_center_rows.clear()
+	if _health_source == null:
+		_connect_health_source()
+	else:
+		_sync_health_ratio_from_source()
 	var name_text := _display_name()
 	var first_letter := name_text.substr(0, 1).to_upper()
 	var remaining_name := name_text.substr(1)
 	var content_origin := Vector2((float(viewport_size.x) - content_width) * 0.5, content_y)
 
-	_add_first_letter_emblem(first_letter, content_origin + first_letter_offset)
-	_add_player_name_text(remaining_name, content_origin + name_text_offset)
-	_add_guild_line(content_origin + guild_line_offset)
-	_add_status_bars(content_origin + status_bars_offset)
+	if show_name_row:
+		var name_row := _add_first_letter_emblem(first_letter, content_origin + first_letter_offset)
+		name_row.append(_add_player_name_text(remaining_name, content_origin + name_text_offset))
+		_register_center_row(name_row)
+	if show_guild_line:
+		_register_center_row(_add_guild_line(content_origin + guild_line_offset))
+	_register_center_row(_add_status_bars(content_origin + status_bars_offset))
+	_fit_and_center_contents()
 
 
 func _clear_root() -> void:
@@ -272,9 +407,10 @@ func _display_name() -> String:
 	return "PLAYER" if trimmed.is_empty() else trimmed
 
 
-func _add_first_letter_emblem(letter: String, position: Vector2) -> void:
-	_add_color_rect(position + emblem_outer_offset, emblem_outer_size, Color(0.94, 0.84, 0.24, 1.0))
-	_add_color_rect(position + emblem_inner_offset, emblem_inner_size, Color(0.13, 0.18, 0.12, 0.94))
+func _add_first_letter_emblem(letter: String, position: Vector2) -> Array:
+	var controls := []
+	controls.append(_add_color_rect(position + emblem_outer_offset, emblem_outer_size, Color(0.94, 0.84, 0.24, 1.0)))
+	controls.append(_add_color_rect(position + emblem_inner_offset, emblem_inner_size, Color(0.13, 0.18, 0.12, 0.94)))
 
 	var letter_label := _create_label(letter, first_letter_font_size, Color(1.0, 0.92, 0.42, 1.0), Color.BLACK, first_letter_outline_size)
 	if first_letter_font != null:
@@ -284,38 +420,52 @@ func _add_first_letter_emblem(letter: String, position: Vector2) -> void:
 	letter_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	letter_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_root.add_child(letter_label)
+	controls.append(letter_label)
+	return controls
 
 
-func _add_player_name_text(text: String, position: Vector2) -> void:
+func _add_player_name_text(text: String, position: Vector2) -> Label:
 	var label := _create_label(text, name_font_size, Color.WHITE, Color.BLACK, name_outline_size)
 	label.position = position
-	label.size = name_label_size
 	_root.add_child(label)
+	_size_label_to_text(label, name_label_size)
+	return label
 
 
-func _add_guild_line(position: Vector2) -> void:
+func _add_guild_line(position: Vector2) -> Array:
 	if guild_name.strip_edges().is_empty():
-		return
+		return []
 
+	var controls := []
 	var alliance_text := "[%s]" % alliance_tag.strip_edges().to_upper()
 	var alliance_label := _create_label(alliance_text, guild_font_size, Color(0.62, 0.86, 0.28, 1.0), Color.BLACK, guild_outline_size)
 	alliance_label.position = position
-	alliance_label.size = alliance_label_size
 	_root.add_child(alliance_label)
+	_size_label_to_text(alliance_label, alliance_label_size)
+	controls.append(alliance_label)
 
 	var guild_label := _create_label(guild_name.strip_edges().to_upper(), guild_font_size, Color(0.96, 0.72, 0.26, 1.0), Color.BLACK, guild_outline_size)
 	guild_label.position = position + guild_label_offset
-	guild_label.size = guild_label_size
 	_root.add_child(guild_label)
+	_size_label_to_text(guild_label, guild_label_size)
+	controls.append(guild_label)
+	return controls
 
 
-func _add_status_bars(position: Vector2) -> void:
-	_add_meter_bar(position, status_bar_size, health_ratio, Color(0.86, 0.64, 0.17, 1.0))
-	_add_meter_bar(position + Vector2(0.0, status_bar_gap), status_bar_size, mana_ratio, Color(0.18, 0.48, 0.86, 1.0))
+func _add_status_bars(position: Vector2) -> Array:
+	var controls := []
+	var bar_position := position
+	if show_health_bar:
+		controls.append_array(_add_meter_bar(bar_position, status_bar_size, health_ratio, _get_health_fill_color()))
+		bar_position.y += status_bar_gap
+	if show_mana_bar:
+		controls.append_array(_add_meter_bar(bar_position, status_bar_size, mana_ratio, mana_fill_color))
+	return controls
 
 
-func _add_meter_bar(position: Vector2, size: Vector2, ratio: float, fill_color: Color) -> void:
-	_add_color_rect(position + Vector2(-2.0, -2.0), size + Vector2(4.0, 4.0), Color(0.02, 0.02, 0.02, 0.95))
+func _add_meter_bar(position: Vector2, size: Vector2, ratio: float, fill_color: Color) -> Array:
+	var controls := []
+	controls.append(_add_color_rect(position + Vector2(-2.0, -2.0), size + Vector2(4.0, 4.0), Color(0.02, 0.02, 0.02, 0.95)))
 
 	var safe_segment_count: int = maxi(status_bar_segments, 1)
 	var total_gap_width := status_bar_segment_gap * float(safe_segment_count - 1)
@@ -327,9 +477,11 @@ func _add_meter_bar(position: Vector2, size: Vector2, ratio: float, fill_color: 
 		var segment_size := Vector2(segment_width, size.y)
 		var segment_fill := clampf((clamped_ratio * float(safe_segment_count)) - float(segment_index), 0.0, 1.0)
 
-		_add_color_rect(segment_position, segment_size, Color(0.08, 0.07, 0.04, 0.95))
+		controls.append(_add_color_rect(segment_position, segment_size, Color(0.08, 0.07, 0.04, 0.95)))
 		if segment_fill > 0.0:
-			_add_color_rect(segment_position, Vector2(segment_width * segment_fill, size.y), fill_color)
+			controls.append(_add_color_rect(segment_position, Vector2(segment_width * segment_fill, size.y), fill_color))
+
+	return controls
 
 
 func _add_color_rect(position: Vector2, size: Vector2, color: Color) -> ColorRect:
@@ -342,6 +494,17 @@ func _add_color_rect(position: Vector2, size: Vector2, color: Color) -> ColorRec
 	return rect
 
 
+func _get_health_fill_color() -> Color:
+	if (
+		use_relationship_health_color
+		and _selectable != null
+		and _selectable.has_method("get_relationship_color")
+	):
+		return _selectable.call("get_relationship_color")
+
+	return health_fill_color
+
+
 func _create_label(
 	text: String,
 	font_size: int,
@@ -352,12 +515,104 @@ func _create_label(
 	var label := Label.new()
 	label.text = text
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.clip_text = true
+	label.clip_text = false
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", font_color)
 	label.add_theme_color_override("font_outline_color", outline_color)
 	label.add_theme_constant_override("outline_size", outline_size)
 	return label
+
+
+func _size_label_to_text(label: Label, fallback_size: Vector2) -> void:
+	var text_size := label.get_combined_minimum_size()
+	label.size = Vector2(maxf(text_size.x, 1.0), maxf(text_size.y, fallback_size.y))
+
+
+func _register_center_row(controls: Array) -> void:
+	if not controls.is_empty():
+		_center_rows.append(controls)
+
+
+func _fit_and_center_contents() -> void:
+	var bounds := _get_content_bounds()
+	if bounds.size == Vector2.ZERO:
+		return
+
+	if auto_resize_viewport_width:
+		var desired_width := maxi(
+			viewport_size.x,
+			int(ceilf(bounds.size.x + viewport_horizontal_padding * 2.0))
+		)
+		_resize_viewport_width(desired_width)
+
+	if center_rows_horizontally:
+		_center_registered_rows()
+
+	if center_content_horizontally:
+		_center_contents(_get_content_bounds())
+
+
+func _center_registered_rows() -> void:
+	var viewport_width := float(_viewport.size.x) if _viewport != null else float(viewport_size.x)
+
+	for row in _center_rows:
+		var bounds := _get_controls_bounds(row)
+		if bounds.size == Vector2.ZERO:
+			continue
+
+		var offset_x := viewport_width * 0.5 - bounds.get_center().x
+		if absf(offset_x) <= 0.01:
+			continue
+
+		for item in row:
+			var control := item as Control
+			if control != null:
+				control.position.x += offset_x
+
+
+func _get_content_bounds() -> Rect2:
+	return _get_controls_bounds(_root.get_children())
+
+
+func _get_controls_bounds(controls: Array) -> Rect2:
+	var has_bounds := false
+	var bounds := Rect2()
+
+	for item in controls:
+		var control := item as Control
+		if control == null or not control.visible:
+			continue
+
+		var child_bounds := Rect2(control.position, control.size)
+		if not has_bounds:
+			bounds = child_bounds
+			has_bounds = true
+		else:
+			bounds = bounds.merge(child_bounds)
+
+	return bounds if has_bounds else Rect2()
+
+
+func _resize_viewport_width(width: int) -> void:
+	if _viewport == null or _root == null:
+		return
+
+	var safe_width := maxi(width, viewport_size.x)
+	var resized_viewport_size := Vector2i(safe_width, viewport_size.y)
+	_viewport.size = resized_viewport_size
+	_root.size = Vector2(resized_viewport_size)
+
+
+func _center_contents(bounds: Rect2) -> void:
+	var viewport_width := float(_viewport.size.x) if _viewport != null else float(viewport_size.x)
+	var offset_x := viewport_width * 0.5 - bounds.get_center().x
+	if absf(offset_x) <= 0.01:
+		return
+
+	for child in _root.get_children():
+		var control := child as Control
+		if control != null:
+			control.position.x += offset_x
 
 
 func _build_editor_signature() -> String:
@@ -371,12 +626,19 @@ func _build_editor_signature() -> String:
 		world_pixel_size,
 		billboard_mode,
 		no_depth_test,
+		show_when_unselected,
+		selectable_path,
+		health_source_path,
 		keep_screen_size_on_zoom,
 		compensate_height_on_zoom,
 		zoom_height_compensation_strength,
 		screen_size_reference_distance,
 		content_width,
 		content_y,
+		center_content_horizontally,
+		center_rows_horizontally,
+		auto_resize_viewport_width,
+		viewport_horizontal_padding,
 		name_text_offset,
 		guild_line_offset,
 		status_bars_offset,
@@ -390,6 +652,8 @@ func _build_editor_signature() -> String:
 		first_letter_font,
 		first_letter_font_size,
 		first_letter_outline_size,
+		show_name_row,
+		show_guild_line,
 		name_font_size,
 		guild_font_size,
 		name_outline_size,
@@ -398,6 +662,11 @@ func _build_editor_signature() -> String:
 		alliance_label_size,
 		guild_label_offset,
 		guild_label_size,
+		show_health_bar,
+		show_mana_bar,
+		use_relationship_health_color,
+		health_fill_color,
+		mana_fill_color,
 		status_bar_size,
 		status_bar_gap,
 		status_bar_segments,

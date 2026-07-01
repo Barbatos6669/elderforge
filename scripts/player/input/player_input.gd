@@ -13,6 +13,8 @@ extends Node
 var _click_move_started := false
 var _was_left_mouse_down := false
 var _was_right_mouse_down := false
+var _was_auto_attack_down := false
+var _block_click_move_until_mouse_release := false
 
 
 ## Returns true while the stop key is held.
@@ -23,6 +25,22 @@ func is_stop_requested() -> bool:
 ## Returns true only on the first frame of a left or right click-move press.
 func was_click_move_started() -> bool:
 	return _click_move_started
+
+
+## Returns true only on the first frame Space is pressed for auto-attack.
+func was_auto_attack_pressed() -> bool:
+	var is_auto_attack_down := Input.is_key_pressed(KEY_SPACE)
+	var was_pressed := is_auto_attack_down and not _was_auto_attack_down
+	_was_auto_attack_down = is_auto_attack_down
+	return was_pressed
+
+
+## Suppresses held mouse movement after another module consumes the current click.
+func block_click_move_until_mouse_release() -> void:
+	_block_click_move_until_mouse_release = true
+	_click_move_started = false
+	_was_left_mouse_down = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	_was_right_mouse_down = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
 
 
 ## Returns the current click-move target, or null when no move button is held.
@@ -37,6 +55,13 @@ func get_click_move_target(character: CharacterBody3D):
 
 	_was_left_mouse_down = is_left_mouse_down
 	_was_right_mouse_down = is_right_mouse_down
+
+	if _block_click_move_until_mouse_release:
+		if is_move_button_down:
+			_click_move_started = false
+			return null
+
+		_block_click_move_until_mouse_release = false
 
 	if not is_move_button_down:
 		return null

@@ -14,13 +14,18 @@ extends Node
 @export var idle_animation_name: StringName = &"Idle"
 ## Animation name used while moving.
 @export var move_animation_name: StringName = &"Jog_Fwd"
+## One-shot animation played when an auto-attack lands.
+@export var attack_animation_name: StringName = &"Punch_Jab"
 ## Blend time used when switching between idle and movement.
 @export var blend_time: float = 0.12
 ## Playback speed for the movement animation.
 @export var move_speed_scale: float = 1.0
+## Playback speed for the one-shot attack animation.
+@export var attack_speed_scale: float = 1.0
 
 var _animation_player: AnimationPlayer
 var _is_moving := false
+var _is_attacking := false
 
 
 func _ready() -> void:
@@ -37,7 +42,20 @@ func set_moving(is_moving: bool) -> void:
 		return
 
 	_is_moving = is_moving
+	if _is_attacking:
+		return
+
 	_play_current_state()
+
+
+## Plays the configured one-shot auto-attack animation, then resumes idle/move.
+func play_attack() -> void:
+	if _animation_player == null or not _animation_player.has_animation(attack_animation_name):
+		return
+
+	_is_attacking = true
+	_animation_player.speed_scale = attack_speed_scale
+	_animation_player.play(attack_animation_name, blend_time)
 
 
 ## Returns true when the runtime player is currently playing the move animation.
@@ -78,9 +96,11 @@ func _setup_animation_player() -> void:
 
 	# Duplicating clips keeps imports untouched and allows runtime loop settings.
 	var library := AnimationLibrary.new()
-	_add_animation_to_library(library, source_player, idle_animation_name)
-	_add_animation_to_library(library, source_player, move_animation_name)
+	_add_animation_to_library(library, source_player, idle_animation_name, true)
+	_add_animation_to_library(library, source_player, move_animation_name, true)
+	_add_animation_to_library(library, source_player, attack_animation_name, false)
 	_animation_player.add_animation_library("", library)
+	_animation_player.animation_finished.connect(_on_animation_finished)
 
 	source_root.queue_free()
 	_play_current_state(true)
@@ -89,18 +109,21 @@ func _setup_animation_player() -> void:
 func _add_animation_to_library(
 	library: AnimationLibrary,
 	source_player: AnimationPlayer,
-	animation_name: StringName
+	animation_name: StringName,
+	should_loop: bool
 ) -> void:
 	if not source_player.has_animation(animation_name):
 		return
 
 	var animation := source_player.get_animation(animation_name).duplicate(true) as Animation
-	animation.loop_mode = Animation.LOOP_LINEAR
+	animation.loop_mode = Animation.LOOP_LINEAR if should_loop else Animation.LOOP_NONE
 	library.add_animation(animation_name, animation)
 
 
 func _play_current_state(force_restart: bool = false) -> void:
 	if _animation_player == null:
+		return
+	if _is_attacking:
 		return
 
 	var animation_name := move_animation_name if _is_moving else idle_animation_name
@@ -109,6 +132,14 @@ func _play_current_state(force_restart: bool = false) -> void:
 
 	_animation_player.speed_scale = move_speed_scale if _is_moving else 1.0
 	_animation_player.play(animation_name, blend_time)
+
+
+func _on_animation_finished(animation_name: StringName) -> void:
+	if animation_name != attack_animation_name:
+		return
+
+	_is_attacking = false
+	_play_current_state(true)
 
 
 func _find_animation_player(node: Node) -> AnimationPlayer:

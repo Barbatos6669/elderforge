@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/controllers/player_controller.gd" id="1_controller"]
 [ext_resource type="Script" path="res://scripts/player/input/player_input.gd" id="2_input"]
@@ -15,16 +15,30 @@
 [ext_resource type="Resource" path="res://assets/audio/footsteps/sets/grass_footsteps.tres" id="13_footstep_set"]
 [ext_resource type="Script" path="res://scripts/player/stats/player_stats.gd" id="14_stats"]
 [ext_resource type="PackedScene" path="res://scenes/ui/nameplates/PlayerNameplate.tscn" id="15_nameplate"]
+[ext_resource type="Script" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="16_hover_feedback"]
+[ext_resource type="Material" path="res://assets/materials/hover/hover_outline_green.tres" id="17_hover_outline_material"]
+[ext_resource type="Script" path="res://scripts/player/targeting/player_targeting.gd" id="18_targeting"]
+[ext_resource type="Script" path="res://scripts/player/combat/player_auto_attack.gd" id="19_auto_attack"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
 height = 1.8
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_hover"]
+radius = 0.6
+height = 2.0
 
 [node name="Player" type="CharacterBody3D"]
 script = ExtResource("1_controller")
 
 [node name="Input" type="Node" parent="."]
 script = ExtResource("2_input")
+
+[node name="Targeting" type="Node" parent="."]
+script = ExtResource("18_targeting")
+
+[node name="AutoAttack" type="Node" parent="."]
+script = ExtResource("19_auto_attack")
 
 [node name="Stats" type="Node" parent="."]
 script = ExtResource("14_stats")
@@ -43,6 +57,13 @@ visuals_path = NodePath("../Visuals")
 [node name="VisualStyle" type="Node" parent="." node_paths=PackedStringArray("model_root_path")]
 script = ExtResource("9_visual_style")
 model_root_path = NodePath("../Visuals/BaseCharacter")
+
+[node name="HoverSelectionRing" type="MeshInstance3D" parent="." node_paths=PackedStringArray("visuals_path", "hover_target_path")]
+script = ExtResource("16_hover_feedback")
+visuals_path = NodePath("../Visuals/BaseCharacter")
+hover_target_path = NodePath("../HoverHitbox")
+hover_collision_mask = 4
+highlight_material = ExtResource("17_hover_outline_material")
 
 [node name="Animation" type="Node" parent="." node_paths=PackedStringArray("model_root_path")]
 script = ExtResource("10_animation")
@@ -73,6 +94,15 @@ position = Vector3(0, 3, 0)
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 position = Vector3(0, 0.9, 0)
 shape = SubResource("CapsuleShape3D_body")
+
+[node name="HoverHitbox" type="Area3D" parent="."]
+input_ray_pickable = true
+collision_layer = 4
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="HoverHitbox"]
+position = Vector3(0, 1.125, 0)
+shape = SubResource("CapsuleShape3D_hover")
 
 [node name="CameraTarget" type="Marker3D" parent="."]
 position = Vector3(0, 0, 0)

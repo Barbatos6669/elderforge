@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/inventory/equipment_panel.gd" id="1_equipment_panel"]
+
+[node name="EquipmentPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(250, 0)
+script = ExtResource("1_equipment_panel")
