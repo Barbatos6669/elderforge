@@ -1,0 +1,18 @@
+# Animation Assets
+
+This folder contains CC0 animation libraries by Quaternius.
+
+## Universal Animation Library 1
+
+- `universal_animation_library_1/UAL1_Standard.glb`: in-place animations.
+- `universal_animation_library_1/UAL1_Standard_RM.glb`: root-motion animations.
+- `universal_animation_library_1/LICENSE_Quaternius_CC0.txt`: source license.
+
+## Universal Animation Library 2
+
+- `universal_animation_library_2/UAL2_Standard.glb`: in-place animations.
+- `universal_animation_library_2/UAL2_Standard_RM.glb`: root-motion animations.
+- `universal_animation_library_2/Mannequin_F.glb`: female mannequin reference from the pack.
+- `universal_animation_library_2/LICENSE_Quaternius_CC0.txt`: source license.
+
+Use the non-`_RM` files by default for server-authoritative MMO movement. Root-motion variants are useful for animation previewing or future special-case ability work.

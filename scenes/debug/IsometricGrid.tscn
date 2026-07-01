@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/debug/isometric_grid.gd" id="1_script"]
+
+[node name="IsometricGrid" type="Node3D"]
+script = ExtResource("1_script")
+half_size = 16
+cell_size = 1.0
+y_offset = 0.02
+
+[node name="GridMesh" type="MeshInstance3D" parent="."]

@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/effects/click_move_indicator.gd" id="1_script"]
+
+[node name="ClickMoveIndicator" type="Node3D"]
+top_level = true
+script = ExtResource("1_script")
+
+[node name="OuterRing" type="MeshInstance3D" parent="."]
+
+[node name="InnerRing" type="MeshInstance3D" parent="."]
