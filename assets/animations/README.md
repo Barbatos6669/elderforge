@@ -15,4 +15,17 @@ This folder contains CC0 animation libraries by Quaternius.
 - `universal_animation_library_2/Mannequin_F.glb`: female mannequin reference from the pack.
 - `universal_animation_library_2/LICENSE_Quaternius_CC0.txt`: source license.
 
+## Source Files
+
+- `source/`: editable Blender source files extracted from the source packs in
+  Downloads. This folder has a `.gdignore` file so Godot does not import it.
+- `source/README.md`: explains which files were kept from the source archives
+  and which redundant exports were skipped.
+
 Use the non-`_RM` files by default for server-authoritative MMO movement. Root-motion variants are useful for animation previewing or future special-case ability work.
+
+Current player usage:
+
+- `UAL1_Standard.glb`: `Idle`, `Jog_Fwd`, and `Punch_Jab`.
+- `UAL2_Standard.glb`: `Farm_Harvest` for the first hand-gathering wood
+  prototype.

@@ -26,7 +26,9 @@ extends CharacterBody3D
 func _ready() -> void:
 	camera_rig.set_target(camera_target)
 	auto_attack.attack_landed.connect(_on_auto_attack_landed)
+	channeling.channel_started.connect(_on_channel_started)
 	channeling.channel_completed.connect(_on_channel_completed)
+	channeling.channel_cancelled.connect(_on_channel_cancelled)
 
 
 func _physics_process(delta: float) -> void:
@@ -125,11 +127,29 @@ func _cancel_gathering_action(reason: String) -> void:
 	gathering.cancel_gathering()
 	if channeling.is_channeling():
 		channeling.cancel_channel(reason)
+	else:
+		animation.set_gathering(false)
 
 
 func _on_auto_attack_landed(_target: Node, _damage: float) -> void:
 	animation.play_attack()
 
 
+func _on_channel_started(_action_name: String, _duration: float, context: Dictionary) -> void:
+	if _is_gathering_channel_context(context):
+		animation.set_gathering(true)
+
+
 func _on_channel_completed(context: Dictionary) -> void:
+	if _is_gathering_channel_context(context):
+		animation.set_gathering(false)
 	gathering.complete_gather(context)
+
+
+func _on_channel_cancelled(_reason: String, context: Dictionary) -> void:
+	if _is_gathering_channel_context(context):
+		animation.set_gathering(false)
+
+
+func _is_gathering_channel_context(context: Dictionary) -> bool:
+	return String(context.get("type", "")) == "gathering"

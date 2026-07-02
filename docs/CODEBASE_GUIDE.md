@@ -110,7 +110,8 @@ Current child nodes:
 - `Facing` rotates the visual model toward movement direction.
 - `VisualStyle` applies the current toon-like placeholder material style.
 - `HoverSelectionRing` detects hover and applies the mesh outline highlight.
-- `Animation` loads idle/jog animations onto the character model.
+- `Animation` loads idle, jog, attack, and gathering animations onto the
+  character model.
 - `FootstepAudio` plays surface footsteps in sync with animation timing.
 - `ClickFeedback` spawns the yellow click marker.
 - `Visuals/BaseCharacter` is the current placeholder character model.
@@ -324,13 +325,17 @@ Current animations:
 - `Idle`
 - `Jog_Fwd`
 - `Punch_Jab` for the first auto-attack prototype.
+- `Farm_Harvest` for the first hand-gathering wood prototype.
 
 Responsibilities:
 
 - Find the animation source scene's `AnimationPlayer`.
-- Copy selected animations into a runtime library.
-- Loop idle and jog animations.
+- Copy selected animations into a runtime library. Idle, jog, and punch
+  currently come from Universal Animation Library 1, while `Farm_Harvest` comes
+  from Universal Animation Library 2.
+- Loop idle, jog, and gathering animations.
 - Slow the jog with `move_speed_scale`.
+- Play the gathering loop while a gathering channel is active.
 - Expose the current move animation progress so footstep audio can sync to foot
   contact points.
 
@@ -639,7 +644,8 @@ Clicking the tree now starts the first gathering flow:
 3. The player moves into gather range and faces the tree.
 4. `PlayerChanneling` starts a timed gathering channel.
 5. `ChannelBar` shows the channel progress.
-6. On completion, `PlayerInventory.add_item("timber_t1", quantity)` adds logs.
+6. `PlayerAnimationController` loops `Farm_Harvest` while the channel is active.
+7. On completion, `PlayerInventory.add_item("timber_t1", quantity)` adds logs.
 
 ## Channel Bar
 
@@ -702,7 +708,7 @@ Later refactor:
 Current third-party assets are documented near the assets themselves:
 
 - Character model/license: `assets/characters/base/`
-- Animation packs/license: `assets/animations/`
+- Animation packs/license/source: `assets/animations/`
 - Footstep sources/license: `assets/audio/footsteps/README.md`
 
 Before adding new assets, read `docs/LICENSING.md`.

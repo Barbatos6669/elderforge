@@ -10,22 +10,29 @@ extends Node
 @export var model_root_path: NodePath = NodePath("../Visuals/BaseCharacter")
 ## Scene that contains the source AnimationPlayer and animation clips.
 @export var source_animation_scene: PackedScene
+## Optional scene for gathering-only clips that live in another animation pack.
+@export var gathering_animation_scene: PackedScene
 ## Animation name used while standing still.
 @export var idle_animation_name: StringName = &"Idle"
 ## Animation name used while moving.
 @export var move_animation_name: StringName = &"Jog_Fwd"
 ## One-shot animation played when an auto-attack lands.
 @export var attack_animation_name: StringName = &"Punch_Jab"
+## Looped animation used while the player channels gathering.
+@export var gathering_animation_name: StringName = &"Farm_Harvest"
 ## Blend time used when switching between idle and movement.
 @export var blend_time: float = 0.12
 ## Playback speed for the movement animation.
 @export var move_speed_scale: float = 1.0
 ## Playback speed for the one-shot attack animation.
 @export var attack_speed_scale: float = 1.0
+## Playback speed for the looped gathering animation.
+@export var gathering_speed_scale: float = 0.85
 
 var _animation_player: AnimationPlayer
 var _is_moving := false
 var _is_attacking := false
+var _is_gathering := false
 
 
 func _ready() -> void:
@@ -46,6 +53,22 @@ func set_moving(is_moving: bool) -> void:
 		return
 
 	_play_current_state()
+
+
+## Plays or stops the looped gathering animation state.
+func set_gathering(is_gathering: bool) -> void:
+	if _animation_player == null:
+		_is_gathering = is_gathering
+		return
+
+	if _is_gathering == is_gathering:
+		return
+
+	_is_gathering = is_gathering
+	if _is_attacking:
+		return
+
+	_play_current_state(true)
 
 
 ## Plays the configured one-shot auto-attack animation, then resumes idle/move.
@@ -99,6 +122,7 @@ func _setup_animation_player() -> void:
 	_add_animation_to_library(library, source_player, idle_animation_name, true)
 	_add_animation_to_library(library, source_player, move_animation_name, true)
 	_add_animation_to_library(library, source_player, attack_animation_name, false)
+	_add_gathering_animation_to_library(library, source_player)
 	_animation_player.add_animation_library("", library)
 	_animation_player.animation_finished.connect(_on_animation_finished)
 
@@ -112,6 +136,9 @@ func _add_animation_to_library(
 	animation_name: StringName,
 	should_loop: bool
 ) -> void:
+	if source_player == null:
+		return
+
 	if not source_player.has_animation(animation_name):
 		return
 
@@ -120,18 +147,49 @@ func _add_animation_to_library(
 	library.add_animation(animation_name, animation)
 
 
+func _add_gathering_animation_to_library(
+	library: AnimationLibrary,
+	fallback_source_player: AnimationPlayer
+) -> void:
+	var gathering_source_player := fallback_source_player
+	var source_root: Node = null
+
+	if gathering_animation_scene != null:
+		source_root = gathering_animation_scene.instantiate()
+		gathering_source_player = _find_animation_player(source_root)
+
+	_add_animation_to_library(library, gathering_source_player, gathering_animation_name, true)
+
+	if source_root != null:
+		source_root.queue_free()
+
+
 func _play_current_state(force_restart: bool = false) -> void:
 	if _animation_player == null:
 		return
 	if _is_attacking:
 		return
 
-	var animation_name := move_animation_name if _is_moving else idle_animation_name
+	var animation_name := _current_state_animation_name()
 	if not force_restart and _animation_player.current_animation == animation_name:
 		return
 
-	_animation_player.speed_scale = move_speed_scale if _is_moving else 1.0
+	_animation_player.speed_scale = _current_state_speed_scale()
 	_animation_player.play(animation_name, blend_time)
+
+
+func _current_state_animation_name() -> StringName:
+	if _is_gathering and _animation_player.has_animation(gathering_animation_name):
+		return gathering_animation_name
+
+	return move_animation_name if _is_moving else idle_animation_name
+
+
+func _current_state_speed_scale() -> float:
+	if _is_gathering and _animation_player.has_animation(gathering_animation_name):
+		return gathering_speed_scale
+
+	return move_speed_scale if _is_moving else 1.0
 
 
 func _on_animation_finished(animation_name: StringName) -> void:

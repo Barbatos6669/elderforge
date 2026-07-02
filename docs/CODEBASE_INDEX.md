@@ -34,7 +34,7 @@ you want to open.
 | `scripts/player/movement/player_movement_motor.gd` | Moves the `CharacterBody3D` toward the current destination. |
 | `scripts/player/visuals/player_facing.gd` | Rotates the character toward movement and combat targets. |
 | `scripts/player/visuals/player_visual_style.gd` | Applies the current toon-like placeholder material style. |
-| `scripts/player/animation/player_animation_controller.gd` | Owns movement and combat animation playback. |
+| `scripts/player/animation/player_animation_controller.gd` | Owns movement, combat, and gathering animation playback. |
 | `scripts/player/audio/player_footstep_audio.gd` | Plays footstep audio tied to movement cadence. |
 | `scripts/player/feedback/player_click_feedback.gd` | Spawns click-move ground indicators. |
 | `scripts/player/stats/player_stats.gd` | Stores player stat ids and current numeric values. |
@@ -134,6 +134,7 @@ server-provided definitions.
 | `assets/characters/base/` | Current base character mesh, textures, and license notes. |
 | `assets/animations/universal_animation_library_1/` | Imported animation pack 1. |
 | `assets/animations/universal_animation_library_2/` | Imported animation pack 2. |
+| `assets/animations/source/` | Editable Blender source files for the imported animation packs. |
 | `assets/ui/inventory/logs_icon.png` | Log resource item art. |
 | `assets/ui/inventory/rocks_icon.png` | Stone resource item art. |
 | `assets/ui/inventory/ores_icon.png` | Ore resource item art. |
@@ -170,7 +171,7 @@ rg "auto_attack|target" scripts/player scripts/interaction
 
 The safest next systems to grow from here are:
 
-- Gathering nodes that call `PlayerInventory.add_stack()`.
+- Gathering nodes that call `PlayerInventory.add_item()` or `add_stack()`.
 - Equipment data that feeds `PlayerInventory.set_equipped_slots()`.
 - Stat modifiers that connect equipment and buffs to `PlayerStats`.
 - Terrain surface detection that chooses between footstep surface sets.
