@@ -63,7 +63,7 @@ Skipped files:
 
 ## Why Keep Source
 
-The runtime player currently uses `Farm_Harvest` from Universal Animation
+The runtime player currently uses `Shield_OneShot` from Universal Animation
 Library 2 for T1 hand-gathering. These source files let us later adjust that
 clip in Blender so the character looks like they are ripping branches from a
 basic tree instead of using a tool.

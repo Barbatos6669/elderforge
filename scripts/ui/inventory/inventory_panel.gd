@@ -12,6 +12,7 @@ const InventoryItemIconScript := preload("res://scripts/ui/inventory/inventory_i
 const InventorySlotButtonScript := preload("res://scripts/ui/inventory/inventory_slot_button.gd")
 const PlayerInventoryScript := preload("res://scripts/inventory/player_inventory.gd")
 const SLOT_DRAG_TYPE := "elderforge_inventory_slot"
+const EQUIPMENT_DRAG_TYPE := "elderforge_equipment_slot"
 
 ## Optional external inventory node. Main.tscn points this at PlayerInventory.
 @export var inventory_path: NodePath
@@ -243,6 +244,18 @@ func get_slot_drag_data(slot_index: int) -> Variant:
 	}
 
 
+## Returns drag payload for a filled equipped slot.
+func get_equipment_slot_drag_data(slot_id: String) -> Variant:
+	var slot := _equipped_slot_at(slot_id)
+	if slot.is_empty():
+		return null
+
+	return {
+		"type": EQUIPMENT_DRAG_TYPE,
+		"source_slot_id": slot_id,
+	}
+
+
 ## Builds the small item preview shown under the cursor while dragging.
 func create_slot_drag_preview(slot_index: int) -> Control:
 	if not _is_valid_slot_index(slot_index):
@@ -277,7 +290,15 @@ func can_drop_slot_data(target_index: int, data: Variant) -> bool:
 		return false
 
 	var drag_data := data as Dictionary
-	if String(drag_data.get("type", "")) != SLOT_DRAG_TYPE:
+	var drag_type := String(drag_data.get("type", ""))
+	if drag_type == EQUIPMENT_DRAG_TYPE:
+		var source_slot_id := String(drag_data.get("source_slot_id", ""))
+		return (
+			_inventory != null
+			and _inventory.has_method("can_unequip_to_slot")
+			and bool(_inventory.call("can_unequip_to_slot", source_slot_id, target_index))
+		)
+	if drag_type != SLOT_DRAG_TYPE:
 		return false
 
 	var source_index := int(drag_data.get("source_index", -1))
@@ -290,6 +311,18 @@ func drop_slot_data(target_index: int, data: Variant) -> void:
 		return
 
 	var drag_data := data as Dictionary
+	var drag_type := String(drag_data.get("type", ""))
+	if drag_type == EQUIPMENT_DRAG_TYPE:
+		var source_slot_id := String(drag_data.get("source_slot_id", ""))
+		if _inventory != null and _inventory.has_method("unequip_to_slot"):
+			if bool(_inventory.call("unequip_to_slot", source_slot_id, target_index)):
+				_selected_index = target_index
+				_selected_equipment_slot_id = ""
+				if _equipment_panel != null:
+					_equipment_panel.call("clear_selection")
+				_refresh_details()
+		return
+
 	var source_index := int(drag_data.get("source_index", -1))
 	if _inventory != null and _inventory.has_method("move_or_swap_slots"):
 		if bool(_inventory.call("move_or_swap_slots", source_index, target_index)):
@@ -445,6 +478,8 @@ func _build_body() -> Control:
 	_equipment_panel.custom_minimum_size = Vector2(250.0, 0.0)
 	_equipment_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_equipment_panel.connect("gear_slot_selected", Callable(self, "_on_equipment_slot_selected"))
+	if _equipment_panel.has_method("set_drop_handler"):
+		_equipment_panel.call("set_drop_handler", self)
 	body.add_child(_equipment_panel)
 	_equipment_panel.call("set_equipped_slots", _equipped_slots)
 
@@ -658,6 +693,48 @@ func _on_equipment_slot_selected(slot_id: String, _slot_data: Dictionary) -> voi
 	for index in range(slot_count):
 		_refresh_slot(index)
 	_refresh_details()
+
+
+## Returns true when the target gear slot can accept a dragged item.
+func can_drop_equipment_slot_data(target_slot_id: String, data: Variant) -> bool:
+	if target_slot_id.is_empty() or typeof(data) != TYPE_DICTIONARY:
+		return false
+	if _inventory == null:
+		return false
+
+	var drag_data := data as Dictionary
+	var drag_type := String(drag_data.get("type", ""))
+	if drag_type == SLOT_DRAG_TYPE:
+		var source_index := int(drag_data.get("source_index", -1))
+		return _inventory.has_method("can_equip_from_slot") and bool(_inventory.call("can_equip_from_slot", source_index, target_slot_id))
+	if drag_type == EQUIPMENT_DRAG_TYPE:
+		var source_slot_id := String(drag_data.get("source_slot_id", ""))
+		return _inventory.has_method("can_move_equipped_slot") and bool(_inventory.call("can_move_equipped_slot", source_slot_id, target_slot_id))
+
+	return false
+
+
+## Equips or swaps a dragged item into the requested gear slot.
+func drop_equipment_slot_data(target_slot_id: String, data: Variant) -> void:
+	if not can_drop_equipment_slot_data(target_slot_id, data):
+		return
+
+	var drag_data := data as Dictionary
+	var drag_type := String(drag_data.get("type", ""))
+	var did_move := false
+	if drag_type == SLOT_DRAG_TYPE:
+		var source_index := int(drag_data.get("source_index", -1))
+		if _inventory.has_method("equip_from_slot"):
+			did_move = bool(_inventory.call("equip_from_slot", source_index, target_slot_id))
+	elif drag_type == EQUIPMENT_DRAG_TYPE:
+		var source_slot_id := String(drag_data.get("source_slot_id", ""))
+		if _inventory.has_method("move_or_swap_equipped_slots"):
+			did_move = bool(_inventory.call("move_or_swap_equipped_slots", source_slot_id, target_slot_id))
+
+	if did_move:
+		_selected_index = -1
+		_selected_equipment_slot_id = target_slot_id
+		_refresh_details()
 
 
 func _select_first_filled_slot() -> void:

@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/debug/IsometricGrid.tscn" id="3_grid"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/inventory/InventoryPanel.tscn" id="5_inventory_panel"]
 [ext_resource type="Script" path="res://scripts/inventory/player_inventory.gd" id="6_player_inventory"]
 [ext_resource type="PackedScene" path="res://scenes/gathering/Tier1Tree.tscn" id="7_tier1_tree"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier1Rock.tscn" id="8_tier1_rock"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -47,6 +48,9 @@ shape = SubResource("BoxShape3D_ground")
 position = Vector3(0, 0.1, 0)
 
 [node name="Player" parent="World" instance=ExtResource("1_player")]
+
+[node name="EquipmentVisuals" parent="World/Player" node_paths=PackedStringArray("inventory_path")]
+inventory_path = NodePath("../../../PlayerInventory")
 
 [node name="FriendlyTarget" parent="World" instance=ExtResource("4_target_dummy")]
 position = Vector3(-3, 0.1, 2)
@@ -90,6 +94,9 @@ ring_color = Color(1, 0.08, 0.06, 1)
 [node name="Tier1Tree" parent="World" instance=ExtResource("7_tier1_tree")]
 position = Vector3(-4, 0, -2.5)
 
+[node name="Tier1Rock" parent="World" instance=ExtResource("8_tier1_rock")]
+position = Vector3(3.8, 0, -2.4)
+
 [node name="Sun" type="DirectionalLight3D" parent="."]
 rotation = Vector3(-0.872665, -0.523599, 0)
 shadow_enabled = true
@@ -97,6 +104,9 @@ light_energy = 2.0
 
 [node name="PlayerInventory" type="Node" parent="."]
 script = ExtResource("6_player_inventory")
+debug_seed_item_ids = PackedStringArray("axe_t2", "axe_t3", "axe_t4", "axe_t5", "axe_t6", "axe_t7", "axe_t8")
+debug_main_hand_item_id = "axe_t1"
 
 [node name="InventoryPanel" parent="." instance=ExtResource("5_inventory_panel")]
 inventory_path = NodePath("../PlayerInventory")
+start_visible = true

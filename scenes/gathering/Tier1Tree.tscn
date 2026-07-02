@@ -1,75 +1,29 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene format=3 uid="uid://dv4myehtaa0v0"]
 
-[ext_resource type="Script" path="res://scripts/gathering/gatherable_resource_3d.gd" id="1_gatherable"]
-[ext_resource type="Script" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
-[ext_resource type="Script" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="3_hover_feedback"]
-[ext_resource type="Script" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="4_selection_feedback"]
+[ext_resource type="Script" uid="uid://c7onhc7t0w5tj" path="res://scripts/gathering/gatherable_resource_3d.gd" id="1_gatherable"]
+[ext_resource type="Script" uid="uid://br3ubcjkrdw57" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
+[ext_resource type="Script" uid="uid://cbxs8002i2pvm" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="3_hover_feedback"]
+[ext_resource type="Script" uid="uid://i4o11j0hk5eg" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="4_selection_feedback"]
 [ext_resource type="Material" path="res://assets/materials/hover/hover_outline_green.tres" id="5_hover_material"]
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_trunk"]
-albedo_color = Color(0.43, 0.25, 0.12, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bark_shadow"]
-albedo_color = Color(0.26, 0.14, 0.07, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tier1_leaves"]
-albedo_color = Color(0.72, 0.72, 0.72, 1)
-roughness = 1.0
-
-[sub_resource type="CylinderMesh" id="CylinderMesh_trunk"]
-material = SubResource("StandardMaterial3D_trunk")
-top_radius = 0.18
-bottom_radius = 0.3
-height = 1.85
-radial_segments = 7
-rings = 1
-
-[sub_resource type="CylinderMesh" id="CylinderMesh_stump_base"]
-material = SubResource("StandardMaterial3D_bark_shadow")
-top_radius = 0.34
-bottom_radius = 0.42
-height = 0.22
-radial_segments = 7
-rings = 1
-
-[sub_resource type="SphereMesh" id="SphereMesh_leaf_large"]
-material = SubResource("StandardMaterial3D_tier1_leaves")
-radius = 0.78
-height = 1.1
-radial_segments = 8
-rings = 4
-
-[sub_resource type="SphereMesh" id="SphereMesh_leaf_medium"]
-material = SubResource("StandardMaterial3D_tier1_leaves")
-radius = 0.58
-height = 0.82
-radial_segments = 8
-rings = 4
-
-[sub_resource type="SphereMesh" id="SphereMesh_leaf_small"]
-material = SubResource("StandardMaterial3D_tier1_leaves")
-radius = 0.46
-height = 0.68
-radial_segments = 8
-rings = 4
+[ext_resource type="Texture2D" uid="uid://cd4jtqd00u448" path="res://assets/ui/cursors/gather_pickaxe_cursor.png" id="6_gather_cursor"]
+[ext_resource type="Texture2D" uid="uid://cili1xiu4osa1" path="res://assets/ui/cursors/depleted_resource_cursor.png" id="7_depleted_cursor"]
+[ext_resource type="PackedScene" uid="uid://btcr168rxejqa" path="res://assets/models/resources/trees/t1_tree_trunk.glb" id="8_t1_tree_trunk"]
+[ext_resource type="PackedScene" uid="uid://dwty4xs4sx5ex" path="res://assets/models/resources/trees/t1_tree_stump.glb" id="9_t1_tree_stump"]
+[ext_resource type="PackedScene" uid="uid://ctcj8k4fkrsxs" path="res://assets/models/resources/trees/t1_tree_leaves.glb" id="10_t1_tree_leaves"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_selectable"]
 radius = 0.92
 height = 3.0
 
-[node name="Tier1Tree" type="Node3D"]
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_resource_body"]
+height = 1.35
+radius = 0.42
+
+[node name="Tier1Tree" type="Node3D" unique_id=1308141283]
 script = ExtResource("1_gatherable")
 display_name = "Crude Tree"
-resource_family_id = "logs"
-yield_item_id = "timber_t1"
-tier = 1
-yield_quantity = 5
-gather_duration = 2.0
 
-[node name="Selectable" type="Area3D" parent="."]
-input_ray_pickable = true
+[node name="Selectable" type="Area3D" parent="." unique_id=2024121081]
 collision_layer = 8
 collision_mask = 0
 script = ExtResource("2_selectable")
@@ -77,59 +31,46 @@ display_name = "Crude Tree"
 relationship = 2
 neutral_color = Color(0.72, 0.72, 0.72, 1)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable"]
-position = Vector3(0, 1.45, 0)
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable" unique_id=1443894798]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.45, 0)
 shape = SubResource("CapsuleShape3D_selectable")
 
-[node name="HoverSelectionRing" type="MeshInstance3D" parent="." node_paths=PackedStringArray("visuals_path", "hover_target_path")]
+[node name="ResourceBody" type="StaticBody3D" parent="." unique_id=183543508]
+collision_layer = 2
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ResourceBody" unique_id=1633310757]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.675, 0)
+shape = SubResource("CylinderShape3D_resource_body")
+
+[node name="HoverSelectionRing" type="MeshInstance3D" parent="." unique_id=310918550]
 script = ExtResource("3_hover_feedback")
-visuals_path = NodePath("../Visuals")
-hover_target_path = NodePath("../Selectable")
 hover_collision_mask = 8
 ring_radius = 0.78
 ring_color = Color(0.72, 0.72, 0.72, 1)
 highlight_material = ExtResource("5_hover_material")
+hover_cursor_texture = ExtResource("6_gather_cursor")
+unavailable_hover_cursor_texture = ExtResource("7_depleted_cursor")
 
-[node name="SelectedRing" type="MeshInstance3D" parent="." node_paths=PackedStringArray("selectable_path")]
+[node name="SelectedRing" type="MeshInstance3D" parent="." unique_id=1797560917]
 script = ExtResource("4_selection_feedback")
-selectable_path = NodePath("../Selectable")
 ring_radius = 0.86
 ring_color = Color(0.72, 0.72, 0.72, 1)
 fill_color = Color(0.72, 0.72, 0.72, 0.16)
 
-[node name="Visuals" type="Node3D" parent="."]
+[node name="Visuals" type="Node3D" parent="." unique_id=1558072302]
 
-[node name="StumpBase" type="MeshInstance3D" parent="Visuals"]
-position = Vector3(0, 0.11, 0)
-mesh = SubResource("CylinderMesh_stump_base")
+[node name="Active" type="Node3D" parent="Visuals" unique_id=764823870]
 
-[node name="Trunk" type="MeshInstance3D" parent="Visuals"]
-position = Vector3(0, 0.98, 0)
-mesh = SubResource("CylinderMesh_trunk")
+[node name="Trunk" type="Node3D" parent="Visuals/Active"]
 
-[node name="LeafCrown" type="Node3D" parent="Visuals"]
-position = Vector3(0, 2.05, 0)
+[node name="T1TreeTrunkModel" parent="Visuals/Active/Trunk" instance=ExtResource("8_t1_tree_trunk")]
 
-[node name="CenterCluster" type="MeshInstance3D" parent="Visuals/LeafCrown"]
-position = Vector3(0, 0.18, 0)
-mesh = SubResource("SphereMesh_leaf_large")
+[node name="Leaves" type="Node3D" parent="Visuals/Active"]
 
-[node name="LeftCluster" type="MeshInstance3D" parent="Visuals/LeafCrown"]
-position = Vector3(-0.48, -0.02, 0.05)
-rotation = Vector3(0.0, 0.35, 0.12)
-mesh = SubResource("SphereMesh_leaf_medium")
+[node name="T1TreeLeavesModel" parent="Visuals/Active/Leaves" instance=ExtResource("10_t1_tree_leaves")]
 
-[node name="RightCluster" type="MeshInstance3D" parent="Visuals/LeafCrown"]
-position = Vector3(0.5, -0.04, -0.02)
-rotation = Vector3(0.08, -0.28, -0.1)
-mesh = SubResource("SphereMesh_leaf_medium")
+[node name="Depleted" type="Node3D" parent="Visuals" unique_id=2031206549]
+visible = false
 
-[node name="BackCluster" type="MeshInstance3D" parent="Visuals/LeafCrown"]
-position = Vector3(0.08, -0.05, -0.52)
-rotation = Vector3(-0.08, 0.5, 0.0)
-mesh = SubResource("SphereMesh_leaf_small")
-
-[node name="FrontCluster" type="MeshInstance3D" parent="Visuals/LeafCrown"]
-position = Vector3(-0.05, -0.08, 0.5)
-rotation = Vector3(0.12, -0.4, 0.0)
-mesh = SubResource("SphereMesh_leaf_small")
+[node name="T1TreeStumpModel" parent="Visuals/Depleted" instance=ExtResource("9_t1_tree_stump")]

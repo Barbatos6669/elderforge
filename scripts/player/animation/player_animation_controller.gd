@@ -19,7 +19,7 @@ extends Node
 ## One-shot animation played when an auto-attack lands.
 @export var attack_animation_name: StringName = &"Punch_Jab"
 ## Looped animation used while the player channels gathering.
-@export var gathering_animation_name: StringName = &"Farm_Harvest"
+@export var gathering_animation_name: StringName = &"Shield_OneShot"
 ## Blend time used when switching between idle and movement.
 @export var blend_time: float = 0.12
 ## Playback speed for the movement animation.

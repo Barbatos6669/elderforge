@@ -6,6 +6,8 @@
 class_name HoverFeedback3D
 extends MeshInstance3D
 
+const CursorOverrideScript := preload("res://scripts/interaction/cursor/cursor_override.gd")
+
 ## Visual root used for screen-space hover bounds and optional mesh overlay.
 @export var visuals_path: NodePath
 ## Optional collision object used for ray hover fallback.
@@ -53,6 +55,20 @@ extends MeshInstance3D
 ## Optional material applied as `material_overlay` while hovered.
 @export var highlight_material: Material
 
+@export_group("Cursor")
+## Optional cursor shown while this object is hovered.
+@export var hover_cursor_texture: Texture2D
+## Cursor hotspot in texture pixels.
+@export var hover_cursor_hotspot: Vector2 = Vector2(24.0, 24.0)
+## Optional cursor shown when the hovered selectable is hostile/attackable.
+@export var hostile_hover_cursor_texture: Texture2D
+## Hostile cursor hotspot in texture pixels.
+@export var hostile_hover_cursor_hotspot: Vector2 = Vector2(6.0, 2.0)
+## Optional cursor shown when the hovered object is unavailable.
+@export var unavailable_hover_cursor_texture: Texture2D
+## Unavailable cursor hotspot in texture pixels.
+@export var unavailable_hover_cursor_hotspot: Vector2 = Vector2(24.0, 24.0)
+
 var _hover_target: CollisionObject3D
 var _mesh_instances: Array[MeshInstance3D] = []
 var _original_overlays := {}
@@ -90,6 +106,7 @@ func _process(_delta: float) -> void:
 
 func _exit_tree() -> void:
 	_apply_mesh_overlay(false)
+	_apply_cursor_override(false)
 
 
 func _find_hover_target() -> CollisionObject3D:
@@ -141,11 +158,14 @@ func _rebuild_ring() -> void:
 
 func _set_hovered(value: bool) -> void:
 	if value == _is_hovered:
+		if _is_hovered:
+			_apply_cursor_override(true)
 		return
 
 	_is_hovered = value
 	if _is_hovered:
 		_apply_feedback_color(_get_feedback_color())
+	_apply_cursor_override(_is_hovered)
 	_apply_mesh_overlay(_is_hovered)
 
 
@@ -173,6 +193,20 @@ func _is_mouse_hovering() -> bool:
 		return true
 
 	return false
+
+
+func _is_hover_target_available() -> bool:
+	var gatherable_resource := _find_gatherable_resource()
+	if gatherable_resource != null and gatherable_resource.has_method("can_gather"):
+		return gatherable_resource.call("can_gather") == true
+
+	if _hover_target == null:
+		_hover_target = _find_hover_target()
+
+	if _hover_target != null and _hover_target.has_method("can_select"):
+		return _hover_target.call("can_select") == true
+
+	return true
 
 
 func _is_mouse_inside_projected_visual_bounds(viewport: Viewport, camera: Camera3D) -> bool:
@@ -217,6 +251,8 @@ func _project_visual_bounds(camera: Camera3D) -> Rect2:
 
 	for mesh_instance in _mesh_instances:
 		if not is_instance_valid(mesh_instance) or mesh_instance.mesh == null:
+			continue
+		if not mesh_instance.is_visible_in_tree():
 			continue
 
 		for corner in _mesh_aabb_corners(mesh_instance.mesh.get_aabb()):
@@ -293,6 +329,61 @@ func _apply_mesh_overlay(enabled: bool) -> void:
 			mesh_instance.material_overlay = _runtime_highlight_material
 		else:
 			mesh_instance.material_overlay = _original_overlays.get(mesh_instance)
+
+
+func _apply_cursor_override(enabled: bool) -> void:
+	if not enabled:
+		CursorOverrideScript.release(self)
+		return
+
+	var cursor_texture := _get_hover_cursor_texture()
+	if cursor_texture == null:
+		CursorOverrideScript.release(self)
+		return
+
+	CursorOverrideScript.request(self, cursor_texture, _get_hover_cursor_hotspot())
+
+
+func _get_hover_cursor_texture() -> Texture2D:
+	if not _is_hover_target_available() and unavailable_hover_cursor_texture != null:
+		return unavailable_hover_cursor_texture
+	if _is_hover_target_hostile() and hostile_hover_cursor_texture != null:
+		return hostile_hover_cursor_texture
+
+	return hover_cursor_texture
+
+
+func _get_hover_cursor_hotspot() -> Vector2:
+	if not _is_hover_target_available() and unavailable_hover_cursor_texture != null:
+		return unavailable_hover_cursor_hotspot
+	if _is_hover_target_hostile() and hostile_hover_cursor_texture != null:
+		return hostile_hover_cursor_hotspot
+
+	return hover_cursor_hotspot
+
+
+func _is_hover_target_hostile() -> bool:
+	if _hover_target == null:
+		_hover_target = _find_hover_target()
+
+	return (
+		_hover_target != null
+		and _hover_target.has_method("is_hostile")
+		and _hover_target.call("is_hostile") == true
+	)
+
+
+func _find_gatherable_resource() -> Node:
+	var current := _hover_target as Node
+	if current == null:
+		current = _find_hover_target()
+
+	while current != null:
+		if current.has_method("get_yield_data") and current.has_method("can_gather"):
+			return current
+		current = current.get_parent()
+
+	return null
 
 
 func _get_feedback_color() -> Color:

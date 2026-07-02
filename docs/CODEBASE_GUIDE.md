@@ -40,7 +40,8 @@ That means pressing Play in Godot loads `Main.tscn`.
 - `Player`, an instance of the reusable player prefab.
 - `FriendlyTarget` and `HostileTarget`, selectable prototype targets for testing
   relationship-colored hover/selection.
-- `Tier1Tree`, a stand-in gathering tree with T1-colored leaf clusters.
+- `Tier1Tree`, a gathering tree with T1-colored leaf clusters.
+- `Tier1Rock`, a gathering stone node with full and depleted rock visuals.
 - `PlayerInventory`, local prototype item and currency storage.
 - `InventoryPanel`, the toggleable prototype inventory UI.
 - `Sun`, a directional light.
@@ -56,6 +57,7 @@ assets/
   animations/       Third-party animation packs and notes.
   audio/footsteps/  Footstep sounds, source notes, and surface set resources.
   characters/base/  Current placeholder character model and texture files.
+  ui/cursors/       Mouse cursor icons for resource and interaction states.
 
 docs/
   CODEBASE_INDEX.md     Fast lookup index for scenes, scripts, and systems.
@@ -158,8 +160,10 @@ rewriting the whole player controller.
 ## Hover Feedback
 
 `scripts/interaction/hover/hover_feedback_3d.gd`
+`scripts/interaction/cursor/cursor_override.gd`
 `assets/materials/hover/hover_outline_green.tres`
 `assets/materials/hover/hover_outline.gdshader`
+`assets/ui/cursors/gather_pickaxe_cursor.png`
 
 The player prefab has a `HoverHitbox` area on a hover-only physics layer and a
 `HoverSelectionRing` node. That node uses `HoverFeedback3D`, which owns the
@@ -181,6 +185,18 @@ The generated hover ring is disabled by default; selected targets use
 padding and ray fallback on the `HoverSelectionRing` node. If feedback does not
 appear, enable `force_hover` on that node to confirm hover detection and outline
 behavior before tuning detection.
+
+Gatherable resources can also set `hover_cursor_texture` on their
+`HoverSelectionRing` node. `Tier1Tree` uses the pickaxe cursor asset so hovering
+a gatherable tree replaces the normal mouse pointer. Tune
+`hover_cursor_hotspot` if the click point feels offset from the icon. It also
+uses `unavailable_hover_cursor_texture` for the red X cursor shown when the tree
+is depleted and cannot currently be gathered.
+
+Attackable hostile targets use `hostile_hover_cursor_texture` on their
+`HoverSelectionRing` node. The prototype `TargetDummy` scene assigns the red
+spear cursor, and `HoverFeedback3D` only shows it when the hovered selectable
+returns true from `is_hostile()`.
 
 ## Target Selection
 
@@ -325,13 +341,13 @@ Current animations:
 - `Idle`
 - `Jog_Fwd`
 - `Punch_Jab` for the first auto-attack prototype.
-- `Farm_Harvest` for the first hand-gathering wood prototype.
+- `Shield_OneShot` for the first hand-gathering wood prototype.
 
 Responsibilities:
 
 - Find the animation source scene's `AnimationPlayer`.
 - Copy selected animations into a runtime library. Idle, jog, and punch
-  currently come from Universal Animation Library 1, while `Farm_Harvest` comes
+  currently come from Universal Animation Library 1, while `Shield_OneShot` comes
   from Universal Animation Library 2.
 - Loop idle, jog, and gathering animations.
 - Slow the jog with `move_speed_scale`.
@@ -509,6 +525,8 @@ instanced at the root. Press `I` to toggle the panel during play.
 state. `InventoryPanel` observes that node through signals and stays focused on
 rendering slots, selected item details, equipped gear placeholders, and carry
 weight. The default bag grid is 42 slots arranged as 6 columns by 7 rows.
+The player starts with an empty bag and empty equipped gear; gathered resources
+enter the bag through the gathering flow.
 
 Bag slots can be dragged onto other bag slots. Dropping onto an empty slot moves
 the stack there; dropping onto a filled slot swaps the two stacks. The
@@ -519,6 +537,8 @@ Useful exported values on `PlayerInventory`:
 
 - `slot_count`
 - `seed_prototype_resources`
+- `debug_seed_item_ids`
+- `debug_main_hand_item_id`
 - `starting_silver`
 - `starting_gold`
 
@@ -535,11 +555,14 @@ Useful exported values on `InventoryPanel`:
 The prototype data layer is split into small pieces:
 
 - `ItemDefinition` describes a kind of item: id, display name, tier, icon,
-  stack limit, unit weight, color, and description.
+  stack limit, unit weight, color, optional `equip_slot`, optional
+  `equipment_scene_path`, optional `equipment_attachment_profile_path`, and
+  description.
 - `ItemStack` stores a runtime quantity for one item definition.
 - `PrototypeItemCatalog` builds the temporary gathering resource definitions.
 - `PlayerInventory` owns slots and exposes commands such as
-  `move_or_swap_slots()`, `add_stack()`, and `set_currency()`.
+  `move_or_swap_slots()`, `equip_from_slot()`, `unequip_to_slot()`,
+  `add_stack()`, and `set_currency()`.
 
 The current UI still reads display dictionaries from
 `PlayerInventory.get_display_slots()`. Each filled display slot contains fields
@@ -551,16 +574,19 @@ such as `name`, `quantity`, `max_stack`, `category`, `unit_weight`, `color`, and
 Food.
 
 Empty gear slots use code-drawn placeholder icons from
-`equipment_slot_icon.gd`. Once an item is equipped, the item abbreviation
-replaces that slot's default icon. The prototype starts with no equipped gear
-so the full placeholder icon set is visible.
+`equipment_slot_icon.gd`. Equipped items use the same item-card renderer as bag
+slots, so an equipped axe still shows its axe art and tier background. The
+prototype starts with no equipped gear so the full placeholder icon set is
+visible until the player drags a valid item into a gear slot.
 
 Silver and gold are owned by `PlayerInventory`, centered in the inventory
 header, and start at `0`. Their labels use fixed-width space and comma
 formatting so larger currency totals stay readable. These values are still local
 prototype data until an economy, wallet, persistence, or server module exists.
 
-`PrototypeItemCatalog` seeds eight timber resources:
+`PrototypeItemCatalog` defines eight timber resources. Turning on
+`seed_prototype_resources` in a debug/demo scene can seed these stacks into the
+bag, but the playable prototype now leaves the bag empty by default:
 
 - `Crude Logs I`
 - `Rough Logs II`
@@ -571,7 +597,7 @@ prototype data until an economy, wallet, persistence, or server module exists.
 - `Sunheart Logs VII`
 - `Kingswood Logs VIII`
 
-It also seeds eight stone resources:
+It also defines eight stone resources:
 
 - `Crude Stone I`
 - `Rough Stone II`
@@ -615,27 +641,94 @@ And eight hide resources:
 - `Royal Hide VII`
 - `Elder Hide VIII`
 
+And eight axe gathering tool previews:
+
+- `Crude Axe I`
+- `Rough Axe II`
+- `Sturdy Axe III`
+- `Forged Axe IV`
+- `Hardened Axe V`
+- `Runed Axe VI`
+- `Sunsteel Axe VII`
+- `Elder Axe VIII`
+
+Axes declare `equip_slot = "main_hand"`, so dragging one from the bag onto the
+Main Hand gear slot equips it. Dragging the equipped axe back onto a bag slot
+unequips it; dropping another axe onto Main Hand swaps the old one back into the
+bag. They also set `equipment_scene_path` to tier-specific scenes like
+`Tier1Axe.tscn` through `Tier8Axe.tscn`, plus
+`equipment_attachment_profile_path` to the current axe main-hand offset profile.
+
+Each tier scene under `scenes/equipment/tools/axes/` instances its matching GLB
+from `assets/equipment/tools/axes/t#/models/`, which is exported from the
+editable Blender source in `assets/equipment/tools/axes/t#/source/`. The prefab
+includes a `GripPoint` marker at the root and a `HitPoint` near the blade so
+future gathering, VFX, or hand-socket systems have stable attachment references.
+
+`Player.tscn` has an `EquipmentVisuals` child that listens to
+`PlayerInventory.equipped_slots_changed`. When the main hand slot contains an
+item with `equipment_scene_path`, it finds the matching `EquipmentSocket3D`
+whose `slot_id` equals the item's `equip_slot`, then instances that equipment
+scene as a child of the socket.
+
+This matches the usual production pattern:
+
+- Character rigs expose named sockets, such as `main_hand`.
+- Item definitions point at visual prefabs, such as `Tier1Axe.tscn`.
+- Optional attachment profiles store item-specific local offsets, such as
+  `axe_main_hand.tres`.
+- Runtime equip logic only spawns or clears scenes; it does not hand-tune
+  positions.
+
+For visual tuning, `Player.tscn` also contains
+`Visuals/BaseCharacter/Armature/Skeleton3D/MainHandAttachment/MainHandPreview`.
+This is a visible editor-only axe preview with a yellow grip marker. Move,
+rotate, or scale that preview node to line up the grip in the character's hand;
+`EquipmentVisuals` copies the preview's local transform to the real equipped
+axe and hides the preview at runtime. The profile resource is the reusable data
+home for item-specific offsets once we add more item shapes.
+
 `InventoryItemIcon` draws the item card frame, small tier marker, and
 bottom-right quantity. Log, stone, ore, cotton, and hide items use transparent
 bitmap art from `logs_icon.png`, `rocks_icon.png`, `ores_icon.png`,
-`cotton_icon.png`, and `hide_icon.png`. Tier colors fill the icon background
-behind the art: light gray, light brown, green, blue, red, orange, yellow, and
-white for tiers I through VIII.
+`cotton_icon.png`, and `hide_icon.png`; axe previews use `axe_icon.png`. Tier
+colors fill the icon background behind the art: light gray, light brown, green,
+blue, red, orange, yellow, and white for tiers I through VIII.
 
 ## Gathering Prototypes
 
 `scenes/gathering/Tier1Tree.tscn`
+`scenes/gathering/Tier1Rock.tscn`
 `scripts/gathering/gatherable_resource_3d.gd`
 
-`Tier1Tree` is the first stand-in gatherable node. It uses simple low-poly
-primitive meshes so we can replace it with a Blender asset later without
-changing the gameplay wiring. The leaves use the shared T1 light gray tier
-color, while the trunk uses simple brown bark materials.
+`Tier1Tree` is the first gatherable node. The scene owns the gameplay wrapper,
+while the visuals come from Blender-authored exports in
+`assets/models/resources/trees/`. Open `t1_tree.blend` to edit the model, then
+export over the same `.glb` paths so Godot updates the resource scene without
+touching gathering, selection, or collision wiring. The trunk, leaves, and
+depleted stump are separate runtime exports, which gives future scripts clean
+targets for canopy hiding, fading, seasonal swaps, or different tree crowns. The
+leaves use the shared T1 light gray tier color, while the trunk uses simple
+brown bark materials.
+
+`Tier1Rock` follows the same resource-scene pattern for stone. Its visuals come
+from `assets/models/resources/rocks/t1_rock.blend`, exported as
+`t1_rock_full.glb` and `t1_rock_depleted.glb`. It uses
+`resource_family_id = "stone"` and `yield_item_id = "stone_t1"`, so each
+completed gather tick adds one T1 stone stack item.
 
 The root has `GatherableResource3D`, which stores the resource family, tier,
-yield item id, yield quantity, and future gather duration. The scene also has a
-neutral `Selectable` area plus hover and selected rings, so it can already be
-targeted like other world objects.
+yield item id, per-tick yield quantity, gather duration, and remaining gather
+ticks. The current T1 tree and T1 rock both have 3 ticks and give 1 item per
+completed tick. Missing ticks replenish one at a time every 30 seconds. The
+scene also has a neutral `Selectable` area plus hover and selected rings, so it
+can already be targeted like other world objects.
+
+The tree also has a separate `ResourceBody` `StaticBody3D` collider on the
+`ResourceObstacle` physics layer. This is the solid obstacle the player collides
+with. It is intentionally smaller than the selectable capsule, because clicking
+and hovering should be forgiving while physical collision should stay close to
+the trunk.
 
 Clicking the tree now starts the first gathering flow:
 
@@ -644,8 +737,24 @@ Clicking the tree now starts the first gathering flow:
 3. The player moves into gather range and faces the tree.
 4. `PlayerChanneling` starts a timed gathering channel.
 5. `ChannelBar` shows the channel progress.
-6. `PlayerAnimationController` loops `Farm_Harvest` while the channel is active.
-7. On completion, `PlayerInventory.add_item("timber_t1", quantity)` adds logs.
+6. `PlayerAnimationController` loops `Shield_OneShot` while the channel is active.
+7. On completion, `PlayerInventory.add_item("timber_t1", quantity)` adds 1 log.
+8. `GatherableResource3D.consume_gather_tick()` subtracts one available tick.
+9. If ticks remain, `PlayerGathering` queues the next gathering channel.
+10. When the final tick is consumed, the full tree hides and only the depleted
+    stump visual appears in place.
+11. Every 30 seconds, `GatherableResource3D` restores one missing tick. When
+    the first tick returns, the full tree visual and selection come back.
+
+Useful exported values on `Tier1Tree`:
+
+- `yield_quantity`
+- `max_gather_ticks`
+- `gather_duration`
+- `replenish_enabled`
+- `replenish_interval_seconds`
+- `active_visuals_path`
+- `depleted_visuals_path`
 
 ## Channel Bar
 

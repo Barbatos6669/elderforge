@@ -14,6 +14,7 @@ Folders:
 - `channeling/`: timed actions such as gathering and future casts.
 - `combat/`: player attack behavior.
 - `controllers/`: high-level player coordination.
+- `equipment/`: visible equipped-item attachments on the character model.
 - `feedback/`: click markers and other player-triggered feedback.
 - `gathering/`: player-side gathering flow.
 - `input/`: local keyboard and mouse interpretation.

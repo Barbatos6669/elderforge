@@ -8,6 +8,9 @@ extends RefCounted
 
 const ItemDefinitionScript := preload("res://scripts/inventory/item_definition.gd")
 const RESOURCE_CATEGORY := "Resource"
+const TOOL_CATEGORY := "Tool"
+const AXE_TOOL_SCENE_PATH_TEMPLATE := "res://scenes/equipment/tools/axes/Tier%dAxe.tscn"
+const AXE_MAIN_HAND_ATTACHMENT_PROFILE_PATH := "res://assets/models/equipment/attachments/axe_main_hand.tres"
 
 const TIER_COLORS := {
 	1: Color(0.72, 0.72, 0.72, 1.0),
@@ -21,7 +24,7 @@ const TIER_COLORS := {
 }
 
 
-## Builds the current five-family gathering resource pass.
+## Builds the current gathering resource item pass.
 static func create_gathering_definitions() -> Array:
 	var definitions := []
 	_append_family(
@@ -122,6 +125,43 @@ static func create_gathering_definitions() -> Array:
 	return definitions
 
 
+## Builds temporary gathering tool preview items before real tool data exists.
+static func create_equipment_preview_definitions() -> Array:
+	var definitions := []
+	_append_family(
+		definitions,
+		"axe",
+		"axe",
+		"axe",
+		[
+			"Crude Axe",
+			"Rough Axe",
+			"Sturdy Axe",
+			"Forged Axe",
+			"Hardened Axe",
+			"Runed Axe",
+			"Sunsteel Axe",
+			"Elder Axe",
+		],
+		2.5,
+		0.25,
+		"woodcutting, gathering tests, and tool prototypes",
+		TOOL_CATEGORY,
+		1,
+		"main_hand",
+		AXE_TOOL_SCENE_PATH_TEMPLATE,
+		AXE_MAIN_HAND_ATTACHMENT_PROFILE_PATH
+	)
+	return definitions
+
+
+## Builds every temporary item definition known to the prototype.
+static func create_prototype_definitions() -> Array:
+	var definitions := create_gathering_definitions()
+	definitions.append_array(create_equipment_preview_definitions())
+	return definitions
+
+
 static func tier_color(tier: int) -> Color:
 	return TIER_COLORS.get(clampi(tier, 1, 8), TIER_COLORS[1])
 
@@ -148,7 +188,12 @@ static func _append_family(
 	names: Array,
 	base_weight: float,
 	weight_per_tier: float,
-	usage_text: String
+	usage_text: String,
+	category: String = RESOURCE_CATEGORY,
+	max_stack: int = 999,
+	equip_slot: String = "",
+	equipment_scene_path: String = "",
+	equipment_attachment_profile_path: String = ""
 ) -> void:
 	for tier_index in range(names.size()):
 		var tier := tier_index + 1
@@ -156,13 +201,22 @@ static func _append_family(
 		var definition := ItemDefinitionScript.new()
 		definition.id = "%s_t%d" % [item_id_prefix, tier]
 		definition.display_name = "%s %s" % [String(names[tier_index]), roman]
-		definition.category = RESOURCE_CATEGORY
+		definition.category = category
 		definition.family_id = family_id
+		definition.equip_slot = equip_slot
+		definition.equipment_scene_path = _resolve_equipment_scene_path(equipment_scene_path, tier)
+		definition.equipment_attachment_profile_path = equipment_attachment_profile_path
 		definition.tier = tier
 		definition.tier_roman = roman
 		definition.icon_id = icon_id
-		definition.max_stack = 999
+		definition.max_stack = max_stack
 		definition.unit_weight = base_weight + float(tier - 1) * weight_per_tier
 		definition.color = tier_color(tier)
 		definition.description = "Tier %s %s used for %s prototypes." % [roman, family_id, usage_text]
 		definitions.append(definition)
+
+
+static func _resolve_equipment_scene_path(scene_path_template: String, tier: int) -> String:
+	if scene_path_template.contains("%d"):
+		return scene_path_template % tier
+	return scene_path_template

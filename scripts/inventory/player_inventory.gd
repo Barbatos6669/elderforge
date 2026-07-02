@@ -15,8 +15,14 @@ signal equipped_slots_changed
 
 ## Number of bag slots owned by this inventory.
 @export_range(1, 120, 1) var slot_count := 42
-## Seeds the current resource placeholder stacks during `_ready()`.
-@export var seed_prototype_resources := true
+## Seeds resource placeholder stacks during `_ready()` when a debug/demo scene needs them.
+@export var seed_prototype_resources := false
+## Optional item ids to seed for focused debug/demo previews.
+@export var debug_seed_item_ids: PackedStringArray = []
+## Quantity used for each `debug_seed_item_ids` stack.
+@export_range(1, 999, 1) var debug_seed_quantity := 1
+## Optional debug item id to equip into the main-hand slot during startup.
+@export var debug_main_hand_item_id := ""
 ## Prototype silver amount until wallet/economy state exists.
 @export var starting_silver := 0
 ## Prototype gold amount until wallet/economy state exists.
@@ -49,6 +55,8 @@ func initialize(new_slot_count: int, silver: int, gold: int, seed_resources: boo
 	_normalize_slot_count()
 	if seed_resources:
 		_seed_gathering_resources()
+	_seed_debug_items()
+	_seed_debug_equipment()
 	_initialized = true
 	slots_changed.emit()
 	currency_changed.emit(_silver, _gold)
@@ -73,7 +81,12 @@ func get_gold() -> int:
 
 
 func get_equipped_slots() -> Dictionary:
-	return _equipped_slots.duplicate(true)
+	var display_slots := {}
+	for slot_id in _equipped_slots:
+		var stack := _equipped_slots[slot_id] as Resource
+		if stack != null and not stack.is_empty():
+			display_slots[slot_id] = stack.to_display_dict()
+	return display_slots
 
 
 func get_slot(slot_index: int) -> Resource:
@@ -191,6 +204,93 @@ func set_currency(silver: int, gold: int) -> void:
 	currency_changed.emit(_silver, _gold)
 
 
+## Returns true if a bag slot can be equipped into the requested gear slot.
+func can_equip_from_slot(source_index: int, equipment_slot_id: String) -> bool:
+	if not _is_valid_slot_index(source_index):
+		return false
+
+	var source_stack := _slots[source_index] as Resource
+	return _can_equip_stack_to_slot(source_stack, equipment_slot_id)
+
+
+## Moves a bag slot into an equipment slot, swapping back any existing gear.
+func equip_from_slot(source_index: int, equipment_slot_id: String) -> bool:
+	if not can_equip_from_slot(source_index, equipment_slot_id):
+		return false
+
+	var source_stack := _slots[source_index] as Resource
+	var equipped_stack := _equipped_stack_at(equipment_slot_id)
+	_equipped_slots[equipment_slot_id] = source_stack
+	_slots[source_index] = equipped_stack
+
+	slot_changed.emit(source_index)
+	slots_changed.emit()
+	equipped_slots_changed.emit()
+	return true
+
+
+## Returns true if equipped gear can be moved into the requested bag slot.
+func can_unequip_to_slot(equipment_slot_id: String, target_index: int) -> bool:
+	if not _is_valid_slot_index(target_index):
+		return false
+
+	var equipped_stack := _equipped_stack_at(equipment_slot_id)
+	if equipped_stack == null:
+		return false
+
+	var target_stack := _slots[target_index] as Resource
+	return target_stack == null or _can_equip_stack_to_slot(target_stack, equipment_slot_id)
+
+
+## Moves equipped gear into a bag slot, swapping back compatible gear if present.
+func unequip_to_slot(equipment_slot_id: String, target_index: int) -> bool:
+	if not can_unequip_to_slot(equipment_slot_id, target_index):
+		return false
+
+	var equipped_stack := _equipped_stack_at(equipment_slot_id)
+	var target_stack := _slots[target_index] as Resource
+	_slots[target_index] = equipped_stack
+	if target_stack == null:
+		_equipped_slots.erase(equipment_slot_id)
+	else:
+		_equipped_slots[equipment_slot_id] = target_stack
+
+	slot_changed.emit(target_index)
+	slots_changed.emit()
+	equipped_slots_changed.emit()
+	return true
+
+
+## Returns true if one equipped slot can be moved or swapped into another slot.
+func can_move_equipped_slot(source_slot_id: String, target_slot_id: String) -> bool:
+	if source_slot_id == target_slot_id:
+		return false
+
+	var source_stack := _equipped_stack_at(source_slot_id)
+	if source_stack == null or not _can_equip_stack_to_slot(source_stack, target_slot_id):
+		return false
+
+	var target_stack := _equipped_stack_at(target_slot_id)
+	return target_stack == null or _can_equip_stack_to_slot(target_stack, source_slot_id)
+
+
+## Moves or swaps items between two equipped slots.
+func move_or_swap_equipped_slots(source_slot_id: String, target_slot_id: String) -> bool:
+	if not can_move_equipped_slot(source_slot_id, target_slot_id):
+		return false
+
+	var source_stack := _equipped_stack_at(source_slot_id)
+	var target_stack := _equipped_stack_at(target_slot_id)
+	if target_stack == null:
+		_equipped_slots.erase(source_slot_id)
+	else:
+		_equipped_slots[source_slot_id] = target_stack
+	_equipped_slots[target_slot_id] = source_stack
+
+	equipped_slots_changed.emit()
+	return true
+
+
 func set_equipped_slots(new_equipped_slots: Dictionary) -> void:
 	_equipped_slots = new_equipped_slots.duplicate(true)
 	equipped_slots_changed.emit()
@@ -205,10 +305,35 @@ func _normalize_slot_count() -> void:
 
 
 func _seed_gathering_resources() -> void:
-	var definitions: Array = _get_prototype_definitions()
+	var definitions: Array = PrototypeItemCatalogScript.create_gathering_definitions()
 	for index in range(mini(definitions.size(), _slots.size())):
 		var definition: Resource = definitions[index] as Resource
 		_slots[index] = _create_stack(definition, _prototype_quantity(definition.family_id, definition.tier))
+
+
+func _seed_debug_items() -> void:
+	for item_id in debug_seed_item_ids:
+		if String(item_id).is_empty():
+			continue
+
+		add_item(String(item_id), debug_seed_quantity)
+
+
+func _seed_debug_equipment() -> void:
+	if debug_main_hand_item_id.is_empty():
+		return
+
+	var definition := get_definition(debug_main_hand_item_id)
+	if definition == null:
+		push_warning("Debug main-hand item id is unknown: %s" % debug_main_hand_item_id)
+		return
+
+	var stack := _create_stack(definition, 1)
+	if not _can_equip_stack_to_slot(stack, "main_hand"):
+		push_warning("Debug main-hand item cannot equip to main_hand: %s" % debug_main_hand_item_id)
+		return
+
+	_equipped_slots["main_hand"] = stack
 
 
 func _get_prototype_definitions() -> Array:
@@ -221,7 +346,7 @@ func _ensure_prototype_definitions() -> void:
 		return
 
 	_prototype_definitions = []
-	for definition in PrototypeItemCatalogScript.create_gathering_definitions():
+	for definition in PrototypeItemCatalogScript.create_prototype_definitions():
 		var item_definition := definition as Resource
 		if item_definition != null and not String(item_definition.id).is_empty():
 			_prototype_definitions.append(item_definition)
@@ -243,6 +368,21 @@ func _is_same_definition(left_definition: Resource, right_definition: Resource) 
 	var left_id := String(left_definition.get("id"))
 	var right_id := String(right_definition.get("id"))
 	return not left_id.is_empty() and left_id == right_id
+
+
+func _equipped_stack_at(equipment_slot_id: String) -> Resource:
+	return _equipped_slots.get(equipment_slot_id) as Resource
+
+
+func _can_equip_stack_to_slot(stack: Resource, equipment_slot_id: String) -> bool:
+	if stack == null or stack.is_empty() or equipment_slot_id.is_empty():
+		return false
+
+	var definition: Resource = stack.get("definition") as Resource
+	if definition == null:
+		return false
+
+	return String(definition.get("equip_slot")) == equipment_slot_id
 
 
 func _prototype_quantity(family_id: String, tier: int) -> int:

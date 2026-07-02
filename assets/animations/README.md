@@ -27,5 +27,5 @@ Use the non-`_RM` files by default for server-authoritative MMO movement. Root-m
 Current player usage:
 
 - `UAL1_Standard.glb`: `Idle`, `Jog_Fwd`, and `Punch_Jab`.
-- `UAL2_Standard.glb`: `Farm_Harvest` for the first hand-gathering wood
+- `UAL2_Standard.glb`: `Shield_OneShot` for the first hand-gathering wood
   prototype.

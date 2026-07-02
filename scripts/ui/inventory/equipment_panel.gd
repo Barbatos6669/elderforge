@@ -1,14 +1,16 @@
 ## Reusable equipped-gear display used by the inventory window.
 ##
-## This panel is presentation-only. A future equipment module should own the
-## actual equipped item state and call set_equipped_slots() when gear changes.
+## This panel owns gear-slot presentation and drag/drop plumbing. PlayerInventory
+## still owns the authoritative equipped item state.
 class_name EquipmentPanel
 extends PanelContainer
 
 signal gear_slot_selected(slot_id: String, slot_data: Dictionary)
 
 const EMPTY_SLOT := {}
+const EquipmentSlotButtonScript := preload("res://scripts/ui/inventory/equipment_slot_button.gd")
 const EquipmentSlotIconScript := preload("res://scripts/ui/inventory/equipment_slot_icon.gd")
+const InventoryItemIconScript := preload("res://scripts/ui/inventory/inventory_item_icon.gd")
 const SLOT_DEFINITIONS := [
 	{"id": "bag", "label": "Bag", "abbr": "BG"},
 	{"id": "head", "label": "Helmet", "abbr": "HM"},
@@ -23,8 +25,10 @@ const SLOT_DEFINITIONS := [
 
 var _slot_buttons := {}
 var _slot_icon_rects := {}
+var _slot_item_icons := {}
 var _equipped_slots := {}
 var _selected_slot_id := ""
+var _drop_handler: Node
 
 
 func _ready() -> void:
@@ -40,6 +44,11 @@ func _ready() -> void:
 func set_equipped_slots(new_equipped_slots: Dictionary) -> void:
 	_equipped_slots = new_equipped_slots.duplicate(true)
 	_refresh_all_slots()
+
+
+## Sets the owner that answers equip/unequip drag-and-drop questions.
+func set_drop_handler(drop_handler: Node) -> void:
+	_drop_handler = drop_handler
 
 
 ## Clears the visual selection when the player selects a backpack slot.
@@ -92,7 +101,7 @@ func _build_slot_cell(definition: Dictionary) -> Control:
 	cell.custom_minimum_size = Vector2(72.0, 84.0)
 	cell.add_theme_constant_override("separation", 3)
 
-	var button := Button.new()
+	var button: Button = EquipmentSlotButtonScript.new()
 	button.name = "%sSlot" % slot_id.capitalize().replace(" ", "")
 	button.custom_minimum_size = Vector2(64.0, 64.0)
 	button.focus_mode = Control.FOCUS_NONE
@@ -102,6 +111,7 @@ func _build_slot_cell(definition: Dictionary) -> Control:
 	button.add_theme_color_override("font_color", Color(0.94, 0.94, 0.88, 1.0))
 	button.add_theme_color_override("font_hover_color", Color.WHITE)
 	button.add_theme_color_override("font_pressed_color", Color.WHITE)
+	button.call("setup", self, slot_id)
 	button.pressed.connect(_on_slot_pressed.bind(slot_id))
 	cell.add_child(button)
 	_slot_buttons[slot_id] = button
@@ -119,6 +129,15 @@ func _build_slot_cell(definition: Dictionary) -> Control:
 	icon_rect.visible = false
 	button.add_child(icon_rect)
 	_slot_icon_rects[slot_id] = icon_rect
+
+	var item_icon := Control.new()
+	item_icon.name = "ItemIcon"
+	item_icon.set_script(InventoryItemIconScript)
+	item_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	item_icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	item_icon.visible = false
+	button.add_child(item_icon)
+	_slot_item_icons[slot_id] = item_icon
 
 	var label := Label.new()
 	label.text = String(definition.get("label", "Slot"))
@@ -141,6 +160,7 @@ func _refresh_slot(slot_id: String, slot_abbreviation: String) -> void:
 
 	var button := _slot_buttons[slot_id] as Button
 	var icon_rect := _slot_icon_rects.get(slot_id) as Control
+	var item_icon := _slot_item_icons.get(slot_id) as Control
 	var slot := _slot_at(slot_id)
 	var is_selected := slot_id == _selected_slot_id
 
@@ -149,6 +169,9 @@ func _refresh_slot(slot_id: String, slot_abbreviation: String) -> void:
 		button.tooltip_text = get_slot_label(slot_id)
 		if icon_rect != null:
 			icon_rect.visible = true
+		if item_icon != null:
+			item_icon.visible = false
+			item_icon.call("clear_item")
 		button.add_theme_stylebox_override("normal", _slot_style(Color(0.09, 0.1, 0.09, 1.0), false, is_selected))
 		button.add_theme_stylebox_override("hover", _slot_style(Color(0.13, 0.15, 0.13, 1.0), true, is_selected))
 		button.add_theme_stylebox_override("pressed", _slot_style(Color(0.07, 0.08, 0.07, 1.0), true, is_selected))
@@ -156,8 +179,11 @@ func _refresh_slot(slot_id: String, slot_abbreviation: String) -> void:
 
 	if icon_rect != null:
 		icon_rect.visible = false
+	if item_icon != null:
+		item_icon.visible = true
+		item_icon.call("set_item", slot)
 	var item_name := String(slot.get("name", "Item"))
-	button.text = _item_abbreviation(item_name)
+	button.text = ""
 	button.tooltip_text = "%s: %s" % [get_slot_label(slot_id), item_name]
 
 	var item_color := slot.get("color", Color(0.28, 0.32, 0.28, 1.0)) as Color
@@ -175,6 +201,55 @@ func _on_slot_pressed(slot_id: String) -> void:
 func _slot_at(slot_id: String) -> Dictionary:
 	var slot := _equipped_slots.get(slot_id, EMPTY_SLOT) as Dictionary
 	return slot if slot != null else EMPTY_SLOT
+
+
+## Returns drag payload for a filled equipped slot.
+func get_gear_slot_drag_data(slot_id: String) -> Variant:
+	if _slot_at(slot_id).is_empty():
+		return null
+
+	if _drop_handler != null and _drop_handler.has_method("get_equipment_slot_drag_data"):
+		return _drop_handler.call("get_equipment_slot_drag_data", slot_id)
+
+	return null
+
+
+## Builds the small item preview shown under the cursor while dragging gear.
+func create_gear_slot_drag_preview(slot_id: String) -> Control:
+	var slot := _slot_at(slot_id)
+	if slot.is_empty():
+		return null
+
+	var preview := Control.new()
+	preview.custom_minimum_size = Vector2(64.0, 64.0)
+	preview.size = Vector2(64.0, 64.0)
+	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	preview.modulate = Color(1.0, 1.0, 1.0, 0.88)
+
+	var item_icon := Control.new()
+	item_icon.name = "DraggedGearIcon"
+	item_icon.set_script(InventoryItemIconScript)
+	item_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	item_icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	item_icon.call("set_item", slot)
+	preview.add_child(item_icon)
+	return preview
+
+
+## Returns true when the external inventory owner accepts this drop.
+func can_drop_gear_slot_data(slot_id: String, data: Variant) -> bool:
+	if _drop_handler == null or not _drop_handler.has_method("can_drop_equipment_slot_data"):
+		return false
+
+	return bool(_drop_handler.call("can_drop_equipment_slot_data", slot_id, data))
+
+
+## Applies a validated gear-slot drop through the external inventory owner.
+func drop_gear_slot_data(slot_id: String, data: Variant) -> void:
+	if _drop_handler == null or not _drop_handler.has_method("drop_equipment_slot_data"):
+		return
+
+	_drop_handler.call("drop_equipment_slot_data", slot_id, data)
 
 
 func _item_abbreviation(item_name: String) -> String:

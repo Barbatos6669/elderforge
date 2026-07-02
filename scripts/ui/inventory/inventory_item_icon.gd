@@ -11,6 +11,7 @@ const RocksTexture := preload("res://assets/ui/inventory/rocks_icon.png")
 const OresTexture := preload("res://assets/ui/inventory/ores_icon.png")
 const CottonTexture := preload("res://assets/ui/inventory/cotton_icon.png")
 const HideTexture := preload("res://assets/ui/inventory/hide_icon.png")
+const AxeTexture := preload("res://assets/ui/inventory/axe_icon.png")
 const TIER_COLORS := {
 	1: Color(0.72, 0.72, 0.72, 1.0),
 	2: Color(0.72, 0.50, 0.30, 1.0),
@@ -147,6 +148,8 @@ func _draw_item_art() -> void:
 			_draw_cotton()
 		"hide":
 			_draw_hide()
+		"axe":
+			_draw_axe()
 		_:
 			_draw_generic_resource()
 
@@ -179,6 +182,12 @@ func _draw_hide() -> void:
 	var unit := _unit_size()
 	var art_rect := Rect2(_origin() + Vector2(unit * 0.04, unit * 0.10), Vector2(unit * 0.92, unit * 0.78))
 	_draw_texture_fit(HideTexture, art_rect)
+
+
+func _draw_axe() -> void:
+	var unit := _unit_size()
+	var art_rect := Rect2(_origin() + Vector2(unit * 0.06, unit * 0.05), Vector2(unit * 0.88, unit * 0.88))
+	_draw_texture_fit(AxeTexture, art_rect)
 
 
 func _draw_generic_resource() -> void:

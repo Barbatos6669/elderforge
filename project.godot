@@ -21,6 +21,13 @@ window/size/mode=3
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
+[layer_names]
+
+3d_physics/layer_1="World"
+3d_physics/layer_2="ResourceObstacle"
+3d_physics/layer_3="PlayerHover"
+3d_physics/layer_4="Selectable"
+
 [physics]
 
 3d/physics_engine="Jolt Physics"

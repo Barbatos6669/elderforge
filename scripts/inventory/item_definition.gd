@@ -9,6 +9,9 @@ extends Resource
 @export var display_name := ""
 @export var category := "Item"
 @export var family_id := ""
+@export var equip_slot := ""
+@export_file("*.tscn") var equipment_scene_path := ""
+@export_file("*.tres") var equipment_attachment_profile_path := ""
 @export_range(0, 8, 1) var tier := 0
 @export var tier_roman := ""
 @export var icon_id := ""
@@ -27,6 +30,9 @@ func to_display_dict(quantity: int) -> Dictionary:
 		"max_stack": max_stack,
 		"category": category,
 		"family_id": family_id,
+		"equip_slot": equip_slot,
+		"equipment_scene_path": equipment_scene_path,
+		"equipment_attachment_profile_path": equipment_attachment_profile_path,
 		"tier": tier,
 		"tier_roman": tier_roman,
 		"icon": icon_id,

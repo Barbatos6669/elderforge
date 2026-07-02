@@ -23,7 +23,27 @@ you want to open.
 | `scenes/debug/IsometricGrid.tscn` | Debug grid scene used as isometric visual reference. |
 | `scripts/debug/isometric_grid.gd` | Draws and configures the debug grid. |
 | `scenes/entities/TargetDummy.tscn` | Friendly and hostile prototype target scene. |
-| `scenes/gathering/Tier1Tree.tscn` | Stand-in T1 tree with gray tier-colored leaf clusters. |
+| `scenes/gathering/Tier1Tree.tscn` | T1 tree gameplay wrapper with Blender-authored trunk/leaves/stump visuals, 3 gather ticks, 30-second tick replenishment, and a resource collider. |
+| `scenes/gathering/Tier1Rock.tscn` | T1 stone gameplay wrapper with Blender-authored full/depleted rock visuals, 3 gather ticks, 30-second tick replenishment, and a resource collider. |
+
+## Art Assets
+
+| Path | Purpose |
+| --- | --- |
+| `assets/models/resources/trees/t1_tree.blend` | Editable Blender source for the T1 tree. |
+| `assets/models/resources/trees/t1_tree_trunk.glb` | Runtime trunk export instanced by `Tier1Tree.tscn`. |
+| `assets/models/resources/trees/t1_tree_leaves.glb` | Runtime leaves/canopy export instanced by `Tier1Tree.tscn`, split out for future seasonal swaps and canopy hiding/fading. |
+| `assets/models/resources/trees/t1_tree_stump.glb` | Runtime depleted-stump export instanced by `Tier1Tree.tscn`. |
+| `assets/models/resources/rocks/t1_rock.blend` | Editable Blender source for the T1 rock. |
+| `assets/models/resources/rocks/t1_rock_full.glb` | Runtime full-rock export instanced by `Tier1Rock.tscn`. |
+| `assets/models/resources/rocks/t1_rock_depleted.glb` | Runtime depleted-rubble export instanced by `Tier1Rock.tscn`. |
+| `assets/equipment/tools/axes/t#/source/t#_axe.blend` | Editable Blender source for each tiered axe gathering tool. |
+| `assets/equipment/tools/axes/t#/models/t#_axe.glb` | Runtime axe tool exports instanced by tier-specific axe scenes. |
+| `assets/models/equipment/attachments/axe_main_hand.tres` | Current main-hand attachment profile for axe visuals. |
+| `scenes/equipment/tools/axes/Tier#Axe.tscn` | Tier-specific axe tool prefabs with grip and hit markers for hand attachment. |
+| `tools/blender/export_t1_tree_asset.py` | Export-only Blender script for pushing hand edits from the `.blend` into the `.glb` runtime files. |
+| `tools/blender/export_t1_rock_asset.py` | Export-only Blender script for pushing hand edits from the rock `.blend` into the `.glb` runtime files. |
+| `tools/blender/export_t1_axe_asset.py` | Export-only Blender script for pushing hand edits from the axe `.blend` into the `.glb` runtime file. |
 
 ## Player Prefab
 
@@ -34,6 +54,9 @@ you want to open.
 | `scripts/player/movement/player_movement_motor.gd` | Moves the `CharacterBody3D` toward the current destination. |
 | `scripts/player/visuals/player_facing.gd` | Rotates the character toward movement and combat targets. |
 | `scripts/player/visuals/player_visual_style.gd` | Applies the current toon-like placeholder material style. |
+| `scripts/player/equipment/player_equipment_visuals.gd` | Mirrors equipped inventory items into visible player hand attachments. |
+| `scripts/player/equipment/equipment_socket_3d.gd` | Named bone socket used by equipped visual prefabs. |
+| `scripts/player/equipment/equipment_attachment_profile.gd` | Item-specific local offset data for socketed equipment visuals. |
 | `scripts/player/animation/player_animation_controller.gd` | Owns movement, combat, and gathering animation playback. |
 | `scripts/player/audio/player_footstep_audio.gd` | Plays footstep audio tied to movement cadence. |
 | `scripts/player/feedback/player_click_feedback.gd` | Spawns click-move ground indicators. |
@@ -55,6 +78,7 @@ you want to open.
 | Path | Purpose |
 | --- | --- |
 | `scripts/interaction/hover/hover_feedback_3d.gd` | Hover detection and hover visual feedback hook. |
+| `scripts/interaction/cursor/cursor_override.gd` | Shared helper for temporary custom mouse cursors. |
 | `scripts/interaction/selection/selectable_3d.gd` | Shared selectable target data such as friendly or hostile relationship. |
 | `scripts/interaction/selection/selection_feedback_3d.gd` | Selected-target ring and relationship color feedback. |
 
@@ -69,7 +93,7 @@ you want to open.
 
 | Path | Purpose |
 | --- | --- |
-| `scripts/inventory/item_definition.gd` | Static data for one item type: id, name, tier, icon, stack size, weight, color. |
+| `scripts/inventory/item_definition.gd` | Static data for one item type: id, name, tier, icon, stack size, weight, color, equip slot, equipment scene path, and attachment profile path. |
 | `scripts/inventory/item_stack.gd` | Runtime quantity of a specific item definition. |
 | `scripts/inventory/prototype_item_catalog.gd` | Temporary in-code catalog for logs, stone, ore, cotton, and hide tiers. |
 | `scripts/inventory/player_inventory.gd` | Local prototype owner for bag slots, currency, and equipped-slot state. |
@@ -86,8 +110,9 @@ server-provided definitions.
 | `scenes/ui/inventory/InventoryPanel.tscn` | Toggleable inventory window. |
 | `scenes/ui/inventory/EquipmentPanel.tscn` | Equipped gear slot panel. |
 | `scenes/ui/hud/ChannelBar.tscn` | HUD channel progress bar for gathering and future casts. |
-| `scripts/ui/inventory/inventory_panel.gd` | UI-only panel: renders inventory state and forwards drag/drop moves. |
-| `scripts/ui/inventory/equipment_panel.gd` | Gear slot layout and selection UI. |
+| `scripts/ui/inventory/inventory_panel.gd` | UI-only panel: renders inventory state and forwards bag/equipment drag/drop moves. |
+| `scripts/ui/inventory/equipment_panel.gd` | Gear slot layout, selection UI, and gear drop routing. |
+| `scripts/ui/inventory/equipment_slot_button.gd` | Godot drag/drop hooks for one equipped gear slot button. |
 | `scripts/ui/inventory/equipment_slot_icon.gd` | Code-drawn default gear slot icons. |
 | `scripts/ui/inventory/inventory_item_icon.gd` | Code-drawn item cards with tier background, icon art, and quantity. |
 | `scripts/ui/inventory/inventory_slot_button.gd` | Godot drag/drop hooks for one inventory slot button. |
@@ -97,9 +122,10 @@ server-provided definitions.
 
 | Path | Purpose |
 | --- | --- |
-| `scenes/gathering/Tier1Tree.tscn` | First stand-in gatherable tree scene, ready to replace with Blender art later. |
-| `scripts/gathering/gatherable_resource_3d.gd` | Metadata for resource family, tier, yield item, quantity, and gather duration. |
-| `scripts/player/gathering/player_gathering.gd` | Consumes gatherable metadata and adds completed yields to inventory. |
+| `scenes/gathering/Tier1Tree.tscn` | First gatherable tree scene with selectable hitbox and solid resource collider. |
+| `scenes/gathering/Tier1Rock.tscn` | First gatherable stone scene with selectable hitbox and solid resource collider. |
+| `scripts/gathering/gatherable_resource_3d.gd` | Resource data, per-tick yield, remaining gather ticks, and depleted visual state. |
+| `scripts/player/gathering/player_gathering.gd` | Approaches resources, starts gathering channels, consumes ticks, and adds rewards to inventory. |
 
 ## Nameplates
 
@@ -140,6 +166,10 @@ server-provided definitions.
 | `assets/ui/inventory/ores_icon.png` | Ore resource item art. |
 | `assets/ui/inventory/cotton_icon.png` | Cotton resource item art. |
 | `assets/ui/inventory/hide_icon.png` | Hide resource item art. |
+| `assets/ui/inventory/axe_icon.png` | Axe equipment preview item art. |
+| `assets/ui/cursors/gather_pickaxe_cursor.png` | Custom cursor shown while hovering gatherable resources. |
+| `assets/ui/cursors/depleted_resource_cursor.png` | Custom cursor shown while hovering depleted gatherable resources. |
+| `assets/ui/cursors/attack_cursor.png` | Custom cursor shown while hovering hostile attackable targets. |
 | `assets/materials/hover/` | Hover outline shader/material assets. |
 
 ## Documentation

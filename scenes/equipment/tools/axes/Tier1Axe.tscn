@@ -1,0 +1,15 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/equipment/tools/axes/t1/models/t1_axe.glb" id="1_t1_axe"]
+
+[node name="Tier1Axe" type="Node3D"]
+
+[node name="GripPoint" type="Marker3D" parent="."]
+
+[node name="HitPoint" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.22, 0.21, 0)
+
+[node name="Visuals" type="Node3D" parent="."]
+scale = Vector3(0.38, 0.38, 0.38)
+
+[node name="T1AxeModel" parent="Visuals" instance=ExtResource("1_t1_axe")]

@@ -1,28 +1,31 @@
-[gd_scene load_steps=25 format=3]
+[gd_scene format=3 uid="uid://bsijgrn25hawa"]
 
-[ext_resource type="Script" path="res://scripts/player/controllers/player_controller.gd" id="1_controller"]
-[ext_resource type="Script" path="res://scripts/player/input/player_input.gd" id="2_input"]
-[ext_resource type="Script" path="res://scripts/player/movement/player_movement_motor.gd" id="3_movement"]
-[ext_resource type="Script" path="res://scripts/player/visuals/player_facing.gd" id="4_facing"]
+[ext_resource type="Script" uid="uid://c6mxgttov6tmg" path="res://scripts/player/controllers/player_controller.gd" id="1_controller"]
+[ext_resource type="Script" uid="uid://ydv3cmjv2iyr" path="res://scripts/player/input/player_input.gd" id="2_input"]
+[ext_resource type="Script" uid="uid://bc18y08o38ood" path="res://scripts/player/movement/player_movement_motor.gd" id="3_movement"]
+[ext_resource type="Script" uid="uid://mgbrkrm2bt04" path="res://scripts/player/visuals/player_facing.gd" id="4_facing"]
 [ext_resource type="PackedScene" path="res://scenes/camera/IsometricCameraRig.tscn" id="5_camera_rig"]
-[ext_resource type="Script" path="res://scripts/player/feedback/player_click_feedback.gd" id="6_feedback"]
+[ext_resource type="Script" uid="uid://cbx45o07luo52" path="res://scripts/player/feedback/player_click_feedback.gd" id="6_feedback"]
 [ext_resource type="PackedScene" path="res://scenes/effects/ClickMoveIndicator.tscn" id="7_click_indicator"]
-[ext_resource type="PackedScene" path="res://assets/characters/base/Superhero_Male_FullBody.gltf" id="8_base_character"]
-[ext_resource type="Script" path="res://scripts/player/visuals/player_visual_style.gd" id="9_visual_style"]
-[ext_resource type="Script" path="res://scripts/player/animation/player_animation_controller.gd" id="10_animation"]
-[ext_resource type="PackedScene" path="res://assets/animations/universal_animation_library_1/UAL1_Standard.glb" id="11_animation_library"]
-[ext_resource type="PackedScene" path="res://assets/animations/universal_animation_library_2/UAL2_Standard.glb" id="12_gather_animation_library"]
-[ext_resource type="Script" path="res://scripts/player/audio/player_footstep_audio.gd" id="12_footstep_audio"]
+[ext_resource type="PackedScene" uid="uid://ban0on7ckj2wx" path="res://assets/characters/base/Superhero_Male_FullBody.gltf" id="8_base_character"]
+[ext_resource type="Script" uid="uid://du6hmvsfmcssp" path="res://scripts/player/visuals/player_visual_style.gd" id="9_visual_style"]
+[ext_resource type="Script" uid="uid://cw62d0ikuxg7t" path="res://scripts/player/animation/player_animation_controller.gd" id="10_animation"]
+[ext_resource type="PackedScene" uid="uid://crtjf3qpcvdd2" path="res://assets/animations/universal_animation_library_1/UAL1_Standard.glb" id="11_animation_library"]
+[ext_resource type="Script" uid="uid://e4vucijm23n4" path="res://scripts/player/audio/player_footstep_audio.gd" id="12_footstep_audio"]
+[ext_resource type="PackedScene" uid="uid://dmnquo4s7ad5e" path="res://assets/animations/universal_animation_library_2/UAL2_Standard.glb" id="12_gather_animation_library"]
 [ext_resource type="Resource" path="res://assets/audio/footsteps/sets/grass_footsteps.tres" id="13_footstep_set"]
-[ext_resource type="Script" path="res://scripts/player/stats/player_stats.gd" id="14_stats"]
-[ext_resource type="PackedScene" path="res://scenes/ui/nameplates/PlayerNameplate.tscn" id="15_nameplate"]
-[ext_resource type="Script" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="16_hover_feedback"]
+[ext_resource type="Script" uid="uid://cy6j84l7ub0vh" path="res://scripts/player/stats/player_stats.gd" id="14_stats"]
+[ext_resource type="PackedScene" uid="uid://cau0c3siiap2k" path="res://scenes/ui/nameplates/PlayerNameplate.tscn" id="15_nameplate"]
+[ext_resource type="Script" uid="uid://cbxs8002i2pvm" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="16_hover_feedback"]
 [ext_resource type="Material" path="res://assets/materials/hover/hover_outline_green.tres" id="17_hover_outline_material"]
-[ext_resource type="Script" path="res://scripts/player/targeting/player_targeting.gd" id="18_targeting"]
-[ext_resource type="Script" path="res://scripts/player/combat/player_auto_attack.gd" id="19_auto_attack"]
-[ext_resource type="Script" path="res://scripts/player/channeling/player_channeling.gd" id="20_channeling"]
-[ext_resource type="Script" path="res://scripts/player/gathering/player_gathering.gd" id="21_gathering"]
+[ext_resource type="Script" uid="uid://0xoiiysjh6f2" path="res://scripts/player/targeting/player_targeting.gd" id="18_targeting"]
+[ext_resource type="Script" uid="uid://dac87srxhgunk" path="res://scripts/player/combat/player_auto_attack.gd" id="19_auto_attack"]
+[ext_resource type="Script" uid="uid://cxbptidvcjy0m" path="res://scripts/player/channeling/player_channeling.gd" id="20_channeling"]
+[ext_resource type="Script" uid="uid://cw8nh2sfs1k4j" path="res://scripts/player/gathering/player_gathering.gd" id="21_gathering"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/ChannelBar.tscn" id="22_channel_bar"]
+[ext_resource type="Script" uid="uid://bqyaxpya4rkwf" path="res://scripts/player/equipment/player_equipment_visuals.gd" id="23_equipment_visuals"]
+[ext_resource type="PackedScene" path="res://scenes/equipment/tools/axes/Tier1Axe.tscn" id="24_axe_preview"]
+[ext_resource type="Script" path="res://scripts/player/equipment/equipment_socket_3d.gd" id="25_equipment_socket"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -30,96 +33,108 @@ height = 1.8
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_hover"]
 radius = 0.6
-height = 2.0
 
-[node name="Player" type="CharacterBody3D"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_grip_marker"]
+albedo_color = Color(1, 0.82, 0, 1)
+emission_enabled = true
+emission = Color(1, 0.82, 0, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_grip_marker"]
+radius = 0.035
+height = 0.07
+
+[node name="Player" type="CharacterBody3D" unique_id=2050980311]
+collision_mask = 3
 script = ExtResource("1_controller")
 
-[node name="Input" type="Node" parent="."]
+[node name="Input" type="Node" parent="." unique_id=27367436]
 script = ExtResource("2_input")
 
-[node name="Targeting" type="Node" parent="."]
+[node name="Targeting" type="Node" parent="." unique_id=492267031]
 script = ExtResource("18_targeting")
 
-[node name="AutoAttack" type="Node" parent="."]
+[node name="AutoAttack" type="Node" parent="." unique_id=858738264]
 script = ExtResource("19_auto_attack")
 
-[node name="Channeling" type="Node" parent="."]
+[node name="Channeling" type="Node" parent="." unique_id=1688743502]
 script = ExtResource("20_channeling")
 
-[node name="Gathering" type="Node" parent="."]
+[node name="Gathering" type="Node" parent="." unique_id=1595802266]
 script = ExtResource("21_gathering")
 
-[node name="Stats" type="Node" parent="."]
+[node name="Stats" type="Node" parent="." unique_id=1261507381]
 script = ExtResource("14_stats")
 
-[node name="Movement" type="Node" parent="."]
+[node name="Movement" type="Node" parent="." unique_id=851313477]
 script = ExtResource("3_movement")
 movement_speed = 3.2
 acceleration = 32.0
 deceleration = 28.0
 direction_change_snap_angle = 0.85
 
-[node name="Facing" type="Node" parent="." node_paths=PackedStringArray("visuals_path")]
+[node name="Facing" type="Node" parent="." unique_id=124228613]
 script = ExtResource("4_facing")
-visuals_path = NodePath("../Visuals")
 
-[node name="VisualStyle" type="Node" parent="." node_paths=PackedStringArray("model_root_path")]
+[node name="VisualStyle" type="Node" parent="." unique_id=1562770274]
 script = ExtResource("9_visual_style")
-model_root_path = NodePath("../Visuals/BaseCharacter")
 
-[node name="HoverSelectionRing" type="MeshInstance3D" parent="." node_paths=PackedStringArray("visuals_path", "hover_target_path")]
+[node name="EquipmentVisuals" type="Node" parent="." unique_id=1427824957]
+script = ExtResource("23_equipment_visuals")
+
+[node name="HoverSelectionRing" type="MeshInstance3D" parent="." unique_id=2071893864]
 script = ExtResource("16_hover_feedback")
-visuals_path = NodePath("../Visuals/BaseCharacter")
-hover_target_path = NodePath("../HoverHitbox")
 hover_collision_mask = 4
 highlight_material = ExtResource("17_hover_outline_material")
 
-[node name="Animation" type="Node" parent="." node_paths=PackedStringArray("model_root_path")]
+[node name="Animation" type="Node" parent="." unique_id=1558452097]
 script = ExtResource("10_animation")
-model_root_path = NodePath("../Visuals/BaseCharacter")
 source_animation_scene = ExtResource("11_animation_library")
 gathering_animation_scene = ExtResource("12_gather_animation_library")
-idle_animation_name = "Idle"
-move_animation_name = "Jog_Fwd"
-gathering_animation_name = "Farm_Harvest"
 move_speed_scale = 0.68
-gathering_speed_scale = 0.85
 
-[node name="FootstepAudio" type="AudioStreamPlayer" parent="."]
-max_polyphony = 1
+[node name="FootstepAudio" type="AudioStreamPlayer" parent="." unique_id=1659355608]
 script = ExtResource("12_footstep_audio")
 surface_set = ExtResource("13_footstep_set")
-animation_controller_path = NodePath("../Animation")
 
-[node name="ClickFeedback" type="Node" parent="."]
+[node name="ClickFeedback" type="Node" parent="." unique_id=921554887]
 script = ExtResource("6_feedback")
 click_indicator_scene = ExtResource("7_click_indicator")
 
-[node name="Visuals" type="Node3D" parent="."]
+[node name="Visuals" type="Node3D" parent="." unique_id=726443279]
 
-[node name="BaseCharacter" parent="Visuals" instance=ExtResource("8_base_character")]
-rotation = Vector3(0, 3.14159, 0)
+[node name="BaseCharacter" parent="Visuals" unique_id=1504128645 instance=ExtResource("8_base_character")]
+transform = Transform3D(-1, 0, 2.5351817e-06, 0, 1, 0, -2.5351817e-06, 0, -1, 0, 0, 0)
 
-[node name="Nameplate" parent="." instance=ExtResource("15_nameplate")]
-position = Vector3(0, 3, 0)
+[node name="MainHandAttachment" type="BoneAttachment3D" parent="Visuals/BaseCharacter/Armature/Skeleton3D"]
+bone_name = "hand_r"
+script = ExtResource("25_equipment_socket")
+slot_id = "main_hand"
 
-[node name="ChannelBar" parent="." instance=ExtResource("22_channel_bar")]
+[node name="MainHandPreview" parent="Visuals/BaseCharacter/Armature/Skeleton3D/MainHandAttachment" instance=ExtResource("24_axe_preview")]
+position = Vector3(-0.04, 0.11, 0.02)
+rotation = Vector3(0, 1.5708, 1.5708)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-position = Vector3(0, 0.9, 0)
+[node name="GripMarker" type="MeshInstance3D" parent="Visuals/BaseCharacter/Armature/Skeleton3D/MainHandAttachment/MainHandPreview"]
+mesh = SubResource("SphereMesh_grip_marker")
+material_override = SubResource("StandardMaterial3D_grip_marker")
+
+[node name="Nameplate" parent="." unique_id=889818390 instance=ExtResource("15_nameplate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 0)
+
+[node name="ChannelBar" parent="." unique_id=202133527 instance=ExtResource("22_channel_bar")]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1342818378]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 shape = SubResource("CapsuleShape3D_body")
 
-[node name="HoverHitbox" type="Area3D" parent="."]
-input_ray_pickable = true
+[node name="HoverHitbox" type="Area3D" parent="." unique_id=9486410]
 collision_layer = 4
 collision_mask = 0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="HoverHitbox"]
-position = Vector3(0, 1.125, 0)
+[node name="CollisionShape3D" type="CollisionShape3D" parent="HoverHitbox" unique_id=2107929549]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.125, 0)
 shape = SubResource("CapsuleShape3D_hover")
 
-[node name="CameraTarget" type="Marker3D" parent="."]
-position = Vector3(0, 0, 0)
+[node name="CameraTarget" type="Marker3D" parent="." unique_id=143689481]
 
-[node name="CameraRig" parent="." instance=ExtResource("5_camera_rig")]
+[node name="CameraRig" parent="." unique_id=469072795 instance=ExtResource("5_camera_rig")]

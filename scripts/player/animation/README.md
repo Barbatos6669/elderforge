@@ -24,7 +24,7 @@ GDScript notes:
 Current sources:
 
 - Idle, jog, and punch come from Universal Animation Library 1.
-- T1 tree gathering uses `Farm_Harvest` from Universal Animation Library 2 so
+- T1 tree gathering uses `Shield_OneShot` from Universal Animation Library 2 so
   the character looks like they are pulling or harvesting by hand instead of
   swinging an axe.
 

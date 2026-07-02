@@ -11,9 +11,9 @@ signal gathering_completed(resource: Node, item_id: String, quantity_added: int)
 signal gathering_cancelled
 
 ## Maximum horizontal distance from player to resource before channeling starts.
-@export var gather_range: float = 1.75
+@export var gather_range: float = 0.95
 ## Desired stopping distance while moving toward a gatherable resource.
-@export var approach_distance: float = 1.35
+@export var approach_distance: float = 0.8
 ## Optional inventory node. If empty, the first `player_inventory` group member is used.
 @export var inventory_path: NodePath
 
@@ -60,7 +60,7 @@ func start_channel_if_ready(gatherer: Node3D, channeling: Node) -> bool:
 		return false
 
 	var yield_data: Dictionary = _target_resource.call("get_yield_data")
-	var action_name := "Gathering %s" % _resource_display_name(_target_resource)
+	var action_name := _gather_action_name(_target_resource, yield_data)
 	var duration := float(yield_data.get("gather_duration", 2.0))
 	var context := {
 		"type": "gathering",
@@ -93,9 +93,18 @@ func complete_gather(context: Dictionary) -> bool:
 	var remainder := int(inventory.call("add_item", item_id, quantity))
 	var quantity_added := quantity - remainder
 	if quantity_added > 0:
+		if resource != null and resource.has_method("consume_gather_tick"):
+			resource.call("consume_gather_tick")
 		gathering_completed.emit(resource, item_id, quantity_added)
+	else:
+		_clear_gathering_state()
+		return false
 
-	_clear_gathering_state()
+	if resource != null and resource.has_method("can_gather") and resource.call("can_gather") == true:
+		_target_resource = resource as Node3D
+		_is_waiting_for_channel = true
+	else:
+		_clear_gathering_state()
 	return quantity_added > 0
 
 
@@ -160,6 +169,13 @@ func _resource_display_name(resource: Node) -> String:
 	if display_name_value != null and not String(display_name_value).is_empty():
 		return String(display_name_value)
 	return resource.name
+
+
+func _gather_action_name(resource: Node, yield_data: Dictionary) -> String:
+	var remaining_ticks := int(yield_data.get("remaining_ticks", 1))
+	var max_ticks := maxi(int(yield_data.get("max_ticks", remaining_ticks)), 1)
+	var visible_remaining_ticks := clampi(remaining_ticks, 1, max_ticks)
+	return "Gathering %s %d/%d" % [_resource_display_name(resource), visible_remaining_ticks, max_ticks]
 
 
 func _find_inventory() -> Node:

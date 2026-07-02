@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="1_hover_feedback"]
 [ext_resource type="Script" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://scripts/combat/combat_health.gd" id="6_health"]
 [ext_resource type="PackedScene" path="res://assets/characters/base/Superhero_Male_FullBody.gltf" id="7_base_character"]
 [ext_resource type="Script" path="res://scripts/player/visuals/player_visual_style.gd" id="8_visual_style"]
+[ext_resource type="Texture2D" path="res://assets/ui/cursors/attack_cursor.png" id="9_attack_cursor"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_selectable"]
 radius = 0.55
@@ -34,6 +35,8 @@ hover_target_path = NodePath("../Selectable")
 hover_collision_mask = 8
 ring_color = Color(1, 0.08, 0.06, 1)
 highlight_material = ExtResource("5_hover_material")
+hostile_hover_cursor_texture = ExtResource("9_attack_cursor")
+hostile_hover_cursor_hotspot = Vector2(6, 2)
 
 [node name="SelectedRing" type="MeshInstance3D" parent="." node_paths=PackedStringArray("selectable_path")]
 script = ExtResource("3_selection_feedback")
