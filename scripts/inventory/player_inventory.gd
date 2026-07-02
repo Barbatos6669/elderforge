@@ -24,12 +24,15 @@ signal equipped_slots_changed
 
 var _slots: Array = []
 var _equipped_slots := {}
+var _prototype_definitions: Array = []
+var _definitions_by_id := {}
 var _silver := 0
 var _gold := 0
 var _initialized := false
 
 
 func _ready() -> void:
+	add_to_group("player_inventory")
 	if _initialized:
 		return
 
@@ -130,12 +133,15 @@ func add_stack(stack_to_add: Resource) -> int:
 
 	var remaining: int = int(stack_to_add.quantity)
 	var definition: Resource = stack_to_add.definition as Resource
+	if definition == null:
+		return remaining
+
 	for slot_index in range(_slots.size()):
 		if remaining <= 0:
 			break
 
 		var slot_stack := _slots[slot_index] as Resource
-		if slot_stack == null or slot_stack.definition != definition:
+		if slot_stack == null or not _is_same_definition(slot_stack.definition, definition):
 			continue
 
 		var available: int = int(definition.max_stack) - int(slot_stack.quantity)
@@ -164,6 +170,21 @@ func add_stack(stack_to_add: Resource) -> int:
 	return remaining
 
 
+## Adds a quantity of an item definition by id. Returns the amount that did not fit.
+func add_item(item_id: String, quantity: int) -> int:
+	var definition := get_definition(item_id)
+	if definition == null:
+		return quantity
+
+	var stack := _create_stack(definition, quantity)
+	return add_stack(stack)
+
+
+func get_definition(item_id: String) -> Resource:
+	_ensure_prototype_definitions()
+	return _definitions_by_id.get(item_id) as Resource
+
+
 func set_currency(silver: int, gold: int) -> void:
 	_silver = maxi(silver, 0)
 	_gold = maxi(gold, 0)
@@ -184,16 +205,44 @@ func _normalize_slot_count() -> void:
 
 
 func _seed_gathering_resources() -> void:
-	var definitions: Array = PrototypeItemCatalogScript.create_gathering_definitions()
+	var definitions: Array = _get_prototype_definitions()
 	for index in range(mini(definitions.size(), _slots.size())):
 		var definition: Resource = definitions[index] as Resource
 		_slots[index] = _create_stack(definition, _prototype_quantity(definition.family_id, definition.tier))
+
+
+func _get_prototype_definitions() -> Array:
+	_ensure_prototype_definitions()
+	return _prototype_definitions
+
+
+func _ensure_prototype_definitions() -> void:
+	if not _definitions_by_id.is_empty():
+		return
+
+	_prototype_definitions = []
+	for definition in PrototypeItemCatalogScript.create_gathering_definitions():
+		var item_definition := definition as Resource
+		if item_definition != null and not String(item_definition.id).is_empty():
+			_prototype_definitions.append(item_definition)
+			_definitions_by_id[item_definition.id] = item_definition
 
 
 func _create_stack(definition: Resource, quantity: int) -> Resource:
 	var stack: Resource = ItemStackScript.new() as Resource
 	stack.call("configure", definition, quantity)
 	return stack
+
+
+func _is_same_definition(left_definition: Resource, right_definition: Resource) -> bool:
+	if left_definition == right_definition:
+		return true
+	if left_definition == null or right_definition == null:
+		return false
+
+	var left_id := String(left_definition.get("id"))
+	var right_id := String(right_definition.get("id"))
+	return not left_id.is_empty() and left_id == right_id
 
 
 func _prototype_quantity(family_id: String, tier: int) -> int:

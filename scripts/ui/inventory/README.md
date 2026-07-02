@@ -1,0 +1,25 @@
+# Inventory UI Scripts
+
+This folder renders the inventory and equipment UI. Inventory state lives in
+`scripts/inventory/`.
+
+Files:
+
+- `inventory_panel.gd`: toggleable inventory window, bag slot rendering,
+  details panel, currency display, and drag/drop forwarding.
+- `equipment_panel.gd`: equipped gear slot layout and selection state.
+- `equipment_slot_icon.gd`: code-drawn placeholder icons for empty gear slots.
+- `inventory_item_icon.gd`: code-drawn item card frame, tier background, art,
+  and quantity text.
+- `inventory_slot_button.gd`: Godot drag/drop hooks for one bag slot button.
+
+GDScript notes:
+
+- UI nodes are built with `Control`, `PanelContainer`, `GridContainer`,
+  `VBoxContainer`, and similar Godot UI classes.
+- Drag/drop methods return and accept `Dictionary` payloads.
+- `InventoryPanel` calls `PlayerInventory.move_or_swap_slots(...)`; it does not
+  own the authoritative slot data.
+
+Change this folder when the inventory should look or behave differently on
+screen. Change `scripts/inventory/` when item ownership rules change.

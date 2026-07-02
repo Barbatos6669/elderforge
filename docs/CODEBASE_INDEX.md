@@ -11,6 +11,7 @@ you want to open.
 | `project.godot` | Godot project settings and main scene pointer. |
 | `scenes/main/Main.tscn` | Current playable prototype scene. |
 | `scenes/player/Player.tscn` | Reusable player prefab. Drop this into a scene to play from it. |
+| `scripts/README.md` | GDScript primer and guide to every script folder README. |
 | `docs/CODEBASE_GUIDE.md` | Longer learning guide for how the current systems fit together. |
 | `docs/ROADMAP.md` | Phase plan and milestone direction. |
 
@@ -22,6 +23,7 @@ you want to open.
 | `scenes/debug/IsometricGrid.tscn` | Debug grid scene used as isometric visual reference. |
 | `scripts/debug/isometric_grid.gd` | Draws and configures the debug grid. |
 | `scenes/entities/TargetDummy.tscn` | Friendly and hostile prototype target scene. |
+| `scenes/gathering/Tier1Tree.tscn` | Stand-in T1 tree with gray tier-colored leaf clusters. |
 
 ## Player Prefab
 
@@ -38,6 +40,8 @@ you want to open.
 | `scripts/player/stats/player_stats.gd` | Stores player stat ids and current numeric values. |
 | `scripts/player/targeting/player_targeting.gd` | Handles local selection and targeting rules. |
 | `scripts/player/combat/player_auto_attack.gd` | Prototype auto-attack flow for hostile targets. |
+| `scripts/player/channeling/player_channeling.gd` | Generic timed-action state for gathering and future spell casts. |
+| `scripts/player/gathering/player_gathering.gd` | Player-side gathering approach, channel start, and reward handoff. |
 
 ## Camera
 
@@ -81,11 +85,21 @@ server-provided definitions.
 | --- | --- |
 | `scenes/ui/inventory/InventoryPanel.tscn` | Toggleable inventory window. |
 | `scenes/ui/inventory/EquipmentPanel.tscn` | Equipped gear slot panel. |
+| `scenes/ui/hud/ChannelBar.tscn` | HUD channel progress bar for gathering and future casts. |
 | `scripts/ui/inventory/inventory_panel.gd` | UI-only panel: renders inventory state and forwards drag/drop moves. |
 | `scripts/ui/inventory/equipment_panel.gd` | Gear slot layout and selection UI. |
 | `scripts/ui/inventory/equipment_slot_icon.gd` | Code-drawn default gear slot icons. |
 | `scripts/ui/inventory/inventory_item_icon.gd` | Code-drawn item cards with tier background, icon art, and quantity. |
 | `scripts/ui/inventory/inventory_slot_button.gd` | Godot drag/drop hooks for one inventory slot button. |
+| `scripts/ui/hud/channel_bar.gd` | Signal-driven UI for the current PlayerChanneling action. |
+
+## Gathering
+
+| Path | Purpose |
+| --- | --- |
+| `scenes/gathering/Tier1Tree.tscn` | First stand-in gatherable tree scene, ready to replace with Blender art later. |
+| `scripts/gathering/gatherable_resource_3d.gd` | Metadata for resource family, tier, yield item, quantity, and gather duration. |
+| `scripts/player/gathering/player_gathering.gd` | Consumes gatherable metadata and adds completed yields to inventory. |
 
 ## Nameplates
 
@@ -140,6 +154,7 @@ server-provided definitions.
 | `docs/DESIGN_BOUNDARIES.md` | Design/legal boundaries for inspiration from existing games. |
 | `docs/LICENSING.md` | Asset and licensing rules. |
 | `docs/ROADMAP.md` | Current phase roadmap. |
+| `scripts/**/README.md` | Local junior-friendly notes for each script folder. |
 
 ## Good Search Commands
 

@@ -12,6 +12,8 @@ extends CharacterBody3D
 @onready var stats: PlayerStats = $Stats
 @onready var targeting = $Targeting
 @onready var auto_attack = $AutoAttack
+@onready var channeling = $Channeling
+@onready var gathering = $Gathering
 @onready var movement_motor = $Movement
 @onready var facing = $Facing
 @onready var animation = $Animation
@@ -24,6 +26,7 @@ extends CharacterBody3D
 func _ready() -> void:
 	camera_rig.set_target(camera_target)
 	auto_attack.attack_landed.connect(_on_auto_attack_landed)
+	channeling.channel_completed.connect(_on_channel_completed)
 
 
 func _physics_process(delta: float) -> void:
@@ -32,31 +35,41 @@ func _physics_process(delta: float) -> void:
 		animation.set_moving(false)
 		footstep_audio.set_moving(false)
 		auto_attack.stop_attack()
+		_cancel_gathering_action("Control disabled")
 		return
 
 	if input_reader.is_stop_requested():
 		movement_motor.stop(self)
 		auto_attack.stop_attack()
+		_cancel_gathering_action("Stopped")
 	else:
 		var clicked_target: Node = targeting.try_select_on_click(self)
 		if clicked_target != null:
 			input_reader.block_click_move_until_mouse_release()
-			if auto_attack.start_attack(clicked_target, self):
+			if gathering.start_gather(clicked_target, self):
+				auto_attack.stop_attack()
+				if channeling.is_channeling():
+					channeling.cancel_channel("New action")
+			elif auto_attack.start_attack(clicked_target, self):
+				_cancel_gathering_action("New action")
 				movement_motor.stop(self)
 		else:
 			if input_reader.was_auto_attack_pressed():
 				if auto_attack.start_attack(targeting.get_current_target(), self):
+					_cancel_gathering_action("New action")
 					movement_motor.stop(self)
 
 			var move_target = input_reader.get_click_move_target(self)
 			if move_target != null:
 				if input_reader.was_click_move_started():
 					auto_attack.stop_attack()
+					_cancel_gathering_action("Moved")
 				movement_motor.set_destination(move_target)
 				if input_reader.was_click_move_started():
 					click_feedback.spawn(move_target, self)
 
 	_update_auto_attack_movement()
+	_update_gathering_movement()
 
 	var movement_direction: Vector3 = movement_motor.move_to_destination(self, delta)
 	var visual_direction: Vector3 = movement_motor.get_horizontal_velocity_direction(self)
@@ -66,6 +79,10 @@ func _physics_process(delta: float) -> void:
 		var target_direction: Vector3 = auto_attack.get_direction_to_target(self)
 		if target_direction != Vector3.ZERO:
 			visual_direction = target_direction
+	elif gathering.has_active_target() and gathering.is_target_in_range(self):
+		var gather_direction: Vector3 = gathering.get_direction_to_target(self)
+		if gather_direction != Vector3.ZERO:
+			visual_direction = gather_direction
 
 	var horizontal_velocity := Vector3(velocity.x, 0.0, velocity.z)
 	var is_moving := horizontal_velocity.length_squared() > 0.01
@@ -76,6 +93,7 @@ func _physics_process(delta: float) -> void:
 	animation.set_moving(is_moving)
 	footstep_audio.set_moving(is_moving)
 	auto_attack.update_attack(self, delta)
+	channeling.update_channel(delta)
 
 
 func _update_auto_attack_movement() -> void:
@@ -88,5 +106,30 @@ func _update_auto_attack_movement() -> void:
 		movement_motor.set_destination(auto_attack.get_approach_destination(self))
 
 
+func _update_gathering_movement() -> void:
+	if channeling.is_channel_type("gathering"):
+		movement_motor.stop(self)
+		return
+
+	if not gathering.has_active_target():
+		return
+
+	if gathering.is_target_in_range(self):
+		movement_motor.stop(self)
+		gathering.start_channel_if_ready(self, channeling)
+	else:
+		movement_motor.set_destination(gathering.get_approach_destination(self))
+
+
+func _cancel_gathering_action(reason: String) -> void:
+	gathering.cancel_gathering()
+	if channeling.is_channeling():
+		channeling.cancel_channel(reason)
+
+
 func _on_auto_attack_landed(_target: Node, _damage: float) -> void:
 	animation.play_attack()
+
+
+func _on_channel_completed(context: Dictionary) -> void:
+	gathering.complete_gather(context)

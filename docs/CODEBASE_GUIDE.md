@@ -17,7 +17,8 @@ Start here if you are new to the project:
 3. `scenes/player/Player.tscn` - the reusable player prefab.
 4. `scripts/player/controllers/player_controller.gd` - coordinates the player
    sub-systems.
-5. The smaller scripts under `scripts/player/` - movement, input, animation,
+5. `scripts/README.md` - GDScript syntax notes and the script folder map.
+6. The smaller scripts under `scripts/player/` - movement, input, animation,
    audio, stats, visuals, and feedback.
 
 ## Project Entry Point
@@ -39,6 +40,7 @@ That means pressing Play in Godot loads `Main.tscn`.
 - `Player`, an instance of the reusable player prefab.
 - `FriendlyTarget` and `HostileTarget`, selectable prototype targets for testing
   relationship-colored hover/selection.
+- `Tier1Tree`, a stand-in gathering tree with T1-colored leaf clusters.
 - `PlayerInventory`, local prototype item and currency storage.
 - `InventoryPanel`, the toggleable prototype inventory UI.
 - `Sun`, a directional light.
@@ -67,20 +69,29 @@ scenes/
   debug/     Debug-only helper scenes.
   entities/  Prototype gameplay entities such as target dummies.
   effects/   Visual effects such as click indicators.
+  gathering/ Prototype resource nodes such as trees.
   ui/        Reusable UI scenes such as inventory and nameplates.
   main/      Current playable test scene.
   player/    Reusable player prefab.
 
 scripts/
+  README.md    GDScript primer and script folder map.
   audio/     Shared audio data/resources.
   camera/    Camera behavior.
+  combat/    Shared combat components.
   debug/     Debug helper behavior.
   effects/   Effect behavior.
+  gathering/ Prototype gatherable resource metadata.
   interaction/ Shared interaction helpers such as hover detection.
   inventory/ Prototype item definitions, stacks, and inventory storage.
   player/    Player-specific systems.
   ui/        UI and world-space display helpers.
+  visuals/   Reserved for shared visual helpers.
 ```
+
+Every folder under `scripts/` has a local `README.md`. Those files are meant as
+junior-friendly entry points: what the folder owns, which files to open first,
+and which GDScript syntax is worth knowing before editing there.
 
 ## Player Prefab
 
@@ -92,6 +103,8 @@ Current child nodes:
 - `Input` reads mouse/keyboard intent.
 - `Targeting` handles local click target selection.
 - `AutoAttack` runs the local-player prototype auto-attack loop.
+- `Channeling` tracks timed actions such as gathering.
+- `Gathering` handles gather target approach, channel start, and rewards.
 - `Stats` stores player stat values and metadata.
 - `Movement` moves the `CharacterBody3D` toward a destination.
 - `Facing` rotates the visual model toward movement direction.
@@ -101,6 +114,7 @@ Current child nodes:
 - `FootstepAudio` plays surface footsteps in sync with animation timing.
 - `ClickFeedback` spawns the yellow click marker.
 - `Visuals/BaseCharacter` is the current placeholder character model.
+- `ChannelBar` renders the current channel progress.
 - `CollisionShape3D` defines the player collision capsule.
 - `CameraTarget` is the point the camera follows.
 - `CameraRig` is the perspective isometric camera instance.
@@ -114,23 +128,28 @@ own every system.
 
 Every physics frame, `PlayerController` does this:
 
-1. If input is disabled, stop movement, animation, and footsteps.
-2. If `S` is held, stop movement.
+1. If input is disabled, stop movement, animation, footsteps, attacks, and
+   gathering channels.
+2. If `S` is held, stop movement and cancel gathering channels.
 3. Otherwise, ask `PlayerTargeting` whether the current left-click selected a
    target.
-4. If a hostile target was clicked, ask `PlayerAutoAttack` to start attacking.
-5. If Space was pressed while a hostile target is selected, ask `PlayerAutoAttack`
+4. If a gatherable target was clicked, ask `PlayerGathering` to approach it.
+5. If a hostile target was clicked, ask `PlayerAutoAttack` to start attacking.
+6. If Space was pressed while a hostile target is selected, ask `PlayerAutoAttack`
    to start attacking.
-6. If targeting did not consume the click, ask `PlayerInput` whether the mouse
+7. If targeting did not consume the click, ask `PlayerInput` whether the mouse
    is pointing at a movement target.
-7. If a new click-move started, ask `PlayerClickFeedback` to spawn the click marker.
-8. Ask `PlayerMovementMotor` to move toward the destination.
-9. Ask `PlayerFacing` to rotate the visual model.
-10. Tell animation and footstep audio whether the player is currently moving.
-11. If auto-attack is active, chase the hostile target until melee range.
-12. Face the target once in range.
-13. Advance the auto-attack cooldown, play the attack animation, and apply
+8. If a new click-move started, ask `PlayerClickFeedback` to spawn the click marker.
+9. If auto-attack is active, chase the hostile target until melee range.
+10. If gathering is active, approach the resource and start the channel in range.
+11. Ask `PlayerMovementMotor` to move toward the destination.
+12. Ask `PlayerFacing` to rotate the visual model.
+13. Tell animation and footstep audio whether the player is currently moving.
+14. Face the combat or gathering target once in range.
+15. Advance the auto-attack cooldown, play the attack animation, and apply
     damage when a swing is ready.
+16. Advance `PlayerChanneling` and let gathering add resources when its channel
+    completes.
 
 This means movement, visuals, animation, audio, and feedback can change without
 rewriting the whole player controller.
@@ -597,6 +616,42 @@ bitmap art from `logs_icon.png`, `rocks_icon.png`, `ores_icon.png`,
 `cotton_icon.png`, and `hide_icon.png`. Tier colors fill the icon background
 behind the art: light gray, light brown, green, blue, red, orange, yellow, and
 white for tiers I through VIII.
+
+## Gathering Prototypes
+
+`scenes/gathering/Tier1Tree.tscn`
+`scripts/gathering/gatherable_resource_3d.gd`
+
+`Tier1Tree` is the first stand-in gatherable node. It uses simple low-poly
+primitive meshes so we can replace it with a Blender asset later without
+changing the gameplay wiring. The leaves use the shared T1 light gray tier
+color, while the trunk uses simple brown bark materials.
+
+The root has `GatherableResource3D`, which stores the resource family, tier,
+yield item id, yield quantity, and future gather duration. The scene also has a
+neutral `Selectable` area plus hover and selected rings, so it can already be
+targeted like other world objects.
+
+Clicking the tree now starts the first gathering flow:
+
+1. `PlayerTargeting` selects the tree's `Selectable`.
+2. `PlayerGathering` recognizes the parent `GatherableResource3D`.
+3. The player moves into gather range and faces the tree.
+4. `PlayerChanneling` starts a timed gathering channel.
+5. `ChannelBar` shows the channel progress.
+6. On completion, `PlayerInventory.add_item("timber_t1", quantity)` adds logs.
+
+## Channel Bar
+
+`scenes/ui/hud/ChannelBar.tscn`
+`scripts/ui/hud/channel_bar.gd`
+`scripts/player/channeling/player_channeling.gd`
+
+`PlayerChanneling` is the generic timed-action module. It emits start,
+progress, complete, and cancel signals. `ChannelBar` listens to those signals
+and renders a centered HUD progress bar with the action name and remaining time.
+The first user of this system is tree gathering, but spells, recall, mounting,
+crafting, and other interrupted actions should use the same channel module.
 
 ## Click Feedback
 
