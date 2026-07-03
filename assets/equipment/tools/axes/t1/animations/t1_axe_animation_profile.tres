@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="EquipmentAnimationProfile" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="EquipmentAnimationProfile" format=3 uid="uid://clnqj1b8ckxvr"]
 
-[ext_resource type="Script" path="res://scripts/player/animation/equipment_animation_profile.gd" id="1_profile"]
+[ext_resource type="Script" uid="uid://1ornhvchop3d" path="res://scripts/player/animation/equipment_animation_profile.gd" id="1_profile"]
 
 [resource]
 script = ExtResource("1_profile")

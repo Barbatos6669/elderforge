@@ -26,9 +26,12 @@ GDScript notes:
 - `RESOURCE_TOOL_FAMILIES` maps resource families to the required tool family:
   logs need axes, stone needs hammers, ore needs pickaxes, cotton needs
   sickles, and hide needs skinning knives.
-- The equipped tool can gather its own tier and lower at normal speed. It can
-  gather exactly one tier higher, but the channel duration is multiplied by
-  `one_tier_above_duration_multiplier`, currently `5.0`.
+- The equipped tool can gather its own tier and lower at normal speed. Tier 1
+  resources can also be gathered without the matching tool, but the channel
+  duration is multiplied by `bare_hand_tier_one_duration_multiplier`, currently
+  `5.0`.
+- A tool can gather exactly one tier higher, but the channel duration is
+  multiplied by `one_tier_above_duration_multiplier`, currently `5.0`.
 - `remaining_ticks` and `max_ticks` come from the resource and are used to name
   the channel, such as `Gathering Crude Tree 2/3`.
 - `complete_gather()` rewards only the completed tick. Depletion belongs to the

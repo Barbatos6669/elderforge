@@ -7,6 +7,7 @@ extends Node
 
 const ItemStackScript := preload("res://scripts/inventory/item_stack.gd")
 const PrototypeItemCatalogScript := preload("res://scripts/inventory/prototype_item_catalog.gd")
+const MAX_SLOT_COUNT := 42
 
 signal slots_changed
 signal slot_changed(slot_index: int)
@@ -14,7 +15,7 @@ signal currency_changed(silver: int, gold: int)
 signal equipped_slots_changed
 
 ## Number of bag slots owned by this inventory.
-@export_range(1, 120, 1) var slot_count := 42
+@export_range(1, MAX_SLOT_COUNT, 1) var slot_count := MAX_SLOT_COUNT
 ## Seeds resource placeholder stacks during `_ready()` when a debug/demo scene needs them.
 @export var seed_prototype_resources := false
 ## Optional item ids to seed for focused debug/demo previews.
@@ -47,7 +48,7 @@ func _ready() -> void:
 
 ## Rebuilds the inventory with optional prototype seed stacks.
 func initialize(new_slot_count: int, silver: int, gold: int, seed_resources: bool) -> void:
-	slot_count = maxi(new_slot_count, 1)
+	slot_count = clampi(new_slot_count, 1, MAX_SLOT_COUNT)
 	_silver = maxi(silver, 0)
 	_gold = maxi(gold, 0)
 	_equipped_slots = {}
@@ -197,6 +198,82 @@ func add_item(item_id: String, quantity: int) -> int:
 
 	var stack := _create_stack(definition, quantity)
 	return add_stack(stack)
+
+
+## Counts all bag-slot quantity for a specific item id.
+func get_item_count(item_id: String) -> int:
+	if item_id.is_empty():
+		return 0
+
+	var total := 0
+	for slot in _slots:
+		var stack := slot as Resource
+		if stack == null or stack.is_empty():
+			continue
+
+		var definition := stack.get("definition") as Resource
+		if definition != null and String(definition.get("id")) == item_id:
+			total += int(stack.get("quantity"))
+	return total
+
+
+## Returns how many more of an item can fit in the current bag slots.
+func get_addable_count(item_id: String) -> int:
+	var definition := get_definition(item_id)
+	if definition == null:
+		return 0
+
+	var available_count := 0
+	for slot in _slots:
+		var stack := slot as Resource
+		if stack == null:
+			available_count += int(definition.max_stack)
+			continue
+
+		if stack.is_empty():
+			available_count += int(definition.max_stack)
+			continue
+
+		if _is_same_definition(stack.get("definition") as Resource, definition):
+			available_count += maxi(int(definition.max_stack) - int(stack.get("quantity")), 0)
+
+	return available_count
+
+
+## Removes as many matching items as possible from bag slots.
+## Returns the amount that could not be removed, mirroring `add_item()`.
+func remove_item(item_id: String, quantity: int) -> int:
+	var remaining := maxi(quantity, 0)
+	if item_id.is_empty() or remaining <= 0:
+		return 0
+
+	var removed_any := false
+	for slot_index in range(_slots.size()):
+		if remaining <= 0:
+			break
+
+		var stack := _slots[slot_index] as Resource
+		if stack == null or stack.is_empty():
+			continue
+
+		var definition := stack.get("definition") as Resource
+		if definition == null or String(definition.get("id")) != item_id:
+			continue
+
+		var removed := mini(int(stack.get("quantity")), remaining)
+		stack.set("quantity", int(stack.get("quantity")) - removed)
+		remaining -= removed
+		removed_any = true
+
+		if stack.is_empty():
+			_slots[slot_index] = null
+
+		slot_changed.emit(slot_index)
+
+	if removed_any:
+		slots_changed.emit()
+
+	return remaining
 
 
 func get_definition(item_id: String) -> Resource:

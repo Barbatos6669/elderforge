@@ -118,6 +118,7 @@ var _values: Dictionary = {}
 
 
 func _ready() -> void:
+	add_to_group("player_stats")
 	reset_all_to_zero()
 
 

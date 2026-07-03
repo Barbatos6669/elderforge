@@ -1,0 +1,45 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/refining/SawmillPrototype.tscn" id="1_base"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tier_accent"]
+albedo_color = Color(0.2, 0.42, 0.82, 1)
+roughness = 0.48
+
+[sub_resource type="BoxMesh" id="BoxMesh_canopy"]
+size = Vector3(3.65, 0.12, 1.85)
+
+[sub_resource type="BoxMesh" id="BoxMesh_brace"]
+size = Vector3(0.14, 0.9, 0.14)
+
+[node name="Tier4Sawmill" instance=ExtResource("1_base")]
+display_name = "Tier IV Sawmill"
+max_recipe_tier = 4
+
+[node name="Selectable" parent="."]
+display_name = "Tier IV Sawmill"
+neutral_color = Color(0.2, 0.42, 0.82, 1)
+
+[node name="HoverSelectionRing" parent="."]
+ring_color = Color(0.2, 0.42, 0.82, 1)
+
+[node name="SelectedRing" parent="."]
+ring_color = Color(0.2, 0.42, 0.82, 1)
+fill_color = Color(0.2, 0.42, 0.82, 0.12)
+
+[node name="Canopy" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 2.04, 0)
+mesh = SubResource("BoxMesh_canopy")
+surface_material_override/0 = SubResource("StandardMaterial3D_tier_accent")
+
+[node name="CanopyBraceLeft" type="MeshInstance3D" parent="Visuals"]
+rotation = Vector3(0, 0, 0.55)
+position = Vector3(-1.25, 1.55, -0.7)
+mesh = SubResource("BoxMesh_brace")
+surface_material_override/0 = SubResource("StandardMaterial3D_tier_accent")
+
+[node name="CanopyBraceRight" type="MeshInstance3D" parent="Visuals"]
+rotation = Vector3(0, 0, -0.55)
+position = Vector3(1.25, 1.55, -0.7)
+mesh = SubResource("BoxMesh_brace")
+surface_material_override/0 = SubResource("StandardMaterial3D_tier_accent")

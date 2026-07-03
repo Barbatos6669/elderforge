@@ -1,0 +1,22 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/refining/ToolmakerPrototype.tscn" id="1_base"]
+
+[node name="Tier7Toolmaker" instance=ExtResource("1_base")]
+display_name = "Tier VII Tool Maker"
+max_recipe_tier = 7
+
+[node name="Selectable" parent="."]
+display_name = "Tier VII Tool Maker"
+neutral_color = Color(0.95, 0.82, 0.18, 1)
+
+[node name="HoverSelectionRing" parent="."]
+ring_color = Color(0.95, 0.82, 0.18, 1)
+
+[node name="SelectedRing" parent="."]
+ring_color = Color(0.95, 0.82, 0.18, 1)
+fill_color = Color(0.95, 0.82, 0.18, 0.12)
+
+[node name="TierVisuals" parent="Visuals"]
+visual_tier = 7
+accent_color = Color(0.95, 0.82, 0.18, 1)

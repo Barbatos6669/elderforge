@@ -1,0 +1,61 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/refining/SawmillPrototype.tscn" id="1_base"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tier_accent"]
+albedo_color = Color(0.95, 0.82, 0.18, 1)
+metallic = 0.25
+roughness = 0.28
+
+[sub_resource type="BoxMesh" id="BoxMesh_roof_cap"]
+size = Vector3(3.8, 0.14, 2.1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ornate_rail"]
+size = Vector3(3.65, 0.1, 0.1)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_lantern"]
+top_radius = 0.13
+bottom_radius = 0.13
+height = 0.32
+radial_segments = 16
+rings = 1
+
+[node name="Tier7Sawmill" instance=ExtResource("1_base")]
+display_name = "Tier VII Sawmill"
+max_recipe_tier = 7
+
+[node name="Selectable" parent="."]
+display_name = "Tier VII Sawmill"
+neutral_color = Color(0.95, 0.82, 0.18, 1)
+
+[node name="HoverSelectionRing" parent="."]
+ring_color = Color(0.95, 0.82, 0.18, 1)
+
+[node name="SelectedRing" parent="."]
+ring_color = Color(0.95, 0.82, 0.18, 1)
+fill_color = Color(0.95, 0.82, 0.18, 0.12)
+
+[node name="OrnateRoofCap" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 2.18, 0)
+mesh = SubResource("BoxMesh_roof_cap")
+surface_material_override/0 = SubResource("StandardMaterial3D_tier_accent")
+
+[node name="FrontOrnateRail" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 2.03, -1.04)
+mesh = SubResource("BoxMesh_ornate_rail")
+surface_material_override/0 = SubResource("StandardMaterial3D_tier_accent")
+
+[node name="BackOrnateRail" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 2.03, 1.04)
+mesh = SubResource("BoxMesh_ornate_rail")
+surface_material_override/0 = SubResource("StandardMaterial3D_tier_accent")
+
+[node name="LeftLantern" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(-1.4, 1.7, -0.86)
+mesh = SubResource("CylinderMesh_lantern")
+surface_material_override/0 = SubResource("StandardMaterial3D_tier_accent")
+
+[node name="RightLantern" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(1.4, 1.7, -0.86)
+mesh = SubResource("CylinderMesh_lantern")
+surface_material_override/0 = SubResource("StandardMaterial3D_tier_accent")

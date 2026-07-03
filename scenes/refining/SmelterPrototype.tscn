@@ -1,0 +1,85 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/refining/RefiningStationBase.tscn" id="1_base"]
+[ext_resource type="Script" path="res://scripts/refining/refining_station_tier_visuals.gd" id="2_tier_visuals"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_stone"]
+albedo_color = Color(0.23, 0.22, 0.2, 1)
+roughness = 0.82
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_metal"]
+albedo_color = Color(0.48, 0.49, 0.47, 1)
+metallic = 0.25
+roughness = 0.42
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_heat"]
+albedo_color = Color(1, 0.33, 0.08, 1)
+roughness = 0.35
+
+[sub_resource type="BoxMesh" id="BoxMesh_base"]
+size = Vector3(3.8, 0.14, 3.8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_furnace"]
+size = Vector3(2.05, 1.45, 2.0)
+
+[sub_resource type="BoxMesh" id="BoxMesh_hearth"]
+size = Vector3(1.24, 0.55, 0.12)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_chimney"]
+top_radius = 0.28
+bottom_radius = 0.36
+height = 1.15
+radial_segments = 20
+rings = 2
+
+[sub_resource type="BoxMesh" id="BoxMesh_ingot_tray"]
+size = Vector3(1.35, 0.14, 0.7)
+
+[node name="SmelterPrototype" instance=ExtResource("1_base")]
+display_name = "Smelter"
+station_type = "smelter"
+input_item_id_prefix = "ore"
+output_item_id_prefix = "ingots"
+input_item_id = "ore_t1"
+output_item_id = "ingots_t1"
+
+[node name="Selectable" parent="."]
+display_name = "Smelter"
+neutral_color = Color(0.78, 0.24, 0.14, 1)
+
+[node name="HoverSelectionRing" parent="."]
+ring_color = Color(0.78, 0.24, 0.14, 1)
+
+[node name="SelectedRing" parent="."]
+ring_color = Color(0.78, 0.24, 0.14, 1)
+fill_color = Color(0.78, 0.24, 0.14, 0.12)
+
+[node name="FootprintBase" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 0.07, 0)
+mesh = SubResource("BoxMesh_base")
+surface_material_override/0 = SubResource("StandardMaterial3D_stone")
+
+[node name="FurnaceBody" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 0.8, -0.22)
+mesh = SubResource("BoxMesh_furnace")
+surface_material_override/0 = SubResource("StandardMaterial3D_stone")
+
+[node name="HearthGlow" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 0.62, -1.25)
+mesh = SubResource("BoxMesh_hearth")
+surface_material_override/0 = SubResource("StandardMaterial3D_heat")
+
+[node name="Chimney" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0.55, 1.94, 0.22)
+mesh = SubResource("CylinderMesh_chimney")
+surface_material_override/0 = SubResource("StandardMaterial3D_metal")
+
+[node name="IngotTray" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0.92, 0.25, 1.08)
+mesh = SubResource("BoxMesh_ingot_tray")
+surface_material_override/0 = SubResource("StandardMaterial3D_metal")
+
+[node name="TierVisuals" type="Node3D" parent="Visuals"]
+script = ExtResource("2_tier_visuals")
+family_style = "smelter"
+accent_color = Color(0.78, 0.24, 0.14, 1)

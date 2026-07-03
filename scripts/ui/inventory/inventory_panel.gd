@@ -11,15 +11,19 @@ const EquipmentPanelScene := preload("res://scenes/ui/inventory/EquipmentPanel.t
 const InventoryItemIconScript := preload("res://scripts/ui/inventory/inventory_item_icon.gd")
 const InventorySlotButtonScript := preload("res://scripts/ui/inventory/inventory_slot_button.gd")
 const PlayerInventoryScript := preload("res://scripts/inventory/player_inventory.gd")
+const WORLD_INPUT_BLOCKER_GROUP := "blocking_world_input"
+const MAX_VISIBLE_SLOTS := 42
 const SLOT_DRAG_TYPE := "elderforge_inventory_slot"
 const EQUIPMENT_DRAG_TYPE := "elderforge_equipment_slot"
 
 ## Optional external inventory node. Main.tscn points this at PlayerInventory.
 @export var inventory_path: NodePath
+## Optional player stats node. Main.tscn points this at Player/Stats.
+@export var stats_path: NodePath
 ## Keyboard key used to open and close the inventory.
 @export var toggle_key: Key = KEY_I
 ## Number of visible inventory slots.
-@export_range(1, 80, 1) var slot_count: int = 42
+@export_range(1, MAX_VISIBLE_SLOTS, 1) var slot_count: int = MAX_VISIBLE_SLOTS
 ## Number of columns used by the slot grid.
 @export_range(1, 10, 1) var columns: int = 6
 ## Shows the panel when the scene starts. Keep off for normal gameplay.
@@ -38,8 +42,11 @@ var _detail_name: Label
 var _detail_category: Label
 var _detail_stack: Label
 var _detail_description: Label
+var _stats_list: VBoxContainer
+var _stats_empty_label: Label
 var _equipment_panel: Node
 var _inventory: Node
+var _stats: Node
 var _slot_buttons: Array[Button] = []
 var _slot_item_icons: Array[Control] = []
 var _slots: Array = []
@@ -48,15 +55,19 @@ var _silver_amount := 0
 var _gold_amount := 0
 var _selected_index := -1
 var _selected_equipment_slot_id := ""
+var _block_world_input_until_mouse_release := false
 
 
 func _ready() -> void:
+	add_to_group(WORLD_INPUT_BLOCKER_GROUP)
 	visible = start_visible
 	_bind_inventory()
+	_bind_stats()
 	_create_placeholder_equipment()
 	_build_window()
 	_sync_from_inventory()
 	_refresh_all_slots()
+	_refresh_stats()
 	_select_first_filled_slot()
 
 
@@ -73,16 +84,42 @@ func _unhandled_input(event: InputEvent) -> void:
 ## Opens the inventory window.
 func open() -> void:
 	visible = true
+	_block_world_input_until_mouse_release = false
 
 
 ## Closes the inventory window.
 func close() -> void:
 	visible = false
+	_block_world_input_until_mouse_release = _is_world_move_mouse_button_down()
 
 
 ## Swaps between open and closed states.
 func toggle() -> void:
 	visible = not visible
+	if visible:
+		_block_world_input_until_mouse_release = false
+	else:
+		_block_world_input_until_mouse_release = _is_world_move_mouse_button_down()
+
+
+## Returns true while this window should prevent world clicks and movement.
+func blocks_world_input() -> bool:
+	if visible:
+		return true
+
+	if _block_world_input_until_mouse_release:
+		if _is_world_move_mouse_button_down():
+			return true
+		_block_world_input_until_mouse_release = false
+
+	return false
+
+
+func _is_world_move_mouse_button_down() -> bool:
+	return (
+		Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+		or Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
+	)
 
 
 ## Replaces the displayed slots with external inventory data.
@@ -130,12 +167,23 @@ func set_inventory(inventory: Node) -> void:
 	_inventory = inventory
 	_connect_inventory_signals()
 	if _inventory != null and _inventory.has_method("get_slot_count"):
-		slot_count = int(_inventory.call("get_slot_count"))
+		slot_count = clampi(int(_inventory.call("get_slot_count")), 1, MAX_VISIBLE_SLOTS)
 	_sync_from_inventory()
 	if _root != null:
 		_rebuild_slot_grid()
 		_refresh_all_slots()
 		_select_first_filled_slot()
+
+
+## Binds this UI panel to the authoritative player stats node.
+func set_stats(stats: Node) -> void:
+	if _stats == stats:
+		return
+
+	_disconnect_stats_signals()
+	_stats = stats
+	_connect_stats_signals()
+	_refresh_stats()
 
 
 func _bind_inventory() -> void:
@@ -147,6 +195,10 @@ func _bind_inventory() -> void:
 		target_inventory = _create_local_inventory()
 
 	set_inventory(target_inventory)
+
+
+func _bind_stats() -> void:
+	set_stats(_find_stats())
 
 
 func _create_local_inventory() -> Node:
@@ -170,6 +222,15 @@ func _connect_inventory_signals() -> void:
 		_inventory.connect("equipped_slots_changed", Callable(self, "_on_inventory_equipped_slots_changed"))
 
 
+func _connect_stats_signals() -> void:
+	if _stats == null:
+		return
+
+	var stat_callable := Callable(self, "_on_player_stat_changed")
+	if _stats.has_signal("stat_changed") and not _stats.is_connected("stat_changed", stat_callable):
+		_stats.connect("stat_changed", stat_callable)
+
+
 func _disconnect_inventory_signals() -> void:
 	if _inventory == null:
 		return
@@ -187,6 +248,15 @@ func _disconnect_inventory_signals() -> void:
 		_inventory.disconnect("equipped_slots_changed", equipped_callable)
 
 
+func _disconnect_stats_signals() -> void:
+	if _stats == null:
+		return
+
+	var stat_callable := Callable(self, "_on_player_stat_changed")
+	if _stats.has_signal("stat_changed") and _stats.is_connected("stat_changed", stat_callable):
+		_stats.disconnect("stat_changed", stat_callable)
+
+
 func _sync_from_inventory() -> void:
 	if _inventory == null:
 		_silver_amount = maxi(starting_silver, 0)
@@ -195,7 +265,7 @@ func _sync_from_inventory() -> void:
 		return
 
 	if _inventory.has_method("get_slot_count"):
-		slot_count = int(_inventory.call("get_slot_count"))
+		slot_count = clampi(int(_inventory.call("get_slot_count")), 1, MAX_VISIBLE_SLOTS)
 	if _inventory.has_method("get_display_slots"):
 		_slots = _inventory.call("get_display_slots")
 		_normalize_slot_count()
@@ -227,6 +297,10 @@ func _on_inventory_equipped_slots_changed() -> void:
 	if _equipment_panel != null:
 		_equipment_panel.call("set_equipped_slots", _equipped_slots)
 	_refresh_details()
+
+
+func _on_player_stat_changed(_stat_id: StringName, _value: float) -> void:
+	_refresh_stats()
 
 
 ## Returns drag payload for a filled bag slot.
@@ -385,7 +459,23 @@ func _build_window() -> void:
 	margin.add_child(layout)
 
 	layout.add_child(_build_header())
-	layout.add_child(_build_body())
+	layout.add_child(_build_tabs())
+
+
+func _build_tabs() -> Control:
+	var tabs := TabContainer.new()
+	tabs.name = "InventoryTabs"
+	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	var inventory_tab := _build_body()
+	inventory_tab.name = "Inventory"
+	tabs.add_child(inventory_tab)
+
+	var stats_tab := _build_stats_tab()
+	stats_tab.name = "Stats"
+	tabs.add_child(stats_tab)
+	return tabs
 
 
 func _build_header() -> Control:
@@ -472,6 +562,7 @@ func _build_currency_display() -> Control:
 func _build_body() -> Control:
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation", 14)
 
 	_equipment_panel = EquipmentPanelScene.instantiate()
@@ -526,6 +617,36 @@ func _build_body() -> Control:
 	details.add_child(_detail_description)
 
 	return body
+
+
+func _build_stats_tab() -> Control:
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.add_theme_stylebox_override("panel", _section_style())
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 14)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_right", 14)
+	margin.add_theme_constant_override("margin_bottom", 14)
+	panel.add_child(margin)
+
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margin.add_child(scroll)
+
+	_stats_list = VBoxContainer.new()
+	_stats_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_stats_list.add_theme_constant_override("separation", 4)
+	scroll.add_child(_stats_list)
+
+	_stats_empty_label = _make_detail_label("Player stats unavailable.", 16, Color(0.88, 0.84, 0.74, 1.0))
+	_stats_empty_label.visible = false
+	_stats_list.add_child(_stats_empty_label)
+	_refresh_stats()
+	return panel
 
 
 func _wrap_in_margin(control: Control, margin_size: int) -> MarginContainer:
@@ -645,6 +766,56 @@ func _refresh_details() -> void:
 	_detail_category.text = String(slot.get("category", "Item"))
 	_detail_stack.text = "Stack: %d / %d" % [quantity, max_stack]
 	_detail_description.text = String(slot.get("description", ""))
+
+
+func _refresh_stats() -> void:
+	if _stats_list == null:
+		return
+
+	for child in _stats_list.get_children():
+		if child != _stats_empty_label:
+			_stats_list.remove_child(child)
+			child.queue_free()
+
+	var stat_ids: Array = []
+	if _stats != null and _stats.has_method("get_stat_ids"):
+		stat_ids = _stats.call("get_stat_ids")
+
+	if stat_ids.is_empty():
+		if _stats_empty_label != null:
+			_stats_empty_label.visible = true
+		return
+
+	if _stats_empty_label != null:
+		_stats_empty_label.visible = false
+
+	for stat_id in stat_ids:
+		_stats_list.add_child(_build_stat_row(stat_id))
+
+
+func _build_stat_row(stat_id: StringName) -> Control:
+	var row := HBoxContainer.new()
+	row.custom_minimum_size = Vector2(0.0, 24.0)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 12)
+
+	var name_label := Label.new()
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name_label.text = _stat_display_name(stat_id)
+	name_label.add_theme_font_size_override("font_size", 14)
+	name_label.add_theme_color_override("font_color", Color(0.88, 0.84, 0.74, 1.0))
+	row.add_child(name_label)
+
+	var value_label := Label.new()
+	value_label.custom_minimum_size = Vector2(90.0, 0.0)
+	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	value_label.text = _format_stat_value(_stat_value(stat_id), _stat_format(stat_id))
+	value_label.add_theme_font_size_override("font_size", 14)
+	value_label.add_theme_color_override("font_color", Color(1.0, 0.86, 0.43, 1.0))
+	row.add_child(value_label)
+	return row
 
 
 func _refresh_equipment_details() -> void:
@@ -771,7 +942,66 @@ func _equipment_slot_label(slot_id: String) -> String:
 	return slot_id.capitalize()
 
 
+func _find_stats() -> Node:
+	if not stats_path.is_empty():
+		var explicit_stats := get_node_or_null(stats_path)
+		if explicit_stats != null:
+			return explicit_stats
+
+	if not is_inside_tree():
+		return null
+
+	var grouped_stats := get_tree().get_first_node_in_group("player_stats")
+	if grouped_stats != null:
+		return grouped_stats
+
+	return get_tree().root.find_child("Stats", true, false)
+
+
+func _stat_display_name(stat_id: StringName) -> String:
+	if _stats != null and _stats.has_method("get_display_name"):
+		return String(_stats.call("get_display_name", stat_id))
+
+	return String(stat_id).capitalize()
+
+
+func _stat_format(stat_id: StringName) -> StringName:
+	if _stats != null and _stats.has_method("get_format"):
+		return _stats.call("get_format", stat_id)
+
+	return &"number"
+
+
+func _stat_value(stat_id: StringName) -> float:
+	if _stats != null and _stats.has_method("get_stat"):
+		return float(_stats.call("get_stat", stat_id))
+
+	return 0.0
+
+
+func _format_stat_value(value: float, format_id: StringName) -> String:
+	match format_id:
+		&"percent":
+			return "%s%%" % _format_decimal(value)
+		&"per_second":
+			return "%s/s" % _format_decimal(value)
+		&"kilogram":
+			return "%skg" % _format_decimal(value)
+		&"per_day":
+			return "%s/d" % _format_decimal(value)
+		_:
+			return _format_decimal(value)
+
+
+func _format_decimal(value: float) -> String:
+	if is_equal_approx(value, roundf(value)):
+		return str(roundi(value))
+
+	return "%.1f" % value
+
+
 func _normalize_slot_count() -> void:
+	slot_count = clampi(slot_count, 1, MAX_VISIBLE_SLOTS)
 	while _slots.size() < slot_count:
 		_slots.append(EMPTY_SLOT.duplicate())
 

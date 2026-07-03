@@ -5,8 +5,9 @@ This folder renders the inventory and equipment UI. Inventory state lives in
 
 Files:
 
-- `inventory_panel.gd`: toggleable inventory window, bag slot rendering,
-  details panel, currency display, bag drag/drop, and gear drag/drop forwarding.
+- `inventory_panel.gd`: toggleable character window with Inventory and Stats
+  tabs, bag slot rendering, details panel, currency display, bag drag/drop, and
+  gear drag/drop forwarding.
 - `equipment_panel.gd`: equipped gear slot layout, selection state, and gear
   drop routing.
 - `equipment_slot_button.gd`: Godot drag/drop hooks for one equipped gear slot.
@@ -24,6 +25,9 @@ GDScript notes:
 - `InventoryPanel` calls `PlayerInventory.move_or_swap_slots(...)`,
   `equip_from_slot(...)`, and `unequip_to_slot(...)`; it does not own the
   authoritative slot data.
+- The Stats tab reads from `PlayerStats`. `stats_path` can point at a specific
+  node, and the panel falls back to the `player_stats` group for dropped-in
+  player prefabs.
 
 Change this folder when the inventory should look or behave differently on
 screen. Change `scripts/inventory/` when item ownership rules change.

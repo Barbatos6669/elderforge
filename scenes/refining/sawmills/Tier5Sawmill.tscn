@@ -1,0 +1,44 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/refining/SawmillPrototype.tscn" id="1_base"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tier_accent"]
+albedo_color = Color(0.78, 0.18, 0.16, 1)
+metallic = 0.1
+roughness = 0.42
+
+[sub_resource type="BoxMesh" id="BoxMesh_blade_guard"]
+size = Vector3(0.18, 1.25, 0.82)
+
+[sub_resource type="BoxMesh" id="BoxMesh_side_plate"]
+size = Vector3(1.35, 0.16, 0.08)
+
+[node name="Tier5Sawmill" instance=ExtResource("1_base")]
+display_name = "Tier V Sawmill"
+max_recipe_tier = 5
+
+[node name="Selectable" parent="."]
+display_name = "Tier V Sawmill"
+neutral_color = Color(0.78, 0.18, 0.16, 1)
+
+[node name="HoverSelectionRing" parent="."]
+ring_color = Color(0.78, 0.18, 0.16, 1)
+
+[node name="SelectedRing" parent="."]
+ring_color = Color(0.78, 0.18, 0.16, 1)
+fill_color = Color(0.78, 0.18, 0.16, 0.12)
+
+[node name="ReinforcedBladeGuard" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0.15, 1.28, -0.08)
+mesh = SubResource("BoxMesh_blade_guard")
+surface_material_override/0 = SubResource("StandardMaterial3D_tier_accent")
+
+[node name="LeftSidePlate" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(-0.86, 1.08, -0.72)
+mesh = SubResource("BoxMesh_side_plate")
+surface_material_override/0 = SubResource("StandardMaterial3D_tier_accent")
+
+[node name="RightSidePlate" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0.86, 1.08, -0.72)
+mesh = SubResource("BoxMesh_side_plate")
+surface_material_override/0 = SubResource("StandardMaterial3D_tier_accent")

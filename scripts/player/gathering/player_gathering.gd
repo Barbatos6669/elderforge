@@ -32,6 +32,10 @@ signal gathering_cancelled
 @export_range(0, 8, 1) var allowed_tiers_above_tool := 1
 ## Duration multiplier applied when gathering exactly one tier above the equipped tool.
 @export_range(1.0, 25.0, 0.25) var one_tier_above_duration_multiplier := 5.0
+## Whether tier 1 resources can be gathered without the matching tool equipped.
+@export var allow_bare_hand_tier_one_gathering := true
+## Duration multiplier used when gathering tier 1 resources without the matching tool.
+@export_range(1.0, 25.0, 0.25) var bare_hand_tier_one_duration_multiplier := 5.0
 
 var _target_resource: Node3D
 var _is_waiting_for_channel := false
@@ -234,8 +238,7 @@ func _get_gather_tool_result(resource: Node) -> Dictionary:
 
 	var equipped_tool := _get_equipped_tool_data()
 	if equipped_tool.is_empty():
-		result["reason"] = "missing_tool"
-		return result
+		return _bare_hand_tier_one_result(result)
 
 	var tool_family_id := String(equipped_tool.get("family_id", ""))
 	var tool_tier := int(equipped_tool.get("tier", 0))
@@ -244,8 +247,7 @@ func _get_gather_tool_result(resource: Node) -> Dictionary:
 	result["tool_tier"] = tool_tier
 
 	if tool_family_id != required_tool_family_id:
-		result["reason"] = "wrong_tool_family"
-		return result
+		return _bare_hand_tier_one_result(result, "wrong_tool_family")
 	if tool_tier <= 0 or resource_tier <= 0:
 		result["reason"] = "missing_tier"
 		return result
@@ -262,6 +264,17 @@ func _get_gather_tool_result(resource: Node) -> Dictionary:
 		return result
 
 	result["reason"] = "tool_tier_too_low"
+	return result
+
+
+func _bare_hand_tier_one_result(result: Dictionary, fallback_reason: String = "missing_tool") -> Dictionary:
+	if allow_bare_hand_tier_one_gathering and int(result.get("resource_tier", 0)) == 1:
+		result["can_gather"] = true
+		result["duration_multiplier"] = bare_hand_tier_one_duration_multiplier
+		result["reason"] = "bare_hand_tier_one"
+		return result
+
+	result["reason"] = fallback_reason
 	return result
 
 

@@ -1,0 +1,48 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/refining/SawmillPrototype.tscn" id="1_base"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tier_accent"]
+albedo_color = Color(0.72, 0.5, 0.3, 1)
+roughness = 0.6
+
+[sub_resource type="BoxMesh" id="BoxMesh_trim_long"]
+size = Vector3(3.85, 0.1, 0.12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_trim_short"]
+size = Vector3(0.12, 0.1, 3.85)
+
+[node name="Tier2Sawmill" instance=ExtResource("1_base")]
+display_name = "Tier II Sawmill"
+max_recipe_tier = 2
+
+[node name="Selectable" parent="."]
+display_name = "Tier II Sawmill"
+neutral_color = Color(0.72, 0.5, 0.3, 1)
+
+[node name="HoverSelectionRing" parent="."]
+ring_color = Color(0.72, 0.5, 0.3, 1)
+
+[node name="SelectedRing" parent="."]
+ring_color = Color(0.72, 0.5, 0.3, 1)
+fill_color = Color(0.72, 0.5, 0.3, 0.12)
+
+[node name="TierTrimFront" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 0.19, -1.93)
+mesh = SubResource("BoxMesh_trim_long")
+surface_material_override/0 = SubResource("StandardMaterial3D_tier_accent")
+
+[node name="TierTrimBack" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 0.19, 1.93)
+mesh = SubResource("BoxMesh_trim_long")
+surface_material_override/0 = SubResource("StandardMaterial3D_tier_accent")
+
+[node name="TierTrimLeft" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(-1.93, 0.19, 0)
+mesh = SubResource("BoxMesh_trim_short")
+surface_material_override/0 = SubResource("StandardMaterial3D_tier_accent")
+
+[node name="TierTrimRight" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(1.93, 0.19, 0)
+mesh = SubResource("BoxMesh_trim_short")
+surface_material_override/0 = SubResource("StandardMaterial3D_tier_accent")

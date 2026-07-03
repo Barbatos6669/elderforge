@@ -17,6 +17,20 @@ var _was_auto_attack_down := false
 var _block_click_move_until_mouse_release := false
 
 
+## Syncs internal press-edge state while another system owns player input.
+##
+## UI windows call this through PlayerController so clicks used for dragging or
+## pressing buttons do not become movement orders when the window closes.
+func consume_current_action_state() -> void:
+	var is_left_mouse_down := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	var is_right_mouse_down := Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
+	_click_move_started = false
+	_was_left_mouse_down = is_left_mouse_down
+	_was_right_mouse_down = is_right_mouse_down
+	_was_auto_attack_down = Input.is_key_pressed(KEY_SPACE)
+	_block_click_move_until_mouse_release = is_left_mouse_down or is_right_mouse_down
+
+
 ## Returns true while the stop key is held.
 func is_stop_requested() -> bool:
 	return Input.is_key_pressed(KEY_S)

@@ -17,6 +17,11 @@ var _current_target: Node
 var _was_left_mouse_down := false
 
 
+## Syncs click-edge state while UI windows are handling the mouse.
+func consume_current_click_state() -> void:
+	_was_left_mouse_down = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+
+
 ## Attempts to select a target on left-click. Returns the clicked selectable when
 ## targeting consumed the click, or null when click-to-move can continue.
 func try_select_on_click(character: CharacterBody3D) -> Node:

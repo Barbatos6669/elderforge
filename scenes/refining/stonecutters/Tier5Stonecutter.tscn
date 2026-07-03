@@ -1,0 +1,22 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/refining/StonecutterPrototype.tscn" id="1_base"]
+
+[node name="Tier5Stonecutter" instance=ExtResource("1_base")]
+display_name = "Tier V Stonecutter"
+max_recipe_tier = 5
+
+[node name="Selectable" parent="."]
+display_name = "Tier V Stonecutter"
+neutral_color = Color(0.78, 0.18, 0.16, 1)
+
+[node name="HoverSelectionRing" parent="."]
+ring_color = Color(0.78, 0.18, 0.16, 1)
+
+[node name="SelectedRing" parent="."]
+ring_color = Color(0.78, 0.18, 0.16, 1)
+fill_color = Color(0.78, 0.18, 0.16, 0.12)
+
+[node name="TierVisuals" parent="Visuals"]
+visual_tier = 5
+accent_color = Color(0.78, 0.18, 0.16, 1)

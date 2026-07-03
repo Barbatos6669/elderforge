@@ -18,7 +18,9 @@ Files:
   item family `.tres` data and creates one `ItemDefinition` per tier.
 - `player_inventory.gd`: local prototype owner for bag slots, currency, and
   equipped-slot state. Use `get_equipped_slot("main_hand")` when gameplay needs
-  one equipped item, such as checking the currently held gathering tool.
+  one equipped item, such as checking the currently held gathering tool. Systems
+  like gathering and refining use narrow commands such as `add_item()`,
+  `remove_item()`, and `get_item_count()`.
 
 The runtime player inventory starts empty by default. Enable
 `seed_prototype_resources` only in a debug/demo scene when you need sample

@@ -1,0 +1,118 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/refining/RefiningStationBase.tscn" id="1_base"]
+[ext_resource type="Script" path="res://scripts/refining/toolmaker_station_3d.gd" id="2_toolmaker"]
+[ext_resource type="Script" path="res://scripts/refining/refining_station_tier_visuals.gd" id="3_tier_visuals"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wood"]
+albedo_color = Color(0.45, 0.26, 0.12, 1)
+roughness = 0.72
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dark_metal"]
+albedo_color = Color(0.26, 0.27, 0.26, 1)
+metallic = 0.3
+roughness = 0.38
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_warm_metal"]
+albedo_color = Color(0.68, 0.46, 0.24, 1)
+metallic = 0.18
+roughness = 0.44
+
+[sub_resource type="BoxMesh" id="BoxMesh_base"]
+size = Vector3(3.8, 0.14, 3.8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_bench"]
+size = Vector3(2.9, 0.28, 1.12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_leg"]
+size = Vector3(0.2, 0.72, 0.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_anvil_body"]
+size = Vector3(0.86, 0.28, 0.42)
+
+[sub_resource type="BoxMesh" id="BoxMesh_anvil_top"]
+size = Vector3(1.16, 0.16, 0.34)
+
+[sub_resource type="BoxMesh" id="BoxMesh_tool_rack"]
+size = Vector3(2.7, 0.14, 0.14)
+
+[sub_resource type="BoxMesh" id="BoxMesh_tool_blank"]
+size = Vector3(0.16, 0.72, 0.08)
+
+[node name="ToolmakerPrototype" instance=ExtResource("1_base")]
+script = ExtResource("2_toolmaker")
+display_name = "Tool Maker"
+station_type = "toolmaker"
+
+[node name="Selectable" parent="."]
+display_name = "Tool Maker"
+neutral_color = Color(0.78, 0.58, 0.28, 1)
+
+[node name="HoverSelectionRing" parent="."]
+ring_color = Color(0.78, 0.58, 0.28, 1)
+
+[node name="SelectedRing" parent="."]
+ring_color = Color(0.78, 0.58, 0.28, 1)
+fill_color = Color(0.78, 0.58, 0.28, 0.12)
+
+[node name="FootprintBase" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 0.07, 0)
+mesh = SubResource("BoxMesh_base")
+surface_material_override/0 = SubResource("StandardMaterial3D_dark_metal")
+
+[node name="Workbench" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 0.82, 0)
+mesh = SubResource("BoxMesh_bench")
+surface_material_override/0 = SubResource("StandardMaterial3D_wood")
+
+[node name="LegNW" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(-1.25, 0.42, -0.4)
+mesh = SubResource("BoxMesh_leg")
+surface_material_override/0 = SubResource("StandardMaterial3D_wood")
+
+[node name="LegNE" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(1.25, 0.42, -0.4)
+mesh = SubResource("BoxMesh_leg")
+surface_material_override/0 = SubResource("StandardMaterial3D_wood")
+
+[node name="LegSW" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(-1.25, 0.42, 0.4)
+mesh = SubResource("BoxMesh_leg")
+surface_material_override/0 = SubResource("StandardMaterial3D_wood")
+
+[node name="LegSE" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(1.25, 0.42, 0.4)
+mesh = SubResource("BoxMesh_leg")
+surface_material_override/0 = SubResource("StandardMaterial3D_wood")
+
+[node name="AnvilBody" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(-0.58, 1.06, -0.05)
+mesh = SubResource("BoxMesh_anvil_body")
+surface_material_override/0 = SubResource("StandardMaterial3D_dark_metal")
+
+[node name="AnvilTop" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(-0.58, 1.28, -0.05)
+mesh = SubResource("BoxMesh_anvil_top")
+surface_material_override/0 = SubResource("StandardMaterial3D_dark_metal")
+
+[node name="ToolRack" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 1.54, 0.68)
+mesh = SubResource("BoxMesh_tool_rack")
+surface_material_override/0 = SubResource("StandardMaterial3D_warm_metal")
+
+[node name="ToolBlankA" type="MeshInstance3D" parent="Visuals"]
+rotation = Vector3(0, 0, 0.2)
+position = Vector3(0.58, 1.13, 0.05)
+mesh = SubResource("BoxMesh_tool_blank")
+surface_material_override/0 = SubResource("StandardMaterial3D_warm_metal")
+
+[node name="ToolBlankB" type="MeshInstance3D" parent="Visuals"]
+rotation = Vector3(0, 0, -0.25)
+position = Vector3(0.9, 1.13, -0.18)
+mesh = SubResource("BoxMesh_tool_blank")
+surface_material_override/0 = SubResource("StandardMaterial3D_warm_metal")
+
+[node name="TierVisuals" type="Node3D" parent="Visuals"]
+script = ExtResource("3_tier_visuals")
+family_style = "toolmaker"
+accent_color = Color(0.78, 0.58, 0.28, 1)
