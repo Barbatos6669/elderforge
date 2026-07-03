@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemFamilyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_family_definition.gd" id="1_family"]
+
+[resource]
+script = ExtResource("1_family")
+family_id = "logs"
+icon_id = "logs"
+item_id_prefix = "timber"
+category = "Resource"
+tier_names = PackedStringArray("Crude Logs", "Rough Logs", "Sturdy Logs", "Seasoned Logs", "Hardened Logs", "Emberwood Logs", "Sunheart Logs", "Kingswood Logs")
+base_weight = 0.03
+weight_per_tier = 0.01
+usage_text = "woodworking, crafting, and construction"
+max_stack = 999

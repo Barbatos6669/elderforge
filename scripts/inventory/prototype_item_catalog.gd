@@ -1,17 +1,14 @@
-## Temporary in-code item catalog for prototype gathering resources.
+## Temporary item catalog for prototype gathering resources, refined materials,
+## and tools.
 ##
-## This is the bridge before we move item data into authored `.tres` resources
-## or server-provided definitions. UI code should ask inventories for stacks
-## instead of duplicating this item data.
+## Item family data lives in `assets/items/families/`. This script turns each
+## family resource into one ItemDefinition per tier. UI code should ask
+## inventories for stacks instead of duplicating this item data.
 class_name PrototypeItemCatalog
 extends RefCounted
 
 const ItemDefinitionScript := preload("res://scripts/inventory/item_definition.gd")
 const RESOURCE_CATEGORY := "Resource"
-const TOOL_CATEGORY := "Tool"
-const AXE_TOOL_SCENE_PATH_TEMPLATE := "res://scenes/equipment/tools/axes/Tier%dAxe.tscn"
-const AXE_MAIN_HAND_ATTACHMENT_PROFILE_PATH := "res://assets/models/equipment/attachments/axe_main_hand.tres"
-
 const TIER_COLORS := {
 	1: Color(0.72, 0.72, 0.72, 1.0),
 	2: Color(0.72, 0.50, 0.30, 1.0),
@@ -23,141 +20,48 @@ const TIER_COLORS := {
 	8: Color(0.94, 0.94, 0.9, 1.0),
 }
 
+const RAW_FAMILY_PATHS := [
+	"res://assets/items/families/raw/logs.tres",
+	"res://assets/items/families/raw/stone.tres",
+	"res://assets/items/families/raw/ore.tres",
+	"res://assets/items/families/raw/cotton.tres",
+	"res://assets/items/families/raw/hide.tres",
+]
+const REFINED_FAMILY_PATHS := [
+	"res://assets/items/families/refined/planks.tres",
+	"res://assets/items/families/refined/blocks.tres",
+	"res://assets/items/families/refined/ingots.tres",
+	"res://assets/items/families/refined/cloth.tres",
+	"res://assets/items/families/refined/worked_leather.tres",
+]
+const TOOL_FAMILY_PATHS := [
+	"res://assets/items/families/tools/axe.tres",
+	"res://assets/items/families/tools/hammer.tres",
+	"res://assets/items/families/tools/pickaxe.tres",
+	"res://assets/items/families/tools/sickle.tres",
+	"res://assets/items/families/tools/skinning_knife.tres",
+]
+
 
 ## Builds the current gathering resource item pass.
 static func create_gathering_definitions() -> Array:
-	var definitions := []
-	_append_family(
-		definitions,
-		"logs",
-		"logs",
-		"timber",
-		[
-			"Crude Logs",
-			"Rough Logs",
-			"Sturdy Logs",
-			"Seasoned Logs",
-			"Hardened Logs",
-			"Emberwood Logs",
-			"Sunheart Logs",
-			"Kingswood Logs",
-		],
-		0.03,
-		0.01,
-		"woodworking, crafting, and construction"
-	)
-	_append_family(
-		definitions,
-		"stone",
-		"rocks",
-		"stone",
-		[
-			"Crude Stone",
-			"Rough Stone",
-			"Sturdy Stone",
-			"Dense Stone",
-			"Hardened Stone",
-			"Runed Stone",
-			"Sunstone",
-			"Kingsstone",
-		],
-		0.06,
-		0.015,
-		"masonry, construction, and refining"
-	)
-	_append_family(
-		definitions,
-		"ore",
-		"ores",
-		"ore",
-		[
-			"Crude Ore",
-			"Rough Ore",
-			"Sturdy Ore",
-			"Dense Ore",
-			"Hardened Ore",
-			"Runed Ore",
-			"Star Ore",
-			"Kingsmetal Ore",
-		],
-		0.08,
-		0.02,
-		"smelting, weapon crafting, and refining"
-	)
-	_append_family(
-		definitions,
-		"cotton",
-		"cotton",
-		"cotton",
-		[
-			"Crude Cotton",
-			"Rough Cotton",
-			"Coarse Cotton",
-			"Soft Cotton",
-			"Fine Cotton",
-			"Lustrous Cotton",
-			"Sunspun Cotton",
-			"Kingsweave Cotton",
-		],
-		0.02,
-		0.006,
-		"tailoring, cloth crafting, and refining"
-	)
-	_append_family(
-		definitions,
-		"hide",
-		"hide",
-		"hide",
-		[
-			"Crude Hide",
-			"Rough Hide",
-			"Thick Hide",
-			"Cured Hide",
-			"Hardened Hide",
-			"Pristine Hide",
-			"Royal Hide",
-			"Elder Hide",
-		],
-		0.04,
-		0.012,
-		"leatherworking, armor crafting, and refining"
-	)
-	return definitions
+	return _create_definitions_from_paths(RAW_FAMILY_PATHS)
+
+
+## Builds temporary refined resource items produced by crafting/refining.
+static func create_refined_resource_definitions() -> Array:
+	return _create_definitions_from_paths(REFINED_FAMILY_PATHS)
 
 
 ## Builds temporary gathering tool preview items before real tool data exists.
 static func create_equipment_preview_definitions() -> Array:
-	var definitions := []
-	_append_family(
-		definitions,
-		"axe",
-		"axe",
-		"axe",
-		[
-			"Crude Axe",
-			"Rough Axe",
-			"Sturdy Axe",
-			"Forged Axe",
-			"Hardened Axe",
-			"Runed Axe",
-			"Sunsteel Axe",
-			"Elder Axe",
-		],
-		2.5,
-		0.25,
-		"woodcutting, gathering tests, and tool prototypes",
-		TOOL_CATEGORY,
-		1,
-		"main_hand",
-		AXE_TOOL_SCENE_PATH_TEMPLATE,
-		AXE_MAIN_HAND_ATTACHMENT_PROFILE_PATH
-	)
-	return definitions
+	return _create_definitions_from_paths(TOOL_FAMILY_PATHS)
 
 
 ## Builds every temporary item definition known to the prototype.
 static func create_prototype_definitions() -> Array:
 	var definitions := create_gathering_definitions()
+	definitions.append_array(create_refined_resource_definitions())
 	definitions.append_array(create_equipment_preview_definitions())
 	return definitions
 
@@ -180,32 +84,63 @@ static func tier_roman(tier: int) -> String:
 	return String(roman_values.get(tier, str(tier)))
 
 
-static func _append_family(
-	definitions: Array,
-	family_id: String,
-	icon_id: String,
-	item_id_prefix: String,
-	names: Array,
-	base_weight: float,
-	weight_per_tier: float,
-	usage_text: String,
-	category: String = RESOURCE_CATEGORY,
-	max_stack: int = 999,
-	equip_slot: String = "",
-	equipment_scene_path: String = "",
-	equipment_attachment_profile_path: String = ""
-) -> void:
-	for tier_index in range(names.size()):
+static func _create_definitions_from_paths(paths: Array) -> Array:
+	var definitions := []
+	for path in paths:
+		var family_definition := _load_family_definition(path)
+		if family_definition == null:
+			continue
+
+		_append_family_definition(definitions, family_definition, path)
+	return definitions
+
+
+static func _load_family_definition(path: String) -> Resource:
+	if not ResourceLoader.exists(path):
+		push_warning("Missing item family definition: %s" % path)
+		return null
+
+	var family_definition := load(path) as Resource
+	if family_definition == null:
+		push_warning("Item family definition did not load as a Resource: %s" % path)
+		return null
+
+	return family_definition
+
+
+static func _append_family_definition(definitions: Array, family_definition: Resource, source_path: String) -> void:
+	var family_id := String(family_definition.get("family_id"))
+	var icon_id := String(family_definition.get("icon_id"))
+	var item_id_prefix := String(family_definition.get("item_id_prefix"))
+	var category := String(family_definition.get("category"))
+	var tier_names := PackedStringArray(family_definition.get("tier_names"))
+	var base_weight := float(family_definition.get("base_weight"))
+	var weight_per_tier := float(family_definition.get("weight_per_tier"))
+	var usage_text := String(family_definition.get("usage_text"))
+	var max_stack := maxi(1, int(family_definition.get("max_stack")))
+	var equip_slot := String(family_definition.get("equip_slot"))
+	var equipment_scene_path_template := String(family_definition.get("equipment_scene_path_template"))
+	var equipment_attachment_profile_path := String(family_definition.get("equipment_attachment_profile_path"))
+	var equipment_animation_profile_path_template := String(family_definition.get("equipment_animation_profile_path_template"))
+
+	if family_id.is_empty() or item_id_prefix.is_empty() or tier_names.is_empty():
+		push_warning("Item family definition is missing required data: %s" % source_path)
+		return
+	if category.is_empty():
+		category = RESOURCE_CATEGORY
+
+	for tier_index in range(tier_names.size()):
 		var tier := tier_index + 1
 		var roman := tier_roman(tier)
 		var definition := ItemDefinitionScript.new()
 		definition.id = "%s_t%d" % [item_id_prefix, tier]
-		definition.display_name = "%s %s" % [String(names[tier_index]), roman]
+		definition.display_name = "%s %s" % [tier_names[tier_index], roman]
 		definition.category = category
 		definition.family_id = family_id
 		definition.equip_slot = equip_slot
-		definition.equipment_scene_path = _resolve_equipment_scene_path(equipment_scene_path, tier)
+		definition.equipment_scene_path = _resolve_tier_path(equipment_scene_path_template, tier)
 		definition.equipment_attachment_profile_path = equipment_attachment_profile_path
+		definition.equipment_animation_profile_path = _resolve_tier_path(equipment_animation_profile_path_template, tier)
 		definition.tier = tier
 		definition.tier_roman = roman
 		definition.icon_id = icon_id
@@ -216,7 +151,11 @@ static func _append_family(
 		definitions.append(definition)
 
 
-static func _resolve_equipment_scene_path(scene_path_template: String, tier: int) -> String:
-	if scene_path_template.contains("%d"):
-		return scene_path_template % tier
-	return scene_path_template
+static func _resolve_tier_path(path_template: String, tier: int) -> String:
+	var placeholder_count := path_template.count("%d")
+	if placeholder_count <= 0:
+		return path_template
+	if placeholder_count == 1:
+		return path_template % tier
+
+	return path_template % [tier, tier]

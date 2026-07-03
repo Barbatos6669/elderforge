@@ -18,8 +18,10 @@ extends Node
 @export var move_animation_name: StringName = &"Jog_Fwd"
 ## One-shot animation played when an auto-attack lands.
 @export var attack_animation_name: StringName = &"Punch_Jab"
-## Looped animation used while the player channels gathering.
+## Fallback looped animation used while the player channels gathering.
 @export var gathering_animation_name: StringName = &"Shield_OneShot"
+## Looped animation used when gathering logs with an axe.
+@export var axe_tree_gathering_animation_name: StringName = &"TreeChopping"
 ## Blend time used when switching between idle and movement.
 @export var blend_time: float = 0.12
 ## Playback speed for the movement animation.
@@ -30,9 +32,13 @@ extends Node
 @export var gathering_speed_scale: float = 0.85
 
 var _animation_player: AnimationPlayer
+var _animation_library: AnimationLibrary
 var _is_moving := false
 var _is_attacking := false
 var _is_gathering := false
+var _active_gathering_animation_name: StringName = &""
+var _active_gathering_animation_scene_path := ""
+var _animation_profiles_by_path := {}
 
 
 func _ready() -> void:
@@ -56,15 +62,30 @@ func set_moving(is_moving: bool) -> void:
 
 
 ## Plays or stops the looped gathering animation state.
-func set_gathering(is_gathering: bool) -> void:
+func set_gathering(is_gathering: bool, context: Dictionary = {}) -> void:
+	var next_gathering_animation_name: StringName = &""
+	var next_gathering_animation_scene_path := ""
+	if is_gathering:
+		var animation_data := _gathering_animation_data_for_context(context)
+		next_gathering_animation_name = animation_data.get("animation_name", &"")
+		next_gathering_animation_scene_path = String(animation_data.get("animation_scene_path", ""))
+
 	if _animation_player == null:
 		_is_gathering = is_gathering
+		_active_gathering_animation_name = next_gathering_animation_name
+		_active_gathering_animation_scene_path = next_gathering_animation_scene_path
 		return
 
-	if _is_gathering == is_gathering:
+	if (
+		_is_gathering == is_gathering
+		and _active_gathering_animation_name == next_gathering_animation_name
+		and _active_gathering_animation_scene_path == next_gathering_animation_scene_path
+	):
 		return
 
 	_is_gathering = is_gathering
+	_active_gathering_animation_name = next_gathering_animation_name
+	_active_gathering_animation_scene_path = next_gathering_animation_scene_path
 	if _is_attacking:
 		return
 
@@ -118,12 +139,12 @@ func _setup_animation_player() -> void:
 	model_root.add_child(_animation_player)
 
 	# Duplicating clips keeps imports untouched and allows runtime loop settings.
-	var library := AnimationLibrary.new()
-	_add_animation_to_library(library, source_player, idle_animation_name, true)
-	_add_animation_to_library(library, source_player, move_animation_name, true)
-	_add_animation_to_library(library, source_player, attack_animation_name, false)
-	_add_gathering_animation_to_library(library, source_player)
-	_animation_player.add_animation_library("", library)
+	_animation_library = AnimationLibrary.new()
+	_add_animation_to_library(_animation_library, source_player, idle_animation_name, true)
+	_add_animation_to_library(_animation_library, source_player, move_animation_name, true)
+	_add_animation_to_library(_animation_library, source_player, attack_animation_name, false)
+	_add_gathering_animation_to_library(_animation_library, source_player)
+	_animation_player.add_animation_library("", _animation_library)
 	_animation_player.animation_finished.connect(_on_animation_finished)
 
 	source_root.queue_free()
@@ -159,6 +180,7 @@ func _add_gathering_animation_to_library(
 		gathering_source_player = _find_animation_player(source_root)
 
 	_add_animation_to_library(library, gathering_source_player, gathering_animation_name, true)
+	_add_animation_to_library(library, gathering_source_player, axe_tree_gathering_animation_name, true)
 
 	if source_root != null:
 		source_root.queue_free()
@@ -179,14 +201,15 @@ func _play_current_state(force_restart: bool = false) -> void:
 
 
 func _current_state_animation_name() -> StringName:
-	if _is_gathering and _animation_player.has_animation(gathering_animation_name):
-		return gathering_animation_name
+	var active_gathering_animation_name := _current_gathering_animation_name()
+	if _is_gathering and not String(active_gathering_animation_name).is_empty():
+		return active_gathering_animation_name
 
 	return move_animation_name if _is_moving else idle_animation_name
 
 
 func _current_state_speed_scale() -> float:
-	if _is_gathering and _animation_player.has_animation(gathering_animation_name):
+	if _is_gathering and not String(_current_gathering_animation_name()).is_empty():
 		return gathering_speed_scale
 
 	return move_speed_scale if _is_moving else 1.0
@@ -198,6 +221,77 @@ func _on_animation_finished(animation_name: StringName) -> void:
 
 	_is_attacking = false
 	_play_current_state(true)
+
+
+func _gathering_animation_data_for_context(context: Dictionary) -> Dictionary:
+	var resource_family_id := String(context.get("resource_family_id", ""))
+	var animation_profile := _load_equipment_animation_profile(String(context.get("tool_animation_profile_path", "")))
+	if animation_profile != null and animation_profile.has_method("get_gathering_animation_name"):
+		var profile_animation_name := StringName(String(animation_profile.call("get_gathering_animation_name", resource_family_id)))
+		if not String(profile_animation_name).is_empty():
+			return {
+				"animation_name": profile_animation_name,
+				"animation_scene_path": String(animation_profile.get("gathering_animation_scene_path")),
+			}
+
+	var tool_family_id := String(context.get("tool_family_id", ""))
+	if resource_family_id == "logs" and tool_family_id == "axe":
+		return {"animation_name": axe_tree_gathering_animation_name, "animation_scene_path": ""}
+
+	return {"animation_name": gathering_animation_name, "animation_scene_path": ""}
+
+
+func _current_gathering_animation_name() -> StringName:
+	if _animation_player == null:
+		return &""
+	if _ensure_gathering_animation_loaded(_active_gathering_animation_name, _active_gathering_animation_scene_path):
+		return _active_gathering_animation_name
+	if _ensure_gathering_animation_loaded(gathering_animation_name, ""):
+		return gathering_animation_name
+
+	return &""
+
+
+func _ensure_gathering_animation_loaded(animation_name: StringName, animation_scene_path: String = "") -> bool:
+	if _animation_player == null or _animation_library == null or String(animation_name).is_empty():
+		return false
+	if _animation_player.has_animation(animation_name):
+		var animation := _animation_player.get_animation(animation_name)
+		if animation != null:
+			animation.loop_mode = Animation.LOOP_LINEAR
+		return true
+
+	var source_root: Node = null
+	var source_player: AnimationPlayer = null
+	if not animation_scene_path.is_empty() and ResourceLoader.exists(animation_scene_path, "PackedScene"):
+		var animation_scene := load(animation_scene_path) as PackedScene
+		source_root = animation_scene.instantiate() if animation_scene != null else null
+		source_player = _find_animation_player(source_root) if source_root != null else null
+	elif gathering_animation_scene != null:
+		source_root = gathering_animation_scene.instantiate()
+		source_player = _find_animation_player(source_root)
+	else:
+		source_root = source_animation_scene.instantiate()
+		source_player = _find_animation_player(source_root)
+
+	_add_animation_to_library(_animation_library, source_player, animation_name, true)
+	if source_root != null:
+		source_root.queue_free()
+
+	return _animation_player.has_animation(animation_name)
+
+
+func _load_equipment_animation_profile(profile_path: String) -> Resource:
+	if profile_path.is_empty():
+		return null
+	if _animation_profiles_by_path.has(profile_path):
+		return _animation_profiles_by_path[profile_path] as Resource
+	if not ResourceLoader.exists(profile_path):
+		return null
+
+	var profile := load(profile_path) as Resource
+	_animation_profiles_by_path[profile_path] = profile
+	return profile
 
 
 func _find_animation_player(node: Node) -> AnimationPlayer:

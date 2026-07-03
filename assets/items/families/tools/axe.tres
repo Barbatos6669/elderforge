@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemFamilyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_family_definition.gd" id="1_family"]
+
+[resource]
+script = ExtResource("1_family")
+family_id = "axe"
+icon_id = "axe"
+item_id_prefix = "axe"
+category = "Tool"
+tier_names = PackedStringArray("Crude Axe", "Rough Axe", "Sturdy Axe", "Forged Axe", "Hardened Axe", "Runed Axe", "Sunsteel Axe", "Elder Axe")
+base_weight = 2.5
+weight_per_tier = 0.25
+usage_text = "woodcutting, gathering tests, and tool prototypes"
+max_stack = 1
+equip_slot = "main_hand"
+equipment_scene_path_template = "res://scenes/equipment/tools/axes/Tier%dAxe.tscn"
+equipment_attachment_profile_path = "res://assets/models/equipment/attachments/axe_main_hand.tres"
+equipment_animation_profile_path_template = "res://assets/equipment/tools/axes/t%d/animations/t%d_axe_animation_profile.tres"

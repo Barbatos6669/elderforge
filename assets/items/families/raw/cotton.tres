@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemFamilyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_family_definition.gd" id="1_family"]
+
+[resource]
+script = ExtResource("1_family")
+family_id = "cotton"
+icon_id = "cotton"
+item_id_prefix = "cotton"
+category = "Resource"
+tier_names = PackedStringArray("Crude Cotton", "Rough Cotton", "Coarse Cotton", "Soft Cotton", "Fine Cotton", "Lustrous Cotton", "Sunspun Cotton", "Kingsweave Cotton")
+base_weight = 0.02
+weight_per_tier = 0.006
+usage_text = "tailoring, cloth crafting, and refining"
+max_stack = 999

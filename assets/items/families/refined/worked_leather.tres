@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemFamilyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_family_definition.gd" id="1_family"]
+
+[resource]
+script = ExtResource("1_family")
+family_id = "worked_leather"
+icon_id = "worked_leather"
+item_id_prefix = "worked_leather"
+category = "Refined Resource"
+tier_names = PackedStringArray("Crude Worked Leather", "Rough Worked Leather", "Thick Worked Leather", "Cured Worked Leather", "Hardened Worked Leather", "Pristine Worked Leather", "Royal Worked Leather", "Elder Worked Leather")
+base_weight = 0.026
+weight_per_tier = 0.008
+usage_text = "leatherworking, armor crafting, bags, saddles, and gear components"
+max_stack = 999

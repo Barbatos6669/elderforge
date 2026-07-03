@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemFamilyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_family_definition.gd" id="1_family"]
+
+[resource]
+script = ExtResource("1_family")
+family_id = "ore"
+icon_id = "ores"
+item_id_prefix = "ore"
+category = "Resource"
+tier_names = PackedStringArray("Crude Ore", "Rough Ore", "Sturdy Ore", "Dense Ore", "Hardened Ore", "Runed Ore", "Star Ore", "Kingsmetal Ore")
+base_weight = 0.08
+weight_per_tier = 0.02
+usage_text = "smelting, weapon crafting, and refining"
+max_stack = 999

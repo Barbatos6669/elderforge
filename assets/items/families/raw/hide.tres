@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemFamilyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_family_definition.gd" id="1_family"]
+
+[resource]
+script = ExtResource("1_family")
+family_id = "hide"
+icon_id = "hide"
+item_id_prefix = "hide"
+category = "Resource"
+tier_names = PackedStringArray("Crude Hide", "Rough Hide", "Thick Hide", "Cured Hide", "Hardened Hide", "Pristine Hide", "Royal Hide", "Elder Hide")
+base_weight = 0.04
+weight_per_tier = 0.012
+usage_text = "leatherworking, armor crafting, and refining"
+max_stack = 999

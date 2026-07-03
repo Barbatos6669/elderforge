@@ -29,3 +29,5 @@ Current player usage:
 - `UAL1_Standard.glb`: `Idle`, `Jog_Fwd`, and `Punch_Jab`.
 - `UAL2_Standard.glb`: `Shield_OneShot` for the first hand-gathering wood
   prototype.
+- Axe tiers have local editable/exported animation files under
+  `assets/equipment/tools/axes/t#/animations/` for tool-specific tree chopping.

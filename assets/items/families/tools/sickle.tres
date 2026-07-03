@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemFamilyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_family_definition.gd" id="1_family"]
+
+[resource]
+script = ExtResource("1_family")
+family_id = "sickle"
+icon_id = "sickle"
+item_id_prefix = "sickle"
+category = "Tool"
+tier_names = PackedStringArray("Crude Sickle", "Rough Sickle", "Sturdy Sickle", "Forged Sickle", "Hardened Sickle", "Runed Sickle", "Sunsteel Sickle", "Elder Sickle")
+base_weight = 1.7
+weight_per_tier = 0.17
+usage_text = "fiber gathering, harvesting tests, and tool prototypes"
+max_stack = 1
+equip_slot = "main_hand"
+equipment_scene_path_template = "res://scenes/equipment/tools/sickles/Tier%dSickle.tscn"
+equipment_attachment_profile_path = "res://assets/models/equipment/attachments/sickle_main_hand.tres"
+equipment_animation_profile_path_template = "res://assets/equipment/tools/sickles/t%d/animations/t%d_sickle_animation_profile.tres"

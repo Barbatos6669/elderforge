@@ -5,8 +5,8 @@ their intended in-game display size so Godot does not need to scale them much.
 
 Files:
 
-- `gather_pickaxe_cursor.png`: resource-hover cursor used by gatherable nodes.
-  It was generated from the supplied pickaxe reference prompt, then chroma-keyed
+- `gather_tool_cursor.png`: resource-hover cursor used by gatherable nodes.
+  It was generated from the supplied gathering-tool reference prompt, then chroma-keyed
   and resized to 48x48 for runtime use.
 - `depleted_resource_cursor.png`: red X cursor used when a resource is hovered
   but cannot currently be gathered, such as a depleted tree.

@@ -89,6 +89,12 @@ func get_equipped_slots() -> Dictionary:
 	return display_slots
 
 
+## Returns one equipped slot in the same UI-facing dictionary format as `get_equipped_slots()`.
+func get_equipped_slot(equipment_slot_id: String) -> Dictionary:
+	var stack := _equipped_stack_at(equipment_slot_id)
+	return stack.to_display_dict() if stack != null and not stack.is_empty() else {}
+
+
 func get_slot(slot_index: int) -> Resource:
 	if not _is_valid_slot_index(slot_index):
 		return null
@@ -390,6 +396,16 @@ func _prototype_quantity(family_id: String, tier: int) -> int:
 	match family_id:
 		"logs":
 			quantity_step = 83
+		"planks":
+			quantity_step = 79
+		"blocks":
+			quantity_step = 67
+		"ingots":
+			quantity_step = 61
+		"cloth":
+			quantity_step = 73
+		"worked_leather":
+			quantity_step = 57
 		"stone":
 			quantity_step = 71
 		"ore":

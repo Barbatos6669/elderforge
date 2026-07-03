@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="EquipmentAnimationProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/animation/equipment_animation_profile.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+profile_id = "axe_t3"
+gathering_animation_scene_path = "res://assets/equipment/tools/axes/t3/animations/exports/t3_axe_animations.glb"
+default_gathering_animation_name = &"T3_Axe_TreeChopping"
+logs_gathering_animation_name = &"T3_Axe_TreeChopping"

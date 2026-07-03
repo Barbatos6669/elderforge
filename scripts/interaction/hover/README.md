@@ -25,7 +25,7 @@ GDScript notes:
 If hover activates too early or too late, tune the exported screen padding,
 body-line radius, ray mask, or target hitbox before rewriting the script.
 
-Gatherable resources currently use `assets/ui/cursors/gather_pickaxe_cursor.png`
+Gatherable resources currently use `assets/ui/cursors/gather_tool_cursor.png`
 as their hover cursor and `assets/ui/cursors/depleted_resource_cursor.png` when
 they are depleted.
 

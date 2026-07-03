@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=42 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/debug/IsometricGrid.tscn" id="3_grid"]
@@ -7,6 +7,36 @@
 [ext_resource type="Script" path="res://scripts/inventory/player_inventory.gd" id="6_player_inventory"]
 [ext_resource type="PackedScene" path="res://scenes/gathering/Tier1Tree.tscn" id="7_tier1_tree"]
 [ext_resource type="PackedScene" path="res://scenes/gathering/Tier1Rock.tscn" id="8_tier1_rock"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier1Ore.tscn" id="9_tier1_ore"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier1Fiber.tscn" id="10_tier1_fiber"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier2Tree.tscn" id="12_tier2_tree"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier3Tree.tscn" id="13_tier3_tree"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier4Tree.tscn" id="14_tier4_tree"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier5Tree.tscn" id="15_tier5_tree"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier6Tree.tscn" id="16_tier6_tree"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier7Tree.tscn" id="17_tier7_tree"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier8Tree.tscn" id="18_tier8_tree"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier2Rock.tscn" id="20_tier2_rock"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier3Rock.tscn" id="21_tier3_rock"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier4Rock.tscn" id="22_tier4_rock"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier5Rock.tscn" id="23_tier5_rock"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier6Rock.tscn" id="24_tier6_rock"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier7Rock.tscn" id="25_tier7_rock"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier8Rock.tscn" id="26_tier8_rock"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier2Ore.tscn" id="28_tier2_ore"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier3Ore.tscn" id="29_tier3_ore"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier4Ore.tscn" id="30_tier4_ore"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier5Ore.tscn" id="31_tier5_ore"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier6Ore.tscn" id="32_tier6_ore"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier7Ore.tscn" id="33_tier7_ore"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier8Ore.tscn" id="34_tier8_ore"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier2Fiber.tscn" id="36_tier2_fiber"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier3Fiber.tscn" id="37_tier3_fiber"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier4Fiber.tscn" id="38_tier4_fiber"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier5Fiber.tscn" id="39_tier5_fiber"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier6Fiber.tscn" id="40_tier6_fiber"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier7Fiber.tscn" id="41_tier7_fiber"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/Tier8Fiber.tscn" id="42_tier8_fiber"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -92,10 +122,100 @@ selectable_path = NodePath("../Selectable")
 ring_color = Color(1, 0.08, 0.06, 1)
 
 [node name="Tier1Tree" parent="World" instance=ExtResource("7_tier1_tree")]
-position = Vector3(-4, 0, -2.5)
+position = Vector3(-7, 0, -2.5)
+
+[node name="Tier2Tree" parent="World" instance=ExtResource("12_tier2_tree")]
+position = Vector3(-5, 0, -2.5)
+
+[node name="Tier3Tree" parent="World" instance=ExtResource("13_tier3_tree")]
+position = Vector3(-3, 0, -2.5)
+
+[node name="Tier4Tree" parent="World" instance=ExtResource("14_tier4_tree")]
+position = Vector3(-1, 0, -2.5)
+
+[node name="Tier5Tree" parent="World" instance=ExtResource("15_tier5_tree")]
+position = Vector3(1, 0, -2.5)
+
+[node name="Tier6Tree" parent="World" instance=ExtResource("16_tier6_tree")]
+position = Vector3(3, 0, -2.5)
+
+[node name="Tier7Tree" parent="World" instance=ExtResource("17_tier7_tree")]
+position = Vector3(5, 0, -2.5)
+
+[node name="Tier8Tree" parent="World" instance=ExtResource("18_tier8_tree")]
+position = Vector3(7, 0, -2.5)
 
 [node name="Tier1Rock" parent="World" instance=ExtResource("8_tier1_rock")]
-position = Vector3(3.8, 0, -2.4)
+position = Vector3(-7, 0, -4.7)
+
+[node name="Tier2Rock" parent="World" instance=ExtResource("20_tier2_rock")]
+position = Vector3(-5, 0, -4.7)
+
+[node name="Tier3Rock" parent="World" instance=ExtResource("21_tier3_rock")]
+position = Vector3(-3, 0, -4.7)
+
+[node name="Tier4Rock" parent="World" instance=ExtResource("22_tier4_rock")]
+position = Vector3(-1, 0, -4.7)
+
+[node name="Tier5Rock" parent="World" instance=ExtResource("23_tier5_rock")]
+position = Vector3(1, 0, -4.7)
+
+[node name="Tier6Rock" parent="World" instance=ExtResource("24_tier6_rock")]
+position = Vector3(3, 0, -4.7)
+
+[node name="Tier7Rock" parent="World" instance=ExtResource("25_tier7_rock")]
+position = Vector3(5, 0, -4.7)
+
+[node name="Tier8Rock" parent="World" instance=ExtResource("26_tier8_rock")]
+position = Vector3(7, 0, -4.7)
+
+[node name="Tier1Ore" parent="World" instance=ExtResource("9_tier1_ore")]
+position = Vector3(-7, 0, -6.9)
+
+[node name="Tier2Ore" parent="World" instance=ExtResource("28_tier2_ore")]
+position = Vector3(-5, 0, -6.9)
+
+[node name="Tier3Ore" parent="World" instance=ExtResource("29_tier3_ore")]
+position = Vector3(-3, 0, -6.9)
+
+[node name="Tier4Ore" parent="World" instance=ExtResource("30_tier4_ore")]
+position = Vector3(-1, 0, -6.9)
+
+[node name="Tier5Ore" parent="World" instance=ExtResource("31_tier5_ore")]
+position = Vector3(1, 0, -6.9)
+
+[node name="Tier6Ore" parent="World" instance=ExtResource("32_tier6_ore")]
+position = Vector3(3, 0, -6.9)
+
+[node name="Tier7Ore" parent="World" instance=ExtResource("33_tier7_ore")]
+position = Vector3(5, 0, -6.9)
+
+[node name="Tier8Ore" parent="World" instance=ExtResource("34_tier8_ore")]
+position = Vector3(7, 0, -6.9)
+
+[node name="Tier1Fiber" parent="World" instance=ExtResource("10_tier1_fiber")]
+position = Vector3(-7, 0, -9.0)
+
+[node name="Tier2Fiber" parent="World" instance=ExtResource("36_tier2_fiber")]
+position = Vector3(-5, 0, -9.0)
+
+[node name="Tier3Fiber" parent="World" instance=ExtResource("37_tier3_fiber")]
+position = Vector3(-3, 0, -9.0)
+
+[node name="Tier4Fiber" parent="World" instance=ExtResource("38_tier4_fiber")]
+position = Vector3(-1, 0, -9.0)
+
+[node name="Tier5Fiber" parent="World" instance=ExtResource("39_tier5_fiber")]
+position = Vector3(1, 0, -9.0)
+
+[node name="Tier6Fiber" parent="World" instance=ExtResource("40_tier6_fiber")]
+position = Vector3(3, 0, -9.0)
+
+[node name="Tier7Fiber" parent="World" instance=ExtResource("41_tier7_fiber")]
+position = Vector3(5, 0, -9.0)
+
+[node name="Tier8Fiber" parent="World" instance=ExtResource("42_tier8_fiber")]
+position = Vector3(7, 0, -9.0)
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 rotation = Vector3(-0.872665, -0.523599, 0)
@@ -104,8 +224,7 @@ light_energy = 2.0
 
 [node name="PlayerInventory" type="Node" parent="."]
 script = ExtResource("6_player_inventory")
-debug_seed_item_ids = PackedStringArray("axe_t2", "axe_t3", "axe_t4", "axe_t5", "axe_t6", "axe_t7", "axe_t8")
-debug_main_hand_item_id = "axe_t1"
+debug_seed_item_ids = PackedStringArray("axe_t4", "hammer_t4", "pickaxe_t4", "sickle_t4", "skinning_knife_t4")
 
 [node name="InventoryPanel" parent="." instance=ExtResource("5_inventory_panel")]
 inventory_path = NodePath("../PlayerInventory")

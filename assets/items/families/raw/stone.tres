@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemFamilyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_family_definition.gd" id="1_family"]
+
+[resource]
+script = ExtResource("1_family")
+family_id = "stone"
+icon_id = "rocks"
+item_id_prefix = "stone"
+category = "Resource"
+tier_names = PackedStringArray("Crude Stone", "Rough Stone", "Sturdy Stone", "Dense Stone", "Hardened Stone", "Runed Stone", "Sunstone", "Kingsstone")
+base_weight = 0.06
+weight_per_tier = 0.015
+usage_text = "masonry, construction, and refining"
+max_stack = 999

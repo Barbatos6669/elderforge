@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemFamilyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_family_definition.gd" id="1_family"]
+
+[resource]
+script = ExtResource("1_family")
+family_id = "cloth"
+icon_id = "cloth"
+item_id_prefix = "cloth"
+category = "Refined Resource"
+tier_names = PackedStringArray("Crude Cloth", "Rough Cloth", "Coarse Cloth", "Soft Cloth", "Fine Cloth", "Lustrous Cloth", "Sunspun Cloth", "Kingsweave Cloth")
+base_weight = 0.014
+weight_per_tier = 0.004
+usage_text = "tailoring, robes, armor lining, bags, and crafting"
+max_stack = 999

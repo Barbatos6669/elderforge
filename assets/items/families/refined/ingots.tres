@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemFamilyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_family_definition.gd" id="1_family"]
+
+[resource]
+script = ExtResource("1_family")
+family_id = "ingots"
+icon_id = "ingots"
+item_id_prefix = "ingots"
+category = "Refined Resource"
+tier_names = PackedStringArray("Crude Ingots", "Rough Ingots", "Sturdy Ingots", "Dense Ingots", "Hardened Ingots", "Runed Ingots", "Star Ingots", "Kingsmetal Ingots")
+base_weight = 0.07
+weight_per_tier = 0.018
+usage_text = "smelting, blacksmithing, weapon crafting, armor crafting, and construction"
+max_stack = 999

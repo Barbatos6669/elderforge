@@ -7,17 +7,28 @@ Files:
 
 - `item_definition.gd`: static data for one item type, such as name, tier,
   icon id, stack limit, weight, equip slot, equipment scene path, and optional
-  attachment profile path.
+  attachment and animation profile paths.
+- `item_family_definition.gd`: data shape for one tiered item family, such as
+  logs I-VIII or axes I-VIII. The authored `.tres` files live in
+  `assets/items/families/`.
 - `item_stack.gd`: runtime quantity of one item definition.
-- `prototype_item_catalog.gd`: temporary in-code catalog for logs, stone, ore,
-  cotton, hide, and axe previews.
+- `prototype_item_catalog.gd`: temporary catalog builder for logs, planks,
+  blocks, ingots, cloth, worked leather, stone, ore, cotton, hide, axe tools,
+  hammer tools, pickaxe tools, sickle tools, and skinning knife tools. It reads
+  item family `.tres` data and creates one `ItemDefinition` per tier.
 - `player_inventory.gd`: local prototype owner for bag slots, currency, and
-  equipped-slot state.
+  equipped-slot state. Use `get_equipped_slot("main_hand")` when gameplay needs
+  one equipped item, such as checking the currently held gathering tool.
 
 The runtime player inventory starts empty by default. Enable
 `seed_prototype_resources` only in a debug/demo scene when you need sample
 resource stacks for UI testing. Use `debug_seed_item_ids` for focused previews,
-such as showing only `axe_t1` through `axe_t8` in `Main.tscn`. Use
+such as showing only `planks_t1` through `planks_t8`, `blocks_t1` through
+`blocks_t8`, `ingots_t1` through `ingots_t8`, `cloth_t1` through `cloth_t8`,
+`worked_leather_t1` through `worked_leather_t8`, `axe_t1` through `axe_t8`,
+`hammer_t1` through `hammer_t8`, `pickaxe_t1` through `pickaxe_t8`, or
+`sickle_t1` through `sickle_t8` in `Main.tscn`. Use `skinning_knife_t1` through
+`skinning_knife_t8` when previewing hide gathering tools. Use
 `debug_main_hand_item_id` when a demo scene should start with a visible equipped
 main-hand item for art tuning.
 
@@ -27,18 +38,22 @@ GDScript notes:
 - `Dictionary` is used for UI-facing display data because the current inventory
   UI already renders dictionaries.
 - `preload("res://...")` loads scripts this module always needs.
-- Equippable definitions use `equip_slot`; the current axe tool previews equip
-  to `main_hand`.
+- Equippable definitions use `equip_slot`; the current axe, hammer, pickaxe,
+  sickle, and skinning knife tool previews equip to `main_hand`.
 - Tools or gear that have a world/paper-doll prefab can set
-  `equipment_scene_path`. Axe tiers currently point at separate scenes under
-  `scenes/equipment/tools/axes/`, so each tier can own its model, textures,
-  and VFX later.
+  `equipment_scene_path`. Axe, hammer, pickaxe, sickle, and skinning knife
+  tiers currently point at separate scenes under `scenes/equipment/tools/`, so
+  each tier can own its model, textures, and VFX later.
 - Equipment can set `equipment_attachment_profile_path` when the item needs a
   reusable local offset for a character socket.
+- Equipment can set `equipment_animation_profile_path` when the item needs
+  tool-specific or weapon-specific animation choices.
 
 Common edit points:
 
-- Add or rename prototype resource items in `prototype_item_catalog.gd`.
+- Add or rename prototype item families in `assets/items/families/`.
+- Add a new family path to `prototype_item_catalog.gd` only when the family is
+  brand new.
 - Add inventory operations, such as stack splitting or equip rules, in
   `player_inventory.gd`.
 - Do not put item storage logic in the UI panel.

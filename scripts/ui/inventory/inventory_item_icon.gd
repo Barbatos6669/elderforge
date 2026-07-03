@@ -6,12 +6,38 @@
 class_name InventoryItemIcon
 extends Control
 
-const LogsTexture := preload("res://assets/ui/inventory/logs_icon.png")
-const RocksTexture := preload("res://assets/ui/inventory/rocks_icon.png")
-const OresTexture := preload("res://assets/ui/inventory/ores_icon.png")
-const CottonTexture := preload("res://assets/ui/inventory/cotton_icon.png")
-const HideTexture := preload("res://assets/ui/inventory/hide_icon.png")
-const AxeTexture := preload("res://assets/ui/inventory/axe_icon.png")
+const ICON_TEXTURES := {
+	"logs": preload("res://assets/ui/inventory/logs_icon.png"),
+	"planks": preload("res://assets/ui/inventory/planks_icon.png"),
+	"blocks": preload("res://assets/ui/inventory/blocks_icon.png"),
+	"ingots": preload("res://assets/ui/inventory/ingots_icon.png"),
+	"cloth": preload("res://assets/ui/inventory/cloth_icon.png"),
+	"worked_leather": preload("res://assets/ui/inventory/worked_leather_icon.png"),
+	"rocks": preload("res://assets/ui/inventory/rocks_icon.png"),
+	"ores": preload("res://assets/ui/inventory/ores_icon.png"),
+	"cotton": preload("res://assets/ui/inventory/cotton_icon.png"),
+	"hide": preload("res://assets/ui/inventory/hide_icon.png"),
+	"axe": preload("res://assets/ui/inventory/axe_icon.png"),
+	"hammer": preload("res://assets/ui/inventory/hammer_icon.png"),
+	"pickaxe": preload("res://assets/ui/inventory/pickaxe_icon.png"),
+	"sickle": preload("res://assets/ui/inventory/sickle_icon.png"),
+	"skinning_knife": preload("res://assets/ui/inventory/skinning_knife_icon.png"),
+}
+const ICON_ART_RECTS := {
+	"logs": [Vector2(0.08, 0.12), Vector2(0.84, 0.74)],
+	"planks": [Vector2(0.03, 0.08), Vector2(0.94, 0.84)],
+	"blocks": [Vector2(0.04, 0.08), Vector2(0.92, 0.82)],
+	"ingots": [Vector2(0.04, 0.08), Vector2(0.92, 0.82)],
+	"cloth": [Vector2(0.04, 0.08), Vector2(0.92, 0.82)],
+	"worked_leather": [Vector2(0.04, 0.08), Vector2(0.92, 0.82)],
+	"rocks": [Vector2(0.04, 0.10), Vector2(0.92, 0.78)],
+	"ores": [Vector2(0.04, 0.08), Vector2(0.92, 0.82)],
+	"cotton": [Vector2(0.06, 0.08), Vector2(0.88, 0.82)],
+	"hide": [Vector2(0.04, 0.10), Vector2(0.92, 0.78)],
+	"axe": [Vector2(0.06, 0.05), Vector2(0.88, 0.88)],
+}
+const DEFAULT_ART_OFFSET := Vector2(0.05, 0.04)
+const DEFAULT_ART_SIZE := Vector2(0.90, 0.90)
 const TIER_COLORS := {
 	1: Color(0.72, 0.72, 0.72, 1.0),
 	2: Color(0.72, 0.50, 0.30, 1.0),
@@ -137,57 +163,21 @@ func _draw_card_frame() -> void:
 
 func _draw_item_art() -> void:
 	var item_type := String(_item.get("icon", ""))
-	match item_type:
-		"logs":
-			_draw_logs()
-		"rocks":
-			_draw_rocks()
-		"ores":
-			_draw_ores()
-		"cotton":
-			_draw_cotton()
-		"hide":
-			_draw_hide()
-		"axe":
-			_draw_axe()
-		_:
-			_draw_generic_resource()
+	var texture: Texture2D = ICON_TEXTURES.get(item_type)
+	if texture == null:
+		_draw_generic_resource()
+		return
 
+	var art_offset := DEFAULT_ART_OFFSET
+	var art_size := DEFAULT_ART_SIZE
+	var rect_data = ICON_ART_RECTS.get(item_type, [])
+	if rect_data is Array and rect_data.size() >= 2:
+		art_offset = rect_data[0]
+		art_size = rect_data[1]
 
-func _draw_logs() -> void:
 	var unit := _unit_size()
-	var art_rect := Rect2(_origin() + Vector2(unit * 0.08, unit * 0.12), Vector2(unit * 0.84, unit * 0.74))
-	_draw_texture_fit(LogsTexture, art_rect)
-
-
-func _draw_rocks() -> void:
-	var unit := _unit_size()
-	var art_rect := Rect2(_origin() + Vector2(unit * 0.04, unit * 0.10), Vector2(unit * 0.92, unit * 0.78))
-	_draw_texture_fit(RocksTexture, art_rect)
-
-
-func _draw_ores() -> void:
-	var unit := _unit_size()
-	var art_rect := Rect2(_origin() + Vector2(unit * 0.04, unit * 0.08), Vector2(unit * 0.92, unit * 0.82))
-	_draw_texture_fit(OresTexture, art_rect)
-
-
-func _draw_cotton() -> void:
-	var unit := _unit_size()
-	var art_rect := Rect2(_origin() + Vector2(unit * 0.06, unit * 0.08), Vector2(unit * 0.88, unit * 0.82))
-	_draw_texture_fit(CottonTexture, art_rect)
-
-
-func _draw_hide() -> void:
-	var unit := _unit_size()
-	var art_rect := Rect2(_origin() + Vector2(unit * 0.04, unit * 0.10), Vector2(unit * 0.92, unit * 0.78))
-	_draw_texture_fit(HideTexture, art_rect)
-
-
-func _draw_axe() -> void:
-	var unit := _unit_size()
-	var art_rect := Rect2(_origin() + Vector2(unit * 0.06, unit * 0.05), Vector2(unit * 0.88, unit * 0.88))
-	_draw_texture_fit(AxeTexture, art_rect)
+	var art_rect := Rect2(_origin() + art_offset * unit, art_size * unit)
+	_draw_texture_fit(texture, art_rect)
 
 
 func _draw_generic_resource() -> void:

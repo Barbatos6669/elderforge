@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemFamilyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_family_definition.gd" id="1_family"]
+
+[resource]
+script = ExtResource("1_family")
+family_id = "hammer"
+icon_id = "hammer"
+item_id_prefix = "hammer"
+category = "Tool"
+tier_names = PackedStringArray("Crude Hammer", "Rough Hammer", "Sturdy Hammer", "Forged Hammer", "Hardened Hammer", "Runed Hammer", "Sunsteel Hammer", "Elder Hammer")
+base_weight = 2.8
+weight_per_tier = 0.28
+usage_text = "stone gathering, quarrying tests, and tool prototypes"
+max_stack = 1
+equip_slot = "main_hand"
+equipment_scene_path_template = "res://scenes/equipment/tools/hammers/Tier%dHammer.tscn"
+equipment_attachment_profile_path = "res://assets/models/equipment/attachments/hammer_main_hand.tres"
+equipment_animation_profile_path_template = "res://assets/equipment/tools/hammers/t%d/animations/t%d_hammer_animation_profile.tres"

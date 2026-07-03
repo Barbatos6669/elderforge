@@ -1,0 +1,79 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://c7onhc7t0w5tj" path="res://scripts/gathering/gatherable_resource_3d.gd" id="1_gatherable"]
+[ext_resource type="Script" uid="uid://br3ubcjkrdw57" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
+[ext_resource type="Script" uid="uid://cbxs8002i2pvm" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="3_hover_feedback"]
+[ext_resource type="Script" uid="uid://i4o11j0hk5eg" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="4_selection_feedback"]
+[ext_resource type="Material" path="res://assets/materials/hover/hover_outline_green.tres" id="5_hover_material"]
+[ext_resource type="Texture2D" path="res://assets/ui/cursors/gather_tool_cursor.png" id="6_gather_cursor"]
+[ext_resource type="Texture2D" uid="uid://cili1xiu4osa1" path="res://assets/ui/cursors/depleted_resource_cursor.png" id="7_depleted_cursor"]
+[ext_resource type="PackedScene" path="res://assets/models/resources/trees/t3_tree_trunk.glb" id="8_tree_trunk"]
+[ext_resource type="PackedScene" path="res://assets/models/resources/trees/t3_tree_stump.glb" id="9_tree_stump"]
+[ext_resource type="PackedScene" path="res://assets/models/resources/trees/t3_tree_leaves.glb" id="10_tree_leaves"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_selectable"]
+radius = 0.92
+height = 3.0
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_resource_body"]
+height = 1.35
+radius = 0.42
+
+[node name="Tier3Tree" type="Node3D"]
+script = ExtResource("1_gatherable")
+display_name = "Sturdy Tree"
+resource_family_id = "logs"
+yield_item_id = "timber_t3"
+tier = 3
+
+[node name="Selectable" type="Area3D" parent="."]
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("2_selectable")
+display_name = "Sturdy Tree"
+relationship = 2
+neutral_color = Color(0.2, 0.62, 0.25, 1)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.45, 0)
+shape = SubResource("CapsuleShape3D_selectable")
+
+[node name="ResourceBody" type="StaticBody3D" parent="."]
+collision_layer = 2
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ResourceBody"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.675, 0)
+shape = SubResource("CylinderShape3D_resource_body")
+
+[node name="HoverSelectionRing" type="MeshInstance3D" parent="."]
+script = ExtResource("3_hover_feedback")
+hover_collision_mask = 8
+ring_radius = 0.78
+ring_color = Color(0.2, 0.62, 0.25, 1)
+highlight_material = ExtResource("5_hover_material")
+hover_cursor_texture = ExtResource("6_gather_cursor")
+unavailable_hover_cursor_texture = ExtResource("7_depleted_cursor")
+
+[node name="SelectedRing" type="MeshInstance3D" parent="."]
+script = ExtResource("4_selection_feedback")
+ring_radius = 0.86
+ring_color = Color(0.2, 0.62, 0.25, 1)
+fill_color = Color(0.2, 0.62, 0.25, 0.16)
+
+[node name="Visuals" type="Node3D" parent="."]
+
+[node name="Active" type="Node3D" parent="Visuals"]
+
+[node name="Trunk" type="Node3D" parent="Visuals/Active"]
+
+[node name="T3TreeTrunkModel" parent="Visuals/Active/Trunk" instance=ExtResource("8_tree_trunk")]
+
+[node name="Leaves" type="Node3D" parent="Visuals/Active"]
+
+[node name="T3TreeLeavesModel" parent="Visuals/Active/Leaves" instance=ExtResource("10_tree_leaves")]
+
+[node name="Depleted" type="Node3D" parent="Visuals"]
+visible = false
+
+[node name="T3TreeStumpModel" parent="Visuals/Depleted" instance=ExtResource("9_tree_stump")]

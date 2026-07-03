@@ -3,7 +3,7 @@
 This folder holds the editable source art and runtime exports for resource tree
 models.
 
-## T1 Tree
+## T1-T8 Trees
 
 Files:
 
@@ -12,6 +12,13 @@ Files:
 - `t1_tree_trunk.glb`: runtime trunk export used by `Tier1Tree.tscn`.
 - `t1_tree_leaves.glb`: runtime leaf/canopy export used by `Tier1Tree.tscn`.
 - `t1_tree_stump.glb`: runtime depleted-stump export used by `Tier1Tree.tscn`.
+- `source/t2_tree.blend` through `source/t8_tree.blend`: generated editable
+  tier copies that use the T1 tree shape and tier-colored leaves.
+- `t2_tree_trunk.glb` through `t8_tree_trunk.glb`: runtime trunk exports for
+  higher tiers.
+- `t2_tree_leaves.glb` through `t8_tree_leaves.glb`: tier-colored canopy
+  exports.
+- `t2_tree_stump.glb` through `t8_tree_stump.glb`: depleted-stump exports.
 
 Inside `t1_tree.blend`, the full tree is split into editable pieces:
 
@@ -40,3 +47,15 @@ reimport those paths and `Tier1Tree.tscn` will update automatically.
 `tools/blender/create_t1_tree_asset.py` is only for regenerating the scripted
 placeholder from scratch. It refuses to overwrite the `.blend` unless you pass
 `-- --force`, because normal art edits should happen directly in Blender.
+
+## Tier Variant Workflow
+
+To copy the current T1 placeholder tree shape into T2-T8 and recolor the leaves,
+run:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background --python tools/blender/create_resource_tier_variants.py
+```
+
+This writes the generated tier source files into `source/` and exports the GLBs
+used by `Tier2Tree.tscn` through `Tier8Tree.tscn`.

@@ -12,7 +12,8 @@ Files:
 - `equipment_slot_button.gd`: Godot drag/drop hooks for one equipped gear slot.
 - `equipment_slot_icon.gd`: code-drawn placeholder icons for empty gear slots.
 - `inventory_item_icon.gd`: code-drawn item card frame, tier background,
-  bitmap item art, and quantity text.
+  bitmap item art lookup, and quantity text. Item family data controls the
+  `icon_id`; this renderer maps that id to a texture in `assets/ui/inventory/`.
 - `inventory_slot_button.gd`: Godot drag/drop hooks for one bag slot button.
 
 GDScript notes:

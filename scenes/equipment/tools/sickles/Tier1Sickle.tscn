@@ -1,0 +1,15 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/equipment/tools/sickles/t1/models/t1_sickle.glb" id="1_t1_sickle"]
+
+[node name="Tier1Sickle" type="Node3D"]
+
+[node name="GripPoint" type="Marker3D" parent="."]
+
+[node name="HitPoint" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.28, 0.24, 0)
+
+[node name="Visuals" type="Node3D" parent="."]
+scale = Vector3(0.38, 0.38, 0.38)
+
+[node name="T1SickleModel" parent="Visuals" instance=ExtResource("1_t1_sickle")]

@@ -5,7 +5,7 @@
 [ext_resource type="Script" uid="uid://cbxs8002i2pvm" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="3_hover_feedback"]
 [ext_resource type="Script" uid="uid://i4o11j0hk5eg" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="4_selection_feedback"]
 [ext_resource type="Material" path="res://assets/materials/hover/hover_outline_green.tres" id="5_hover_material"]
-[ext_resource type="Texture2D" uid="uid://cd4jtqd00u448" path="res://assets/ui/cursors/gather_pickaxe_cursor.png" id="6_gather_cursor"]
+[ext_resource type="Texture2D" path="res://assets/ui/cursors/gather_tool_cursor.png" id="6_gather_cursor"]
 [ext_resource type="Texture2D" uid="uid://cili1xiu4osa1" path="res://assets/ui/cursors/depleted_resource_cursor.png" id="7_depleted_cursor"]
 [ext_resource type="PackedScene" uid="uid://bpt5djhf13n2b" path="res://assets/models/resources/rocks/t1_rock_full.glb" id="8_t1_rock_full"]
 [ext_resource type="PackedScene" uid="uid://dsi3jkhcawad6" path="res://assets/models/resources/rocks/t1_rock_depleted.glb" id="9_t1_rock_depleted"]

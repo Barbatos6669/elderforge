@@ -137,7 +137,7 @@ func _on_auto_attack_landed(_target: Node, _damage: float) -> void:
 
 func _on_channel_started(_action_name: String, _duration: float, context: Dictionary) -> void:
 	if _is_gathering_channel_context(context):
-		animation.set_gathering(true)
+		animation.set_gathering(true, context)
 
 
 func _on_channel_completed(context: Dictionary) -> void:
