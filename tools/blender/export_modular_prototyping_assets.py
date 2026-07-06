@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 import bpy
+from mathutils import Vector
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -23,6 +24,7 @@ SOURCE_ROOT = PACK_ROOT / "source"
 MODELS_ROOT = PACK_ROOT / "models"
 TEXTURES_ROOT = PACK_ROOT / "textures"
 IMAGE_NAME_PATTERN = re.compile(r"(.+\.(?:png|jpg|jpeg|tga|bmp|webp))(?:\.\d+)?$", re.IGNORECASE)
+NORMALIZATION_EPSILON = 0.0001
 
 
 def parse_args() -> argparse.Namespace:
@@ -74,6 +76,46 @@ def select_hierarchy(root: bpy.types.Object) -> None:
     bpy.context.view_layer.objects.active = root
 
 
+def normalize_hierarchy_to_bottom_center(root: bpy.types.Object) -> None:
+    """Keep the exported prefab origin at the asset's bottom center.
+
+    This makes Godot placement predictable: dropping a prop at world zero puts
+    the visible mesh on that point instead of several meters away from it.
+    """
+
+    mesh_objects = [obj for obj in root.children_recursive if obj.type == "MESH"]
+    if not mesh_objects:
+        return
+
+    min_corner = Vector((float("inf"), float("inf"), float("inf")))
+    max_corner = Vector((float("-inf"), float("-inf"), float("-inf")))
+
+    for obj in mesh_objects:
+        for local_corner in obj.bound_box:
+            world_corner = obj.matrix_world @ Vector(local_corner)
+            min_corner.x = min(min_corner.x, world_corner.x)
+            min_corner.y = min(min_corner.y, world_corner.y)
+            min_corner.z = min(min_corner.z, world_corner.z)
+            max_corner.x = max(max_corner.x, world_corner.x)
+            max_corner.y = max(max_corner.y, world_corner.y)
+            max_corner.z = max(max_corner.z, world_corner.z)
+
+    offset = Vector(
+        (
+            (min_corner.x + max_corner.x) * 0.5,
+            (min_corner.y + max_corner.y) * 0.5,
+            min_corner.z,
+        )
+    )
+    if offset.length <= NORMALIZATION_EPSILON:
+        return
+
+    for child in root.children:
+        child.matrix_world.translation -= offset
+
+    bpy.context.view_layer.update()
+
+
 def clean_image_name(image_name: str) -> str:
     match = IMAGE_NAME_PATTERN.match(image_name)
     return match.group(1) if match else Path(image_name).name
@@ -107,6 +149,8 @@ def export_source(source_path: Path) -> None:
     bpy.ops.wm.open_mainfile(filepath=str(source_path))
     remap_images_to_shared_textures()
     root = root_object(asset_id)
+    normalize_hierarchy_to_bottom_center(root)
+    bpy.ops.wm.save_as_mainfile(filepath=str(source_path))
 
     MODELS_ROOT.mkdir(parents=True, exist_ok=True)
     export_path = MODELS_ROOT / f"{asset_id}.gltf"

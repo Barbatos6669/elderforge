@@ -18,6 +18,8 @@ extends Node
 @export var move_animation_name: StringName = &"Jog_Fwd"
 ## One-shot animation played when an auto-attack lands.
 @export var attack_animation_name: StringName = &"Punch_Jab"
+## One-shot animation played when an entity is defeated.
+@export var death_animation_name: StringName = &"Death01"
 ## Fallback looped animation used while the player channels gathering.
 @export var gathering_animation_name: StringName = &"Shield_OneShot"
 ## Looped animation used when gathering logs with an axe.
@@ -28,6 +30,8 @@ extends Node
 @export var move_speed_scale: float = 1.0
 ## Playback speed for the one-shot attack animation.
 @export var attack_speed_scale: float = 1.0
+## Playback speed for the one-shot death animation.
+@export var death_speed_scale: float = 1.0
 ## Playback speed for the looped gathering animation.
 @export var gathering_speed_scale: float = 0.85
 
@@ -35,6 +39,7 @@ var _animation_player: AnimationPlayer
 var _animation_library: AnimationLibrary
 var _is_moving := false
 var _is_attacking := false
+var _is_dead := false
 var _is_gathering := false
 var _active_gathering_animation_name: StringName = &""
 var _active_gathering_animation_scene_path := ""
@@ -50,6 +55,9 @@ func set_moving(is_moving: bool) -> void:
 	if _animation_player == null:
 		_is_moving = is_moving
 		return
+	if _is_dead:
+		_is_moving = is_moving
+		return
 
 	if _is_moving == is_moving:
 		return
@@ -63,6 +71,10 @@ func set_moving(is_moving: bool) -> void:
 
 ## Plays or stops the looped gathering animation state.
 func set_gathering(is_gathering: bool, context: Dictionary = {}) -> void:
+	if _is_dead:
+		_is_gathering = false
+		return
+
 	var next_gathering_animation_name: StringName = &""
 	var next_gathering_animation_scene_path := ""
 	if is_gathering:
@@ -93,13 +105,47 @@ func set_gathering(is_gathering: bool, context: Dictionary = {}) -> void:
 
 
 ## Plays the configured one-shot auto-attack animation, then resumes idle/move.
-func play_attack() -> void:
+func play_attack(speed_scale: float = 1.0) -> void:
+	if _is_dead:
+		return
 	if _animation_player == null or not _animation_player.has_animation(attack_animation_name):
 		return
 
 	_is_attacking = true
-	_animation_player.speed_scale = attack_speed_scale
+	_animation_player.speed_scale = maxf(speed_scale, 0.01) * attack_speed_scale
 	_animation_player.play(attack_animation_name, blend_time)
+
+
+## Plays the configured one-shot death animation and returns its duration.
+func play_death(speed_scale: float = 1.0) -> float:
+	_is_dead = true
+	_is_attacking = false
+	_is_gathering = false
+	_is_moving = false
+
+	if _animation_player == null or not _animation_player.has_animation(death_animation_name):
+		return 0.0
+
+	var effective_speed := maxf(speed_scale, 0.01) * death_speed_scale
+	_animation_player.speed_scale = effective_speed
+	_animation_player.play(death_animation_name, blend_time)
+
+	var animation := _animation_player.get_animation(death_animation_name)
+	if animation == null:
+		return 0.0
+
+	return animation.length / effective_speed
+
+
+## Restores idle/move state after a respawn or other hard reset.
+func reset_animation_state() -> void:
+	_is_dead = false
+	_is_attacking = false
+	_is_gathering = false
+	_is_moving = false
+	_active_gathering_animation_name = &""
+	_active_gathering_animation_scene_path = ""
+	_play_current_state(true)
 
 
 ## Returns true when the runtime player is currently playing the move animation.
@@ -143,6 +189,7 @@ func _setup_animation_player() -> void:
 	_add_animation_to_library(_animation_library, source_player, idle_animation_name, true)
 	_add_animation_to_library(_animation_library, source_player, move_animation_name, true)
 	_add_animation_to_library(_animation_library, source_player, attack_animation_name, false)
+	_add_animation_to_library(_animation_library, source_player, death_animation_name, false)
 	_add_gathering_animation_to_library(_animation_library, source_player)
 	_animation_player.add_animation_library("", _animation_library)
 	_animation_player.animation_finished.connect(_on_animation_finished)
@@ -189,7 +236,7 @@ func _add_gathering_animation_to_library(
 func _play_current_state(force_restart: bool = false) -> void:
 	if _animation_player == null:
 		return
-	if _is_attacking:
+	if _is_attacking or _is_dead:
 		return
 
 	var animation_name := _current_state_animation_name()
@@ -216,6 +263,8 @@ func _current_state_speed_scale() -> float:
 
 
 func _on_animation_finished(animation_name: StringName) -> void:
+	if animation_name == death_animation_name:
+		return
 	if animation_name != attack_animation_name:
 		return
 

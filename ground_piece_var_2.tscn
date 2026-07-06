@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://dwgfxxacmi2qy"]
+
+[ext_resource type="PackedScene" uid="uid://broostpsnvsjj" path="res://assets/models/environment/Ground_pieces/Ground_piece_var_2.glb" id="1_sw8e4"]
+[ext_resource type="Script" uid="uid://b7q40h17w0p8i" path="res://scripts/visuals/visual_mesh_collision_shape_3d.gd" id="2_18h00"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wp7qn"]
+size = Vector3(212.15387, 35.395996, 206.63895)
+
+[node name="Ground_piece_var_2" unique_id=1131399574 instance=ExtResource("1_sw8e4")]
+
+[node name="VisualMeshCollisionShape3D" type="CollisionShape3D" parent="Plane" parent_id_path=PackedInt32Array(853272600) index="0" unique_id=264181404]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.3017654, -17.104492, -0.9592743)
+shape = SubResource("BoxShape3D_wp7qn")
+script = ExtResource("2_18h00")
+metadata/_custom_type_script = "uid://b7q40h17w0p8i"

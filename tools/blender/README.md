@@ -163,6 +163,128 @@ After editing one axe tier by hand, export that tier without rebuilding it:
 That writes over `assets/equipment/tools/axes/t4/models/t4_axe.glb`, so
 `Tier4Axe.tscn` and item definitions keep their prefab references.
 
+## Low-Poly Ruin Arch Generator
+
+`create_low_poly_ruin_arch_asset.py` creates the editable source and runtime
+export for the starter-city ruin arch prop:
+
+- `assets/models/props/ruin_arch/source/low_poly_ruin_arch.blend`
+- `assets/models/props/ruin_arch/models/low_poly_ruin_arch.glb`
+
+Run it from the project root:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background --python tools/blender/create_low_poly_ruin_arch_asset.py -- --force
+```
+
+Use this only when you want to rebuild the scripted placeholder from scratch.
+
+## Low-Poly Ruin Arch Export
+
+After editing the arch by hand, export without rebuilding it:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background assets/models/props/ruin_arch/source/low_poly_ruin_arch.blend --python tools/blender/export_low_poly_ruin_arch_asset.py
+```
+
+That writes over the same runtime GLB used by
+`scenes/props/ruin_arch/LowPolyRuinArch.tscn`.
+
+## Stylized Nature MegaKit Import
+
+`import_stylized_nature_megakit.py` converts the imported Quaternius nature pack
+from raw FBX files into our normal editable-source workflow:
+
+- `assets/models/environment/stylized_nature_megakit/source/*.blend`
+- `assets/models/environment/stylized_nature_megakit/models/*.gltf`
+- `assets/models/environment/stylized_nature_megakit/models/*.bin`
+
+Run it from the project root:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background --python tools/blender/import_stylized_nature_megakit.py -- --force
+```
+
+This pack uses `.gltf` instead of `.glb` so all models can share the same
+texture files under `textures/`. That avoids embedding duplicate bark, leaf, and
+rock textures into every model.
+
+## Stylized Nature MegaKit Export
+
+After editing one nature source file by hand, export only that asset:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background --python tools/blender/export_stylized_nature_megakit.py -- --asset common_tree_1
+```
+
+To export every edited source:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background --python tools/blender/export_stylized_nature_megakit.py -- --all
+```
+
+## Fantasy Props MegaKit Import
+
+`import_fantasy_props_megakit.py` converts the imported Quaternius fantasy prop
+pack from raw FBX files into our normal editable-source workflow:
+
+- `assets/models/props/fantasy_props_megakit/source/*.blend`
+- `assets/models/props/fantasy_props_megakit/models/*.gltf`
+- `assets/models/props/fantasy_props_megakit/models/*.bin`
+
+Run it from the project root:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background --python tools/blender/import_fantasy_props_megakit.py -- --force
+```
+
+This pack uses `.gltf` instead of `.glb` so all props can share the same large
+texture atlases under `textures/`.
+
+## Fantasy Props MegaKit Export
+
+After editing one fantasy prop source file by hand, export only that asset:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background --python tools/blender/export_fantasy_props_megakit.py -- --asset anvil
+```
+
+To export every edited source:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background --python tools/blender/export_fantasy_props_megakit.py -- --all
+```
+
+## Modular Prototyping Assets Import
+
+`import_modular_prototyping_assets.py` converts the CC0 Free 3D Modular Game
+Assets For Prototyping pack from raw FBX files into our normal editable-source
+workflow:
+
+- `assets/models/props/free_3d_modular_game_assets_for_prototyping/source/*.blend`
+- `assets/models/props/free_3d_modular_game_assets_for_prototyping/models/*.gltf`
+- `assets/models/props/free_3d_modular_game_assets_for_prototyping/models/*.bin`
+
+Run it from the project root:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background --python tools/blender/import_modular_prototyping_assets.py -- --force
+```
+
+## Modular Prototyping Assets Export
+
+After editing one modular source file by hand, export only that asset:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background --python tools/blender/export_modular_prototyping_assets.py -- --asset wall
+```
+
+To export every edited source:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background --python tools/blender/export_modular_prototyping_assets.py -- --all
+```
+
 ## Hammer Tool Tier Generator
 
 `create_hammer_tier_assets.py` creates editable placeholders for all eight
@@ -328,3 +450,68 @@ all other skinning knife tiers while keeping each tier's blade color:
 
 This leaves `t1_skinning_knife.blend` as the source of truth, saves updated
 source files for T2-T8, and exports all eight `t#_skinning_knife.glb` files.
+
+## One-Handed Sword Tier Generator
+
+`create_one_handed_sword_tier_assets.py` creates editable placeholders for all
+eight one-handed sword tiers:
+
+- `assets/equipment/weapons/one_handed_swords/t1/source/t1_one_handed_sword.blend`
+- `assets/equipment/weapons/one_handed_swords/t1/models/t1_one_handed_sword.glb`
+- ...
+- `assets/equipment/weapons/one_handed_swords/t8/source/t8_one_handed_sword.blend`
+- `assets/equipment/weapons/one_handed_swords/t8/models/t8_one_handed_sword.glb`
+
+Run it from the project root:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background --python tools/blender/create_one_handed_sword_tier_assets.py -- --force
+```
+
+Use the script only when you want to regenerate the current low-poly tier
+placeholders from code. Normal art edits should happen in each tier's `.blend`
+file.
+
+## One-Handed Sword Tier Export
+
+After editing one sword tier by hand, export that tier without rebuilding it:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background assets/equipment/weapons/one_handed_swords/t4/source/t4_one_handed_sword.blend --python tools/blender/export_one_handed_sword_tier_asset.py
+```
+
+That writes over
+`assets/equipment/weapons/one_handed_swords/t4/models/t4_one_handed_sword.glb`,
+so `Tier4OneHandedSword.tscn` and item definitions keep their prefab references.
+
+## Refining Station Tier Generator
+
+`create_refining_station_tier_assets.py` creates editable placeholders for all
+eight tiers of each station family:
+
+- sawmills
+- stonecutters
+- smelters
+- looms
+- toolmakers
+- weapon smiths
+
+Run it from the project root:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background --python tools/blender/create_refining_station_tier_assets.py -- --force
+```
+
+Use the script only when you want to regenerate the current low-poly station
+placeholders from code. Normal art edits should happen in each tier's `.blend`
+file.
+
+## Refining Station Tier Export
+
+After editing one station tier by hand, export that tier without rebuilding it:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background assets/models/refining_stations/sawmills/t4/source/t4_sawmill.blend --python tools/blender/export_refining_station_tier_asset.py
+```
+
+That writes over the matching GLB under `assets/models/refining_stations/`.

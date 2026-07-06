@@ -11,7 +11,7 @@ extends Node
 const EQUIPMENT_SOCKET_SCRIPT_PATH := "res://scripts/player/equipment/equipment_socket_3d.gd"
 const EquipmentSocketScript := preload(EQUIPMENT_SOCKET_SCRIPT_PATH)
 
-## Optional inventory node. Main.tscn points this at the local PlayerInventory.
+## Optional inventory node. Playable scenes point this at the local PlayerInventory.
 @export var inventory_path: NodePath
 ## Root searched for EquipmentSocket3D nodes.
 @export var socket_root_path: NodePath = NodePath("../Visuals/BaseCharacter/Armature/Skeleton3D")

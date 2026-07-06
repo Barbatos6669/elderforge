@@ -18,6 +18,7 @@
 .vscode/
 .idea/
 *.tmp
+*.TMP
 *.log
 *.blend1
 __pycache__/

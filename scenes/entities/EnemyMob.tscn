@@ -1,0 +1,110 @@
+[gd_scene load_steps=19 format=3]
+
+[ext_resource type="Script" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="1_hover_feedback"]
+[ext_resource type="Script" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
+[ext_resource type="Script" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="3_selection_feedback"]
+[ext_resource type="PackedScene" path="res://scenes/ui/nameplates/PlayerNameplate.tscn" id="4_nameplate"]
+[ext_resource type="Material" path="res://assets/materials/hover/hover_outline_green.tres" id="5_hover_material"]
+[ext_resource type="Script" path="res://scripts/combat/combat_health.gd" id="6_health"]
+[ext_resource type="PackedScene" path="res://assets/characters/base/Superhero_Male_FullBody.gltf" id="7_base_character"]
+[ext_resource type="Script" path="res://scripts/player/visuals/player_visual_style.gd" id="8_visual_style"]
+[ext_resource type="Texture2D" path="res://assets/ui/cursors/attack_cursor.png" id="9_attack_cursor"]
+[ext_resource type="Script" path="res://scripts/player/animation/player_animation_controller.gd" id="10_animation"]
+[ext_resource type="PackedScene" path="res://assets/animations/universal_animation_library_1/UAL1_Standard.glb" id="11_animation_library"]
+[ext_resource type="Script" path="res://scripts/entities/enemy_mob_ai.gd" id="12_enemy_ai"]
+[ext_resource type="Script" path="res://scripts/combat/damage_number_emitter_3d.gd" id="13_damage_numbers"]
+[ext_resource type="Script" path="res://scripts/loot/loot_dropper_3d.gd" id="14_loot_dropper"]
+[ext_resource type="PackedScene" path="res://scenes/loot/LootBag.tscn" id="15_loot_bag"]
+[ext_resource type="PackedScene" path="res://scenes/loot/SilverDrop.tscn" id="16_silver_drop"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.35
+height = 1.8
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_selectable"]
+radius = 0.55
+height = 2.0
+
+[node name="EnemyMob" type="CharacterBody3D"]
+collision_layer = 2
+collision_mask = 3
+
+[node name="BodyCollision" type="CollisionShape3D" parent="."]
+position = Vector3(0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="Selectable" type="Area3D" parent="."]
+input_ray_pickable = true
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("2_selectable")
+display_name = "Hostile Raider"
+relationship = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable"]
+position = Vector3(0, 1, 0)
+shape = SubResource("CapsuleShape3D_selectable")
+
+[node name="HoverSelectionRing" type="MeshInstance3D" parent="." node_paths=PackedStringArray("visuals_path", "hover_target_path")]
+script = ExtResource("1_hover_feedback")
+visuals_path = NodePath("../Visuals")
+hover_target_path = NodePath("../Selectable")
+hover_collision_mask = 8
+ring_color = Color(1, 0.08, 0.06, 1)
+highlight_material = ExtResource("5_hover_material")
+hostile_hover_cursor_texture = ExtResource("9_attack_cursor")
+hostile_hover_cursor_hotspot = Vector2(6, 2)
+
+[node name="SelectedRing" type="MeshInstance3D" parent="." node_paths=PackedStringArray("selectable_path")]
+script = ExtResource("3_selection_feedback")
+selectable_path = NodePath("../Selectable")
+ring_color = Color(1, 0.08, 0.06, 1)
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("6_health")
+max_health = 120.0
+current_health = 120.0
+
+[node name="DamageNumbers" type="Node" parent="."]
+script = ExtResource("13_damage_numbers")
+
+[node name="VisualStyle" type="Node" parent="." node_paths=PackedStringArray("model_root_path")]
+script = ExtResource("8_visual_style")
+model_root_path = NodePath("../Visuals/BaseCharacter")
+body_color = Color(1, 0.48, 0.45, 1)
+hair_color = Color(0.25, 0.05, 0.04, 1)
+eye_color = Color(1, 0.76, 0.34, 1)
+
+[node name="Visuals" type="Node3D" parent="."]
+
+[node name="BaseCharacter" parent="Visuals" instance=ExtResource("7_base_character")]
+rotation = Vector3(0, 3.14159, 0)
+
+[node name="Animation" type="Node" parent="."]
+script = ExtResource("10_animation")
+model_root_path = NodePath("../Visuals/BaseCharacter")
+source_animation_scene = ExtResource("11_animation_library")
+
+[node name="AI" type="Node" parent="."]
+script = ExtResource("12_enemy_ai")
+
+[node name="LootDropper" type="Node" parent="."]
+script = ExtResource("14_loot_dropper")
+loot_bag_scene = ExtResource("15_loot_bag")
+currency_drop_scene = ExtResource("16_silver_drop")
+
+[node name="Nameplate" parent="." node_paths=PackedStringArray("selectable_path", "health_source_path") instance=ExtResource("4_nameplate")]
+position = Vector3(0, 2.55, 0)
+player_name = ""
+guild_name = ""
+alliance_tag = ""
+show_when_unselected = false
+selectable_path = NodePath("../Selectable")
+health_source_path = NodePath("../Health")
+content_y = 0.0
+status_bars_offset = Vector2(0, 64.5)
+show_name_row = false
+show_guild_line = false
+show_mana_bar = false
+use_relationship_health_color = true
+world_pixel_size = 0.0055

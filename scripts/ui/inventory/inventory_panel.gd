@@ -15,10 +15,11 @@ const WORLD_INPUT_BLOCKER_GROUP := "blocking_world_input"
 const MAX_VISIBLE_SLOTS := 42
 const SLOT_DRAG_TYPE := "elderforge_inventory_slot"
 const EQUIPMENT_DRAG_TYPE := "elderforge_equipment_slot"
+const LOOT_DRAG_TYPE := "elderforge_loot_item"
 
-## Optional external inventory node. Main.tscn points this at PlayerInventory.
+## Optional external inventory node. Playable scenes point this at PlayerInventory.
 @export var inventory_path: NodePath
-## Optional player stats node. Main.tscn points this at Player/Stats.
+## Optional player stats node. Playable scenes point this at Player/Stats.
 @export var stats_path: NodePath
 ## Keyboard key used to open and close the inventory.
 @export var toggle_key: Key = KEY_I
@@ -34,6 +35,8 @@ const EQUIPMENT_DRAG_TYPE := "elderforge_equipment_slot"
 @export var starting_gold: int = 0
 
 var _root: Control
+var _shade: ColorRect
+var _window: PanelContainer
 var _grid: GridContainer
 var _weight_label: Label
 var _silver_label: Label
@@ -56,9 +59,11 @@ var _gold_amount := 0
 var _selected_index := -1
 var _selected_equipment_slot_id := ""
 var _block_world_input_until_mouse_release := false
+var _using_companion_layout := false
 
 
 func _ready() -> void:
+	add_to_group("inventory_panel")
 	add_to_group(WORLD_INPUT_BLOCKER_GROUP)
 	visible = start_visible
 	_bind_inventory()
@@ -83,6 +88,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Opens the inventory window.
 func open() -> void:
+	if not _using_companion_layout:
+		restore_default_layout()
 	visible = true
 	_block_world_input_until_mouse_release = false
 
@@ -90,6 +97,8 @@ func open() -> void:
 ## Closes the inventory window.
 func close() -> void:
 	visible = false
+	_using_companion_layout = false
+	restore_default_layout()
 	_block_world_input_until_mouse_release = _is_world_move_mouse_button_down()
 
 
@@ -97,8 +106,12 @@ func close() -> void:
 func toggle() -> void:
 	visible = not visible
 	if visible:
+		if not _using_companion_layout:
+			restore_default_layout()
 		_block_world_input_until_mouse_release = false
 	else:
+		_using_companion_layout = false
+		restore_default_layout()
 		_block_world_input_until_mouse_release = _is_world_move_mouse_button_down()
 
 
@@ -184,6 +197,34 @@ func set_stats(stats: Node) -> void:
 	_stats = stats
 	_connect_stats_signals()
 	_refresh_stats()
+
+
+## Opens inventory beside another UI window, usually the loot panel.
+func open_next_to(reference_rect: Rect2) -> void:
+	_using_companion_layout = true
+	visible = true
+	_block_world_input_until_mouse_release = false
+	_apply_companion_visuals()
+	call_deferred("_place_next_to_rect", reference_rect)
+
+
+## Restores the normal centered inventory presentation.
+func restore_default_layout() -> void:
+	if _window == null:
+		return
+
+	_using_companion_layout = false
+	_root.mouse_filter = Control.MOUSE_FILTER_STOP
+	if _shade != null:
+		_shade.mouse_filter = Control.MOUSE_FILTER_STOP
+		_shade.color = Color(0.0, 0.0, 0.0, 0.18)
+
+	_window.custom_minimum_size = Vector2(1020.0, 620.0)
+	_window.set_anchors_preset(Control.PRESET_CENTER)
+	_window.offset_left = -510.0
+	_window.offset_top = -310.0
+	_window.offset_right = 510.0
+	_window.offset_bottom = 310.0
 
 
 func _bind_inventory() -> void:
@@ -365,6 +406,8 @@ func can_drop_slot_data(target_index: int, data: Variant) -> bool:
 
 	var drag_data := data as Dictionary
 	var drag_type := String(drag_data.get("type", ""))
+	if drag_type == LOOT_DRAG_TYPE:
+		return _can_accept_loot_drop(drag_data)
 	if drag_type == EQUIPMENT_DRAG_TYPE:
 		var source_slot_id := String(drag_data.get("source_slot_id", ""))
 		return (
@@ -386,6 +429,9 @@ func drop_slot_data(target_index: int, data: Variant) -> void:
 
 	var drag_data := data as Dictionary
 	var drag_type := String(drag_data.get("type", ""))
+	if drag_type == LOOT_DRAG_TYPE:
+		_drop_loot_item(target_index, drag_data)
+		return
 	if drag_type == EQUIPMENT_DRAG_TYPE:
 		var source_slot_id := String(drag_data.get("source_slot_id", ""))
 		if _inventory != null and _inventory.has_method("unequip_to_slot"):
@@ -422,6 +468,94 @@ func drop_slot_data(target_index: int, data: Variant) -> void:
 	_refresh_all_slots()
 
 
+func _can_accept_loot_drop(drag_data: Dictionary) -> bool:
+	if _inventory == null:
+		return false
+
+	var item := _loot_item_from_drag_data(drag_data)
+	var item_id := String(item.get("item_id", ""))
+	var quantity := maxi(int(item.get("quantity", 0)), 0)
+	if item_id.is_empty() or quantity <= 0:
+		return false
+
+	if _inventory.has_method("get_addable_count"):
+		return int(_inventory.call("get_addable_count", item_id)) > 0
+
+	return _inventory.has_method("add_item")
+
+
+func _drop_loot_item(target_index: int, drag_data: Dictionary) -> void:
+	var source_container := drag_data.get("source_container") as Node
+	var item_index := int(drag_data.get("item_index", -1))
+	if source_container == null or not is_instance_valid(source_container):
+		return
+	if not source_container.has_method("take_item_at"):
+		return
+
+	if bool(source_container.call("take_item_at", item_index, _inventory)):
+		_selected_index = target_index
+		_selected_equipment_slot_id = ""
+		if _equipment_panel != null:
+			_equipment_panel.call("clear_selection")
+		_sync_from_inventory()
+		_refresh_all_slots()
+
+
+func _loot_item_from_drag_data(drag_data: Dictionary) -> Dictionary:
+	var source_container := drag_data.get("source_container") as Node
+	if source_container == null or not is_instance_valid(source_container):
+		return {}
+	if not source_container.has_method("get_loot_data"):
+		return {}
+
+	var item_index := int(drag_data.get("item_index", -1))
+	var loot_data: Dictionary = source_container.call("get_loot_data")
+	var items: Array = loot_data.get("items", [])
+	if item_index < 0 or item_index >= items.size():
+		return {}
+
+	var item := items[item_index] as Dictionary
+	return item if item != null else {}
+
+
+func _apply_companion_visuals() -> void:
+	if _root != null:
+		_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _shade != null:
+		_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_shade.color = Color(0.0, 0.0, 0.0, 0.0)
+
+
+func _place_next_to_rect(reference_rect: Rect2) -> void:
+	if _window == null:
+		return
+
+	_apply_companion_visuals()
+	var viewport_size := get_viewport().get_visible_rect().size
+	var margin := 16.0
+	var gap := 12.0
+	var desired_size := Vector2(1020.0, 620.0)
+
+	var available_right := viewport_size.x - reference_rect.end.x - gap - margin
+	var available_left := reference_rect.position.x - gap - margin
+	var place_left := available_right < desired_size.x and available_left > available_right
+
+	var x := reference_rect.end.x + gap
+	if place_left:
+		x = reference_rect.position.x - gap - desired_size.x
+	x = clampf(x, margin, maxf(margin, viewport_size.x - margin - desired_size.x))
+
+	var centered_y := reference_rect.position.y + (reference_rect.size.y - desired_size.y) * 0.5
+	var y := clampf(centered_y, margin, maxf(margin, viewport_size.y - margin - desired_size.y))
+
+	_window.custom_minimum_size = desired_size
+	_window.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_window.offset_left = x
+	_window.offset_top = y
+	_window.offset_right = x + desired_size.x
+	_window.offset_bottom = y + desired_size.y
+
+
 func _build_window() -> void:
 	_root = Control.new()
 	_root.name = "InventoryRoot"
@@ -429,30 +563,31 @@ func _build_window() -> void:
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_root)
 
-	var shade := ColorRect.new()
-	shade.name = "Shade"
-	shade.color = Color(0.0, 0.0, 0.0, 0.18)
-	shade.mouse_filter = Control.MOUSE_FILTER_STOP
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_root.add_child(shade)
+	_shade = ColorRect.new()
+	_shade.name = "Shade"
+	_shade.color = Color(0.0, 0.0, 0.0, 0.18)
+	_shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	_shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_root.add_child(_shade)
 
-	var panel := PanelContainer.new()
-	panel.name = "Window"
-	panel.custom_minimum_size = Vector2(1020.0, 620.0)
-	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.offset_left = -510.0
-	panel.offset_top = -310.0
-	panel.offset_right = 510.0
-	panel.offset_bottom = 310.0
-	panel.add_theme_stylebox_override("panel", _panel_style())
-	_root.add_child(panel)
+	_window = PanelContainer.new()
+	_window.name = "Window"
+	_window.custom_minimum_size = Vector2(1020.0, 620.0)
+	_window.mouse_filter = Control.MOUSE_FILTER_STOP
+	_window.set_anchors_preset(Control.PRESET_CENTER)
+	_window.offset_left = -510.0
+	_window.offset_top = -310.0
+	_window.offset_right = 510.0
+	_window.offset_bottom = 310.0
+	_window.add_theme_stylebox_override("panel", _panel_style())
+	_root.add_child(_window)
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 16)
 	margin.add_theme_constant_override("margin_top", 14)
 	margin.add_theme_constant_override("margin_right", 16)
 	margin.add_theme_constant_override("margin_bottom", 16)
-	panel.add_child(margin)
+	_window.add_child(margin)
 
 	var layout := VBoxContainer.new()
 	layout.add_theme_constant_override("separation", 12)

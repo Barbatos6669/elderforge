@@ -5,7 +5,12 @@ to one UI screen.
 
 Current state:
 
-- No active scripts live here yet.
+- `tier_tinted_model_3d.gd` can be attached to a shared imported model instance
+  when the same mesh needs different tier colors.
+- `toon_texture_style_3d.gd` applies the prototype toon/nearest-filter material
+  style to imported textured props without throwing away their texture atlases.
+- `wind_sway_3d.gd` adds a small visual-only sway to tree or foliage models
+  while leaving gameplay colliders fixed.
 - Player-specific visual scripts currently live in `scripts/player/visuals/`.
 - Hover and selection visuals live in `scripts/interaction/`.
 

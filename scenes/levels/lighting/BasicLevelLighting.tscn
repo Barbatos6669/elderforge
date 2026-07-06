@@ -1,0 +1,23 @@
+[gd_scene format=3]
+
+[node name="BasicLevelLighting" type="Node3D"]
+
+[node name="KeySun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.86602527, 0.38302252, -0.32139382, 0, 0.64278734, 0.7660447, 0.50000024, -0.66341406, 0.55667007, 0, 0, 0)
+light_color = Color(1, 0.86, 0.68, 1)
+light_energy = 2.25
+shadow_enabled = true
+shadow_opacity = 0.72
+
+[node name="SkyFill" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.707107, -0.286788, 0.64664, 0, 0.914412, 0.404786, -0.707107, 0.286788, -0.64664, 0, 0, 0)
+light_color = Color(0.48, 0.64, 1, 1)
+light_energy = 0.32
+shadow_enabled = false
+
+[node name="SpawnWarmth" type="OmniLight3D" parent="."]
+position = Vector3(0, 3.5, 0)
+light_color = Color(1, 0.68, 0.36, 1)
+light_energy = 0.85
+shadow_enabled = false
+omni_range = 8.0

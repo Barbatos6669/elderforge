@@ -1,0 +1,79 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/loot/currency_pickup_3d.gd" id="1_currency_pickup"]
+[ext_resource type="Script" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
+[ext_resource type="Script" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="3_selection_feedback"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_silver"]
+albedo_color = Color(0.78, 0.8, 0.78, 1)
+metallic = 0.65
+roughness = 0.34
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_coin_edge"]
+albedo_color = Color(0.54, 0.55, 0.52, 1)
+metallic = 0.55
+roughness = 0.42
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_coin"]
+material = SubResource("StandardMaterial3D_silver")
+top_radius = 0.12
+bottom_radius = 0.12
+height = 0.025
+radial_segments = 20
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_tall_coin"]
+material = SubResource("StandardMaterial3D_coin_edge")
+top_radius = 0.095
+bottom_radius = 0.095
+height = 0.045
+radial_segments = 20
+rings = 1
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_selectable"]
+radius = 0.42
+
+[node name="SilverDrop" type="Node3D"]
+script = ExtResource("1_currency_pickup")
+display_name = "Silver"
+interaction_radius = 0.85
+pickup_radius = 1.15
+
+[node name="Selectable" type="Area3D" parent="."]
+input_ray_pickable = true
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("2_selectable")
+display_name = "Silver"
+selection_enabled = false
+relationship = 2
+neutral_color = Color(0.78, 0.8, 0.78, 1)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable"]
+position = Vector3(0, 0.12, 0)
+shape = SubResource("SphereShape3D_selectable")
+
+[node name="SelectedRing" type="MeshInstance3D" parent="."]
+script = ExtResource("3_selection_feedback")
+ring_radius = 0.34
+ring_width = 0.045
+ring_y_offset = 0.035
+ring_color = Color(0.78, 0.8, 0.78, 1)
+fill_color = Color(0.78, 0.8, 0.78, 0.12)
+
+[node name="Visuals" type="Node3D" parent="."]
+
+[node name="CoinA" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(-0.08, 0.012, -0.03)
+rotation = Vector3(0, 0.2, 0)
+mesh = SubResource("CylinderMesh_coin")
+
+[node name="CoinB" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0.08, 0.025, 0.01)
+rotation = Vector3(0, -0.45, 0)
+mesh = SubResource("CylinderMesh_coin")
+
+[node name="CoinC" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0.0, 0.045, 0.08)
+rotation = Vector3(0, 0.7, 0)
+mesh = SubResource("CylinderMesh_tall_coin")

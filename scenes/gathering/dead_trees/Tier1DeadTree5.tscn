@@ -1,0 +1,75 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/gathering/gatherable_resource_3d.gd" id="1_gatherable"]
+[ext_resource type="Script" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
+[ext_resource type="Script" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="3_hover_feedback"]
+[ext_resource type="Script" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="4_selection_feedback"]
+[ext_resource type="Material" path="res://assets/materials/hover/hover_outline_green.tres" id="5_hover_material"]
+[ext_resource type="Texture2D" path="res://assets/ui/cursors/gather_tool_cursor.png" id="6_gather_cursor"]
+[ext_resource type="Texture2D" path="res://assets/ui/cursors/depleted_resource_cursor.png" id="7_depleted_cursor"]
+[ext_resource type="PackedScene" path="res://assets/models/environment/stylized_nature_megakit/models/dead_tree_5.gltf" id="8_dead_tree"]
+[ext_resource type="PackedScene" path="res://assets/models/resources/trees/t1_tree_stump.glb" id="9_stump"]
+[ext_resource type="Script" path="res://scripts/visuals/wind_sway_3d.gd" id="10_wind"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_selectable"]
+radius = 0.9
+height = 3.2
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_resource_body"]
+height = 1.5
+radius = 0.42
+
+[node name="Tier1DeadTree5" type="Node3D"]
+script = ExtResource("1_gatherable")
+display_name = "Crude Dead Tree"
+resource_family_id = "logs"
+yield_item_id = "timber_t1"
+
+[node name="Selectable" type="Area3D" parent="."]
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("2_selectable")
+display_name = "Crude Dead Tree"
+relationship = 2
+neutral_color = Color(0.72, 0.72, 0.72, 1)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.55, 0)
+shape = SubResource("CapsuleShape3D_selectable")
+
+[node name="ResourceBody" type="StaticBody3D" parent="."]
+collision_layer = 2
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ResourceBody"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
+shape = SubResource("CylinderShape3D_resource_body")
+
+[node name="HoverSelectionRing" type="MeshInstance3D" parent="."]
+script = ExtResource("3_hover_feedback")
+hover_collision_mask = 8
+ring_radius = 0.82
+ring_color = Color(0.72, 0.72, 0.72, 1)
+highlight_material = ExtResource("5_hover_material")
+hover_cursor_texture = ExtResource("6_gather_cursor")
+unavailable_hover_cursor_texture = ExtResource("7_depleted_cursor")
+
+[node name="SelectedRing" type="MeshInstance3D" parent="."]
+script = ExtResource("4_selection_feedback")
+ring_radius = 0.9
+ring_color = Color(0.72, 0.72, 0.72, 1)
+fill_color = Color(0.72, 0.72, 0.72, 0.16)
+
+[node name="Visuals" type="Node3D" parent="."]
+
+[node name="Active" type="Node3D" parent="Visuals"]
+
+[node name="DeadTreeModel" parent="Visuals/Active" instance=ExtResource("8_dead_tree")]
+script = ExtResource("10_wind")
+sway_degrees = 1.05
+sway_speed = 0.92
+
+[node name="Depleted" type="Node3D" parent="Visuals"]
+visible = false
+
+[node name="T1TreeStumpModel" parent="Visuals/Depleted" instance=ExtResource("9_stump")]

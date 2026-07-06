@@ -1,9 +1,13 @@
-[gd_scene format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="PackedScene" path="res://assets/models/props/free_3d_modular_game_assets_for_prototyping/models/fence.gltf" id="1_model"]
 [ext_resource type="Script" path="res://scripts/visuals/toon_texture_style_3d.gd" id="2_toon_style"]
+[ext_resource type="Script" path="res://scripts/visuals/visual_mesh_collision_shape_3d.gd" id="3_mesh_collision"]
 
-[node name="Fence" type="Node3D"]
+[node name="Fence" type="StaticBody3D"]
 script = ExtResource("2_toon_style")
 
 [node name="Visual" parent="." instance=ExtResource("1_model")]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+script = ExtResource("3_mesh_collision")

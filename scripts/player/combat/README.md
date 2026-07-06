@@ -6,7 +6,8 @@ Shared combat components live in `scripts/combat/`.
 Files:
 
 - `player_auto_attack.gd`: validates hostile targets, moves into range, tracks
-  attack cooldown, and applies prototype damage.
+  attack cooldown, prevents click-spam swing resets, and applies prototype
+  damage.
 
 Related scripts:
 

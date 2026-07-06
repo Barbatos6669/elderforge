@@ -163,6 +163,10 @@ func _draw_card_frame() -> void:
 
 func _draw_item_art() -> void:
 	var item_type := String(_item.get("icon", ""))
+	if item_type == "one_handed_sword":
+		_draw_one_handed_sword_art()
+		return
+
 	var texture: Texture2D = ICON_TEXTURES.get(item_type)
 	if texture == null:
 		_draw_generic_resource()
@@ -197,6 +201,53 @@ func _draw_texture_fit(texture: Texture2D, target_rect: Rect2) -> void:
 	var draw_size := texture_size * scale_factor
 	var draw_position := target_rect.position + (target_rect.size - draw_size) * 0.5
 	draw_texture_rect(texture, Rect2(draw_position, draw_size), false)
+
+
+func _draw_one_handed_sword_art() -> void:
+	var unit := _unit_size()
+	var origin := _origin()
+	var blade_color := Color(0.82, 0.86, 0.88, 1.0)
+	var blade_shadow := Color(0.34, 0.38, 0.42, 1.0)
+	var guard_color := Color(0.16, 0.15, 0.14, 1.0)
+	var grip_color := Color(0.34, 0.18, 0.08, 1.0)
+	var outline := Color(0.02, 0.018, 0.016, 1.0)
+
+	var blade := PackedVector2Array([
+		origin + Vector2(unit * 0.50, unit * 0.12),
+		origin + Vector2(unit * 0.61, unit * 0.56),
+		origin + Vector2(unit * 0.54, unit * 0.70),
+		origin + Vector2(unit * 0.46, unit * 0.70),
+		origin + Vector2(unit * 0.39, unit * 0.56),
+	])
+	draw_colored_polygon(blade, blade_color)
+	var blade_outline := PackedVector2Array(blade)
+	blade_outline.append(blade[0])
+	draw_polyline(blade_outline, outline, maxf(unit * 0.018, 1.0), true)
+
+	var shine := PackedVector2Array([
+		origin + Vector2(unit * 0.50, unit * 0.18),
+		origin + Vector2(unit * 0.55, unit * 0.57),
+		origin + Vector2(unit * 0.50, unit * 0.67),
+	])
+	draw_polyline(shine, Color(1.0, 1.0, 0.95, 0.55), maxf(unit * 0.012, 1.0), true)
+
+	var center_shadow := PackedVector2Array([
+		origin + Vector2(unit * 0.50, unit * 0.18),
+		origin + Vector2(unit * 0.45, unit * 0.58),
+		origin + Vector2(unit * 0.50, unit * 0.68),
+	])
+	draw_polyline(center_shadow, blade_shadow, maxf(unit * 0.01, 1.0), true)
+
+	var guard := Rect2(origin + Vector2(unit * 0.28, unit * 0.66), Vector2(unit * 0.44, unit * 0.08))
+	draw_rect(guard, guard_color)
+	draw_rect(guard, Color(0.82, 0.64, 0.32, 1.0), false, maxf(unit * 0.012, 1.0))
+
+	var grip := Rect2(origin + Vector2(unit * 0.45, unit * 0.72), Vector2(unit * 0.10, unit * 0.18))
+	draw_rect(grip, grip_color)
+	draw_rect(grip, outline, false, maxf(unit * 0.012, 1.0))
+
+	draw_circle(origin + Vector2(unit * 0.50, unit * 0.92), unit * 0.055, guard_color)
+	draw_arc(origin + Vector2(unit * 0.50, unit * 0.92), unit * 0.055, 0.0, TAU, 18, Color(0.82, 0.64, 0.32, 1.0), maxf(unit * 0.01, 1.0))
 
 
 func _draw_tier_badge() -> void:

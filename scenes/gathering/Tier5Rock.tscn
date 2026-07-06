@@ -7,8 +7,9 @@
 [ext_resource type="Material" path="res://assets/materials/hover/hover_outline_green.tres" id="5_hover_material"]
 [ext_resource type="Texture2D" path="res://assets/ui/cursors/gather_tool_cursor.png" id="6_gather_cursor"]
 [ext_resource type="Texture2D" uid="uid://cili1xiu4osa1" path="res://assets/ui/cursors/depleted_resource_cursor.png" id="7_depleted_cursor"]
-[ext_resource type="PackedScene" path="res://assets/models/resources/rocks/t5_rock_full.glb" id="8_rocks_rock_full"]
+[ext_resource type="PackedScene" uid="uid://c0t31rv1mnrne" path="res://assets/models/environment/stylized_nature_megakit/models/rock_medium_1.gltf" id="8_rocks_rock_full"]
 [ext_resource type="PackedScene" path="res://assets/models/resources/rocks/t5_rock_depleted.glb" id="9_rocks_rock_depleted"]
+[ext_resource type="Script" path="res://scripts/visuals/tier_tinted_model_3d.gd" id="10_tier_tint"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_selectable"]
 radius = 0.95
@@ -64,6 +65,9 @@ fill_color = Color(0.78, 0.18, 0.16, 0.16)
 [node name="Active" type="Node3D" parent="Visuals"]
 
 [node name="T5RockFullModel" parent="Visuals/Active" instance=ExtResource("8_rocks_rock_full")]
+transform = Transform3D(0.55108804, 0, 0, 0, 0.48344278, 0, 0, 0, 0.61184204, 0, -0.2695726, -0.17404577)
+script = ExtResource("10_tier_tint")
+tint_color = Color(0.78, 0.18, 0.16, 1)
 
 [node name="Depleted" type="Node3D" parent="Visuals"]
 visible = false

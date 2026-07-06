@@ -13,12 +13,14 @@ controller into one giant file.
 Start here if you are new to the project:
 
 1. `project.godot` - tells Godot which scene runs first.
-2. `scenes/main/Main.tscn` - the current test world.
-3. `scenes/player/Player.tscn` - the reusable player prefab.
-4. `scripts/player/controllers/player_controller.gd` - coordinates the player
+2. `docs/START_HERE.md` - the short orientation page.
+3. `scenes/world/starting_city/StartingCity.tscn` - the current test world.
+4. `scenes/levels/PlayableLevelShell.tscn` - the shared playable level setup.
+5. `scenes/player/Player.tscn` - the reusable player prefab.
+6. `scripts/player/controllers/player_controller.gd` - coordinates the player
    sub-systems.
-5. `scripts/README.md` - GDScript syntax notes and the script folder map.
-6. The smaller scripts under `scripts/player/` - movement, input, animation,
+7. `scripts/README.md` - GDScript syntax notes and the script folder map.
+8. The smaller scripts under `scripts/player/` - movement, input, animation,
    audio, stats, visuals, and feedback.
 
 ## Project Entry Point
@@ -26,25 +28,25 @@ Start here if you are new to the project:
 `project.godot` points the game at:
 
 ```text
-res://scenes/main/Main.tscn
+res://scenes/world/starting_city/StartingCity.tscn
 ```
 
-That means pressing Play in Godot loads `Main.tscn`.
+That means pressing Play in Godot loads `StartingCity.tscn`.
 
-`Main.tscn` currently contains:
+`StartingCity.tscn` inherits from `scenes/levels/PlayableLevelShell.tscn`. The
+shell contains the common playable setup:
 
 - `WorldEnvironment` for basic lighting/background color.
 - `World`, a parent node for world objects.
 - `DebugGrid`, the isometric reference grid.
 - `Ground`, a flat walkable plane with collision.
 - `Player`, an instance of the reusable player prefab.
-- `FriendlyTarget` and `HostileTarget`, selectable prototype targets for testing
-  relationship-colored hover/selection.
-- `Tier1Tree`, a gathering tree with T1-colored leaf clusters.
-- `Tier1Rock`, a gathering stone node with full and depleted rock visuals.
 - `PlayerInventory`, local prototype item and currency storage.
 - `InventoryPanel`, the toggleable prototype inventory UI.
-- `Sun`, a directional light.
+- HUD, death message, refining, loot, and lighting setup.
+
+`StartingCity.tscn` should contain map-specific objects: placed resources,
+enemies, props, water, buildings, and city layout work.
 
 This is still a prototype scene. It is useful for testing movement, camera,
 click feedback, audio, and stats, but it is not the future world streaming or
@@ -73,7 +75,9 @@ scenes/
   effects/   Visual effects such as click indicators.
   gathering/ Prototype resource nodes such as trees.
   ui/        Reusable UI scenes such as inventory and nameplates.
-  main/      Current playable test scene.
+  levels/    Shared playable level shell and level helpers.
+  world/     Current demo maps, such as Starting City.
+  main/      Older prototype sandbox scene kept for reference/testing.
   player/    Reusable player prefab.
 
 scripts/
@@ -220,10 +224,10 @@ released so the same click does not also become a move command. Selected target
 rings stay visible while that target remains selected; clicking the ground does
 not clear selection, but clicking another selectable swaps the selected target.
 
-`TargetDummy.tscn` is the current test entity. `Main.tscn` instances it as a
-friendly target and a hostile target so hover/selection can be checked against
-both relationship colors. Its nameplate is hidden until selected, and then only
-shows a relationship-colored health bar: green for friendly and red for hostile.
+`TargetDummy.tscn` is the older friendly/hostile test entity used by prototype
+sandbox scenes so hover/selection can be checked against both relationship
+colors. Its nameplate is hidden until selected, and then only shows a
+relationship-colored health bar: green for friendly and red for hostile.
 The visual is the same base character model used by the player, with the shared
 toon material pass tinted light green for friendly and light red for hostile.
 This gives us a small combat foundation before adding attacks or spells.
@@ -519,8 +523,9 @@ nameplate.set_vitals(0.85, 0.6)
 `assets/ui/inventory/cotton_icon.png`
 `assets/ui/inventory/hide_icon.png`
 
-`Main.tscn` has a `PlayerInventory` node and a standalone `InventoryPanel` scene
-instanced at the root. Press `I` to toggle the panel during play.
+`PlayableLevelShell.tscn` has a `PlayerInventory` node and a standalone
+`InventoryPanel` scene instanced at the root. Press `I` to toggle the panel
+during play.
 `PlayerInventory` owns local prototype item stacks, currency, and equipped-slot
 state. `InventoryPanel` observes that node through signals and stays focused on
 rendering slots, selected item details, equipped gear placeholders, and carry

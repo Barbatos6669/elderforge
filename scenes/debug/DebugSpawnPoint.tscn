@@ -1,0 +1,78 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/debug/debug_spawn_point_3d.gd" id="1_spawn_point"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_spawn_gold"]
+albedo_color = Color(1, 0.78, 0.12, 1)
+emission_enabled = true
+emission = Color(1, 0.55, 0.05, 1)
+emission_energy_multiplier = 0.35
+roughness = 0.42
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_spawn_blue"]
+albedo_color = Color(0.1, 0.72, 1, 1)
+emission_enabled = true
+emission = Color(0.05, 0.45, 1, 1)
+emission_energy_multiplier = 0.45
+roughness = 0.35
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_ground_disc"]
+top_radius = 0.45
+bottom_radius = 0.45
+height = 0.025
+radial_segments = 48
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_center_pip"]
+top_radius = 0.08
+bottom_radius = 0.08
+height = 0.055
+radial_segments = 24
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_pointer_stem"]
+top_radius = 0.035
+bottom_radius = 0.035
+height = 0.85
+radial_segments = 12
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_pointer_head"]
+top_radius = 0.0
+bottom_radius = 0.16
+height = 0.32
+radial_segments = 16
+rings = 1
+
+[sub_resource type="BoxMesh" id="BoxMesh_forward_tick"]
+size = Vector3(0.12, 0.04, 0.42)
+
+[node name="DebugSpawnPoint" type="Marker3D"]
+script = ExtResource("1_spawn_point")
+
+[node name="Visuals" type="Node3D" parent="."]
+
+[node name="GroundDisc" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 0.015, 0)
+mesh = SubResource("CylinderMesh_ground_disc")
+surface_material_override/0 = SubResource("StandardMaterial3D_spawn_blue")
+
+[node name="CenterPip" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 0.05, 0)
+mesh = SubResource("CylinderMesh_center_pip")
+surface_material_override/0 = SubResource("StandardMaterial3D_spawn_gold")
+
+[node name="PointerStem" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 0.48, 0)
+mesh = SubResource("CylinderMesh_pointer_stem")
+surface_material_override/0 = SubResource("StandardMaterial3D_spawn_gold")
+
+[node name="PointerHead" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 1.065, 0)
+mesh = SubResource("CylinderMesh_pointer_head")
+surface_material_override/0 = SubResource("StandardMaterial3D_spawn_gold")
+
+[node name="ForwardTick" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 0.055, -0.46)
+mesh = SubResource("BoxMesh_forward_tick")
+surface_material_override/0 = SubResource("StandardMaterial3D_spawn_gold")

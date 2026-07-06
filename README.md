@@ -34,10 +34,10 @@ There is not yet a full game loop. See [docs/ROADMAP.md](docs/ROADMAP.md) for th
 
 ## Learning the Codebase
 
-If you want to understand how the current prototype is put together, start with
-[docs/CODEBASE_GUIDE.md](docs/CODEBASE_GUIDE.md). It explains the main scene,
-player prefab, movement, camera, animation, footsteps, stats, and where to make
-common changes.
+If the project feels large, start with [docs/START_HERE.md](docs/START_HERE.md).
+Then use [docs/CODEBASE_GUIDE.md](docs/CODEBASE_GUIDE.md) for the longer
+walkthrough and [docs/CODEBASE_INDEX.md](docs/CODEBASE_INDEX.md) for fast file
+lookup.
 
 ## Contributing
 

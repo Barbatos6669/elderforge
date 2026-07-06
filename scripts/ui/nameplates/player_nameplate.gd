@@ -215,11 +215,15 @@ func _connect_selectable() -> void:
 	if _selectable == null:
 		return
 
+	if Engine.is_editor_hint():
+		return
+
+	var selection_changed_callable := Callable(self, "_on_selection_changed")
 	if (
 		_selectable.has_signal("selection_changed")
-		and not _selectable.selection_changed.is_connected(_on_selection_changed)
+		and not _selectable.is_connected("selection_changed", selection_changed_callable)
 	):
-		_selectable.selection_changed.connect(_on_selection_changed)
+		_selectable.connect("selection_changed", selection_changed_callable)
 
 
 func _connect_health_source() -> void:
@@ -227,11 +231,15 @@ func _connect_health_source() -> void:
 	if _health_source == null:
 		return
 
+	if Engine.is_editor_hint():
+		return
+
+	var health_changed_callable := Callable(self, "_on_health_changed")
 	if (
 		_health_source.has_signal("health_changed")
-		and not _health_source.health_changed.is_connected(_on_health_changed)
+		and not _health_source.is_connected("health_changed", health_changed_callable)
 	):
-		_health_source.health_changed.connect(_on_health_changed)
+		_health_source.connect("health_changed", health_changed_callable)
 
 	_sync_health_ratio_from_source()
 
@@ -276,7 +284,7 @@ func _sync_health_ratio_from_source() -> void:
 	if _health_source == null:
 		return
 
-	if _health_source.has_method("get_health_ratio"):
+	if not Engine.is_editor_hint() and _health_source.has_method("get_health_ratio"):
 		health_ratio = clampf(_health_source.call("get_health_ratio"), 0.0, 1.0)
 
 
@@ -293,6 +301,8 @@ func _sync_selection_visibility() -> void:
 
 func _is_selectable_selected() -> bool:
 	return (
+		not Engine.is_editor_hint()
+		and
 		_selectable != null
 		and _selectable.has_method("is_selected")
 		and _selectable.call("is_selected") == true
@@ -497,6 +507,7 @@ func _add_color_rect(position: Vector2, size: Vector2, color: Color) -> ColorRec
 func _get_health_fill_color() -> Color:
 	if (
 		use_relationship_health_color
+		and not Engine.is_editor_hint()
 		and _selectable != null
 		and _selectable.has_method("get_relationship_color")
 	):

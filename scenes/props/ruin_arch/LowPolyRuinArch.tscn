@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://b7n7j2e3nsxc5"]
+
+[ext_resource type="PackedScene" uid="uid://kstsijuae4mx" path="res://assets/models/props/ruin_arch/models/low_poly_ruin_arch.glb" id="1_arch_model"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_left_pillar"]
+size = Vector3(0.8, 3.45, 0.95)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_right_pillar"]
+size = Vector3(0.8, 3.45, 0.95)
+
+[node name="LowPolyRuinArch" type="StaticBody3D" unique_id=875382638]
+
+[node name="Visual" parent="." unique_id=32338123 instance=ExtResource("1_arch_model")]
+
+[node name="LeftPillarCollision" type="CollisionShape3D" parent="." unique_id=1753828739]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.85, 1.72, 0)
+shape = SubResource("BoxShape3D_left_pillar")
+
+[node name="RightPillarCollision" type="CollisionShape3D" parent="." unique_id=1051414502]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.85, 1.72, 0)
+shape = SubResource("BoxShape3D_right_pillar")

@@ -1,5 +1,5 @@
-## Temporary item catalog for prototype gathering resources, refined materials,
-## and tools.
+## Temporary item catalog for prototype resources, refined materials, tools, and
+## weapons.
 ##
 ## Item family data lives in `assets/items/families/`. This script turns each
 ## family resource into one ItemDefinition per tier. UI code should ask
@@ -41,6 +41,9 @@ const TOOL_FAMILY_PATHS := [
 	"res://assets/items/families/tools/sickle.tres",
 	"res://assets/items/families/tools/skinning_knife.tres",
 ]
+const WEAPON_FAMILY_PATHS := [
+	"res://assets/items/families/weapons/one_handed_sword.tres",
+]
 
 
 ## Builds the current gathering resource item pass.
@@ -58,11 +61,17 @@ static func create_equipment_preview_definitions() -> Array:
 	return _create_definitions_from_paths(TOOL_FAMILY_PATHS)
 
 
+## Builds temporary weapon preview items before real weapon data exists.
+static func create_weapon_preview_definitions() -> Array:
+	return _create_definitions_from_paths(WEAPON_FAMILY_PATHS)
+
+
 ## Builds every temporary item definition known to the prototype.
 static func create_prototype_definitions() -> Array:
 	var definitions := create_gathering_definitions()
 	definitions.append_array(create_refined_resource_definitions())
 	definitions.append_array(create_equipment_preview_definitions())
+	definitions.append_array(create_weapon_preview_definitions())
 	return definitions
 
 

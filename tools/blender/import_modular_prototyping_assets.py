@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 import bpy
+from mathutils import Vector
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -26,6 +27,7 @@ SOURCE_ROOT = PACK_ROOT / "source"
 MODELS_ROOT = PACK_ROOT / "models"
 TEXTURES_ROOT = PACK_ROOT / "textures"
 IMAGE_NAME_PATTERN = re.compile(r"(.+\.(?:png|jpg|jpeg|tga|bmp|webp))(?:\.\d+)?$", re.IGNORECASE)
+NORMALIZATION_EPSILON = 0.0001
 
 
 def parse_args() -> argparse.Namespace:
@@ -78,6 +80,48 @@ def select_hierarchy(root: bpy.types.Object) -> None:
     for child in root.children_recursive:
         child.select_set(True)
     bpy.context.view_layer.objects.active = root
+
+
+def normalize_hierarchy_to_bottom_center(root: bpy.types.Object) -> None:
+    """Move imported geometry so the source origin is useful in Godot.
+
+    The raw prototyping pack stores many meshes in a large sample-layout grid.
+    Without this pass, a prefab can have its root at (0, 0, 0) while the visible
+    mesh sits several meters away. We keep the object's bottom on Blender Z=0
+    and center it on Blender X/Y, which becomes Godot X/Z after glTF export.
+    """
+
+    mesh_objects = [obj for obj in root.children_recursive if obj.type == "MESH"]
+    if not mesh_objects:
+        return
+
+    min_corner = Vector((float("inf"), float("inf"), float("inf")))
+    max_corner = Vector((float("-inf"), float("-inf"), float("-inf")))
+
+    for obj in mesh_objects:
+        for local_corner in obj.bound_box:
+            world_corner = obj.matrix_world @ Vector(local_corner)
+            min_corner.x = min(min_corner.x, world_corner.x)
+            min_corner.y = min(min_corner.y, world_corner.y)
+            min_corner.z = min(min_corner.z, world_corner.z)
+            max_corner.x = max(max_corner.x, world_corner.x)
+            max_corner.y = max(max_corner.y, world_corner.y)
+            max_corner.z = max(max_corner.z, world_corner.z)
+
+    offset = Vector(
+        (
+            (min_corner.x + max_corner.x) * 0.5,
+            (min_corner.y + max_corner.y) * 0.5,
+            min_corner.z,
+        )
+    )
+    if offset.length <= NORMALIZATION_EPSILON:
+        return
+
+    for child in root.children:
+        child.matrix_world.translation -= offset
+
+    bpy.context.view_layer.update()
 
 
 def clean_image_name(image_name: str) -> str:
@@ -133,6 +177,8 @@ def import_fbx_to_source(fbx_path: Path, asset_id: str) -> bpy.types.Object:
         "Free 3D Modular Game Assets converted source. Edit this .blend, then run "
         "tools/blender/export_modular_prototyping_assets.py to refresh the runtime glTF."
     )
+
+    normalize_hierarchy_to_bottom_center(root)
 
     return root
 

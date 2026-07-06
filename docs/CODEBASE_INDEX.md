@@ -9,17 +9,21 @@ you want to open.
 | Path | Purpose |
 | --- | --- |
 | `project.godot` | Godot project settings and main scene pointer. |
-| `scenes/main/Main.tscn` | Current playable prototype scene. |
+| `docs/START_HERE.md` | Shortest orientation page for the current prototype. |
+| `scenes/world/starting_city/StartingCity.tscn` | Current playable prototype entry scene. |
+| `scenes/levels/PlayableLevelShell.tscn` | Shared level shell inherited by playable scenes. |
 | `scenes/player/Player.tscn` | Reusable player prefab. Drop this into a scene to play from it. |
 | `scripts/README.md` | GDScript primer and guide to every script folder README. |
 | `docs/CODEBASE_GUIDE.md` | Longer learning guide for how the current systems fit together. |
 | `docs/ROADMAP.md` | Phase plan and milestone direction. |
 
-## Main Scene
+## Playable Scenes
 
 | Path | Purpose |
 | --- | --- |
-| `scenes/main/Main.tscn` | Test world containing the player, debug grid, ground, targets, inventory, and lighting. |
+| `scenes/world/starting_city/StartingCity.tscn` | Current demo map. Keep map-specific placement here. |
+| `scenes/levels/PlayableLevelShell.tscn` | Reusable player/UI/ground/grid/lighting setup for playable maps. |
+| `scenes/main/Main.tscn` | Older prototype sandbox scene kept for reference/testing. |
 | `scenes/debug/IsometricGrid.tscn` | Debug grid scene used as isometric visual reference. |
 | `scripts/debug/isometric_grid.gd` | Draws and configures the debug grid. |
 | `scenes/entities/TargetDummy.tscn` | Friendly and hostile prototype target scene. |
@@ -180,6 +184,8 @@ server-provided definitions.
 | `CONTRIBUTING.md` | Contributor workflow and expectations. |
 | `CODE_OF_CONDUCT.md` | Community behavior rules. |
 | `SECURITY.md` | Security reporting guidance. |
+| `docs/START_HERE.md` | Short orientation page for the active prototype. |
+| `docs/PROJECT_STRUCTURE.md` | Folder layout and naming rules. |
 | `docs/CODEBASE_GUIDE.md` | Detailed learning guide. |
 | `docs/CODEBASE_INDEX.md` | This fast lookup index. |
 | `docs/DESIGN_BOUNDARIES.md` | Design/legal boundaries for inspiration from existing games. |

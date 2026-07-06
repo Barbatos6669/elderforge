@@ -6,8 +6,8 @@ This folder renders the inventory and equipment UI. Inventory state lives in
 Files:
 
 - `inventory_panel.gd`: toggleable character window with Inventory and Stats
-  tabs, bag slot rendering, details panel, currency display, bag drag/drop, and
-  gear drag/drop forwarding.
+  tabs, bag slot rendering, details panel, currency display, bag drag/drop,
+  loot drag/drop receiving, and gear drag/drop forwarding.
 - `equipment_panel.gd`: equipped gear slot layout, selection state, and gear
   drop routing.
 - `equipment_slot_button.gd`: Godot drag/drop hooks for one equipped gear slot.
@@ -21,7 +21,9 @@ GDScript notes:
 
 - UI nodes are built with `Control`, `PanelContainer`, `GridContainer`,
   `VBoxContainer`, and similar Godot UI classes.
-- Drag/drop methods return and accept `Dictionary` payloads.
+- Drag/drop methods return and accept `Dictionary` payloads. Loot rows send an
+  `elderforge_loot_item` payload that inventory slots use to pull from the
+  source loot container.
 - `InventoryPanel` calls `PlayerInventory.move_or_swap_slots(...)`,
   `equip_from_slot(...)`, and `unequip_to_slot(...)`; it does not own the
   authoritative slot data.

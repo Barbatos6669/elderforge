@@ -1,7 +1,7 @@
-## Runtime player stat container and stat metadata registry.
+## Base player stat values and metadata registry.
 ##
-## All tracked values start at 0.0 for now. Equipment, buffs, progression, and
-## server state can later write into this module without changing UI code.
+## Equipment, buffs, progression, and server state can later write into this
+## module without changing UI code.
 class_name PlayerStats
 extends Node
 
@@ -66,6 +66,16 @@ const STONE_YIELD := &"stone_yield"
 const WOOD_YIELD := &"wood_yield"
 const FISHING_YIELD := &"fishing_yield"
 
+## Starting values for stats that should not begin at zero.
+const BASE_STAT_VALUES := {
+	AUTO_ATTACK_DAMAGE: 20.0,
+	AUTO_ATTACK_SPEED: 1.0,
+	MAX_HEALTH: 1200.0,
+	MAX_ENERGY: 120.0,
+	HEALTH_REGENERATION: 10.0,
+	ENERGY_REGENERATION: 10.0,
+}
+
 ## Ordered stat metadata used by future UI and gameplay systems.
 ##
 ## Each definition stores a stable id, player-facing name, grouping category,
@@ -119,7 +129,14 @@ var _values: Dictionary = {}
 
 func _ready() -> void:
 	add_to_group("player_stats")
+	reset_to_base_values()
+
+
+## Resets every registered stat to zero, then applies the player's base stats.
+func reset_to_base_values() -> void:
 	reset_all_to_zero()
+	for stat_id in BASE_STAT_VALUES:
+		_values[stat_id] = BASE_STAT_VALUES[stat_id]
 
 
 ## Resets every registered stat value back to 0.0.

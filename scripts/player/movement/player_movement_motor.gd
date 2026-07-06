@@ -15,6 +15,12 @@ extends Node
 @export var arrival_distance: float = 0.12
 ## Dot-product threshold below which sharp turns snap immediately.
 @export var direction_change_snap_angle: float = 0.65
+## Downward acceleration keeps the player attached to slopes and ramps.
+@export var gravity: float = 32.0
+## Small downward velocity applied while grounded so descending ramps stay smooth.
+@export var floor_stick_velocity: float = 2.0
+## Maximum downward speed for future uneven terrain or ledges.
+@export var terminal_fall_speed: float = 48.0
 
 var _has_destination := false
 var _destination := Vector3.ZERO
@@ -40,6 +46,7 @@ func move_to_destination(character: CharacterBody3D, delta: float) -> Vector3:
 	var movement_direction := _direction_to_destination(character)
 	if movement_direction == Vector3.ZERO:
 		stop(character)
+		_apply_vertical_velocity(character, delta)
 		character.move_and_slide()
 		return Vector3.ZERO
 
@@ -53,7 +60,7 @@ func move_to_destination(character: CharacterBody3D, delta: float) -> Vector3:
 		character.velocity.z = movement_direction.z * current_speed
 
 	character.velocity.x = move_toward(character.velocity.x, target_velocity.x, acceleration * delta)
-	character.velocity.y = 0.0
+	_apply_vertical_velocity(character, delta)
 	character.velocity.z = move_toward(character.velocity.z, target_velocity.z, acceleration * delta)
 	character.move_and_slide()
 
@@ -74,7 +81,7 @@ func get_horizontal_velocity_direction(character: CharacterBody3D) -> Vector3:
 
 func _decelerate(character: CharacterBody3D, delta: float) -> Vector3:
 	character.velocity.x = move_toward(character.velocity.x, 0.0, deceleration * delta)
-	character.velocity.y = 0.0
+	_apply_vertical_velocity(character, delta)
 	character.velocity.z = move_toward(character.velocity.z, 0.0, deceleration * delta)
 	character.move_and_slide()
 
@@ -105,3 +112,13 @@ func _is_at_destination(character: CharacterBody3D) -> bool:
 	var offset := _destination - character.global_position
 	offset.y = 0.0
 	return offset.length() <= arrival_distance
+
+
+func _apply_vertical_velocity(character: CharacterBody3D, delta: float) -> void:
+	if character.is_on_floor():
+		character.velocity.y = -floor_stick_velocity
+	else:
+		character.velocity.y = maxf(
+			character.velocity.y - gravity * delta,
+			-terminal_fall_speed
+		)

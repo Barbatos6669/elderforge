@@ -18,12 +18,7 @@
 	"nodes":[
 		{
 			"mesh":0,
-			"name":"Stairs.002",
-			"translation":[
-				33,
-				0,
-				0
-			]
+			"name":"Stairs.002"
 		},
 		{
 			"children":[

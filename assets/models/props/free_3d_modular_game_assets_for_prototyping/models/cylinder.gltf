@@ -18,12 +18,7 @@
 	"nodes":[
 		{
 			"mesh":0,
-			"name":"Cylinder",
-			"translation":[
-				-6,
-				0,
-				-4
-			]
+			"name":"Cylinder"
 		},
 		{
 			"children":[

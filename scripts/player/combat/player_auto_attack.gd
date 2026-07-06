@@ -10,10 +10,10 @@ signal attack_started(target: Node)
 signal attack_landed(target: Node, damage: float)
 signal attack_stopped
 
-## Damage dealt by each prototype auto-attack hit.
-@export var attack_damage: float = 12.0
-## Seconds between auto-attack hits.
-@export var attack_interval: float = 1.2
+## Fallback damage when the attacker does not expose a PlayerStats node.
+@export var attack_damage: float = 20.0
+## Fallback seconds between hits when the attacker does not expose Auto-Attack Speed.
+@export var attack_interval: float = 1.0
 ## Maximum distance from player origin to target origin for attacks to land.
 @export var attack_range: float = 1.8
 ## Desired stopping distance while moving into melee range.
@@ -26,12 +26,20 @@ var _cooldown_remaining := 0.0
 
 
 ## Starts attacking the target if it is valid. Returns true on success.
+##
+## Re-clicking the same target is intentionally idempotent so input spam cannot
+## reset the swing timer and force extra attacks.
 func start_attack(target: Node, attacker: Node3D) -> bool:
 	if not can_attack_target(target):
 		return false
 
+	if target == _target and has_active_target():
+		return true
+
+	var had_active_target := has_active_target()
 	_target = target
-	_cooldown_remaining = 0.0
+	if not had_active_target:
+		_cooldown_remaining = 0.0
 	attack_started.emit(_target)
 	return true
 
@@ -136,15 +144,33 @@ func _try_land_attack(attacker: Node3D) -> void:
 	if health == null or not health.has_method("apply_damage"):
 		return
 
-	var applied_damage: float = health.call("apply_damage", attack_damage)
+	var applied_damage: float = health.call("apply_damage", _attack_damage(attacker))
 	if applied_damage <= 0.0:
 		return
 
-	_cooldown_remaining = attack_interval
+	_cooldown_remaining = _attack_interval(attacker)
 	attack_landed.emit(_target, applied_damage)
 
 	if _is_health_defeated(health):
 		stop_attack()
+
+
+func _attack_damage(attacker: Node3D) -> float:
+	var stats := attacker.get_node_or_null("Stats") if attacker != null else null
+	if stats != null and stats.has_method("get_stat"):
+		return maxf(float(stats.call("get_stat", PlayerStats.AUTO_ATTACK_DAMAGE)), 0.0)
+
+	return maxf(attack_damage, 0.0)
+
+
+func _attack_interval(attacker: Node3D) -> float:
+	var stats := attacker.get_node_or_null("Stats") if attacker != null else null
+	if stats != null and stats.has_method("get_stat"):
+		var attacks_per_second := float(stats.call("get_stat", PlayerStats.AUTO_ATTACK_SPEED))
+		if attacks_per_second > 0.0:
+			return 1.0 / attacks_per_second
+
+	return maxf(attack_interval, 0.01)
 
 
 func _is_in_attack_range(attacker: Node3D, target: Node) -> bool:

@@ -1,0 +1,62 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/loot/loot_container_3d.gd" id="1_loot_container"]
+[ext_resource type="Script" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
+[ext_resource type="Script" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="3_selection_feedback"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bag"]
+albedo_color = Color(0.43, 0.27, 0.12, 1)
+roughness = 0.8
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tie"]
+albedo_color = Color(0.78, 0.58, 0.28, 1)
+roughness = 0.75
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_bag"]
+material = SubResource("StandardMaterial3D_bag")
+top_radius = 0.24
+bottom_radius = 0.36
+height = 0.48
+radial_segments = 12
+rings = 1
+
+[sub_resource type="BoxMesh" id="BoxMesh_tie"]
+material = SubResource("StandardMaterial3D_tie")
+size = Vector3(0.5, 0.06, 0.08)
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_selectable"]
+radius = 0.58
+
+[node name="LootBag" type="Node3D"]
+script = ExtResource("1_loot_container")
+
+[node name="Selectable" type="Area3D" parent="."]
+input_ray_pickable = true
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("2_selectable")
+display_name = "Loot Bag"
+relationship = 2
+neutral_color = Color(1, 0.82, 0.18, 1)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable"]
+position = Vector3(0, 0.35, 0)
+shape = SubResource("SphereShape3D_selectable")
+
+[node name="SelectedRing" type="MeshInstance3D" parent="."]
+script = ExtResource("3_selection_feedback")
+ring_radius = 0.44
+ring_width = 0.06
+ring_y_offset = 0.05
+ring_color = Color(1, 0.82, 0.18, 1)
+fill_color = Color(1, 0.82, 0.18, 0.12)
+
+[node name="Visuals" type="Node3D" parent="."]
+
+[node name="BagBody" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 0.26, 0)
+mesh = SubResource("CylinderMesh_bag")
+
+[node name="Tie" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 0.49, 0)
+mesh = SubResource("BoxMesh_tie")

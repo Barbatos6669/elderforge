@@ -18,6 +18,7 @@ Folders:
 - `feedback/`: click markers and other player-triggered feedback.
 - `gathering/`: player-side gathering flow.
 - `input/`: local keyboard and mouse interpretation.
+- `lifecycle/`: player death, respawn, and future bind/checkpoint rules.
 - `movement/`: click-to-move motor.
 - `stats/`: player stat storage.
 - `targeting/`: target selection.

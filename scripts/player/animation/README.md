@@ -5,8 +5,8 @@ This folder controls animations on the player model.
 Files:
 
 - `player_animation_controller.gd`: loads animation clips, switches idle/jog,
-  plays attack animation, chooses context-specific gathering loops, and controls
-  playback speeds.
+  plays attack/death animations, chooses context-specific gathering loops, and
+  controls playback speeds.
 - `equipment_animation_profile.gd`: data resource used by tools and weapons to
   override action animations without editing player controller code.
 
@@ -21,6 +21,8 @@ GDScript notes:
 - The controller receives simple state calls like `set_moving(true)` instead of
   reading movement input directly.
 - `play_attack()` is called by the player controller when auto-attack lands.
+- `play_death()` is called by mob AI when a humanoid enemy is defeated, then
+  `reset_animation_state()` returns it to idle on respawn.
 - `set_gathering(true, context)` is called while a gathering channel is active.
   The context tells the controller which resource/tool family is involved.
 - Equipped item definitions can provide `equipment_animation_profile_path`.
@@ -34,7 +36,7 @@ GDScript notes:
 
 Current sources:
 
-- Idle, jog, and punch come from Universal Animation Library 1.
+- Idle, jog, punch, and `Death01` come from Universal Animation Library 1.
 - Axe gathering on logs uses tier-local clips such as `T4_Axe_TreeChopping`,
   initially generated from Universal Animation Library 2.
 - Hammer, pickaxe, sickle, and skinning-knife gathering currently use the shared

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemFamilyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_family_definition.gd" id="1_family"]
+
+[resource]
+script = ExtResource("1_family")
+family_id = "one_handed_sword"
+icon_id = "one_handed_sword"
+item_id_prefix = "one_handed_sword"
+category = "Weapon"
+tier_names = PackedStringArray("Crude Broadsword", "Rough Broadsword", "Sturdy Broadsword", "Forged Broadsword", "Hardened Broadsword", "Runed Broadsword", "Sunsteel Broadsword", "Elder Broadsword")
+base_weight = 3.0
+weight_per_tier = 0.3
+usage_text = "one-handed melee combat, weapon crafting, and early combat prototypes"
+max_stack = 1
+equip_slot = "main_hand"
+equipment_scene_path_template = "res://scenes/equipment/weapons/one_handed_swords/Tier%dOneHandedSword.tscn"
+equipment_attachment_profile_path = "res://assets/models/equipment/attachments/one_handed_sword_main_hand.tres"

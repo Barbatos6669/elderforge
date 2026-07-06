@@ -1,0 +1,107 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" uid="uid://bsijgrn25hawa" path="res://scenes/player/Player.tscn" id="1_player"]
+[ext_resource type="PackedScene" path="res://scenes/debug/IsometricGrid.tscn" id="2_grid"]
+[ext_resource type="PackedScene" path="res://scenes/debug/DebugSpawnPoint.tscn" id="3_spawn_point"]
+[ext_resource type="PackedScene" path="res://scenes/ui/inventory/InventoryPanel.tscn" id="4_inventory_panel"]
+[ext_resource type="Script" uid="uid://vo8pi6ow13ef" path="res://scripts/inventory/player_inventory.gd" id="5_player_inventory"]
+[ext_resource type="PackedScene" path="res://scenes/ui/refining/RefiningPanel.tscn" id="6_refining_panel"]
+[ext_resource type="PackedScene" path="res://scenes/ui/loot/LootPanel.tscn" id="7_loot_panel"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud/PlayerStatusHud.tscn" id="8_player_status_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud/DeathMessageHud.tscn" id="9_death_message_hud"]
+[ext_resource type="PackedScene" path="res://scenes/levels/lighting/BasicLevelLighting.tscn" id="10_basic_lighting"]
+
+[sub_resource type="Environment" id="Environment_level"]
+background_mode = 1
+background_color = Color(0.07, 0.09, 0.1, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.72, 0.78, 0.8, 1)
+ambient_light_energy = 0.45
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
+albedo_color = Color(0.17, 0.24, 0.16, 1)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
+material = SubResource("StandardMaterial3D_ground")
+size = Vector2(80, 80)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
+size = Vector3(80, 0.1, 80)
+
+[node name="PlayableLevelShell" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_level")
+
+[node name="World" type="Node3D" parent="."]
+
+[node name="DebugGrid" parent="World" instance=ExtResource("2_grid")]
+half_size = 40
+
+[node name="Ground" type="StaticBody3D" parent="World"]
+
+[node name="GroundMesh" type="MeshInstance3D" parent="World/Ground"]
+mesh = SubResource("PlaneMesh_ground")
+
+[node name="GroundCollision" type="CollisionShape3D" parent="World/Ground"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.05, 0)
+shape = SubResource("BoxShape3D_ground")
+
+[node name="PlayerSpawn" parent="World" instance=ExtResource("3_spawn_point")]
+spawn_id = "playable_level_spawn"
+
+[node name="Player" parent="World" instance=ExtResource("1_player")]
+
+[node name="Respawn" parent="World/Player"]
+spawn_marker_path = NodePath("../../PlayerSpawn")
+
+[node name="LevelContent" type="Node3D" parent="World"]
+
+[node name="GroundDress" type="Node3D" parent="World/LevelContent"]
+
+[node name="Roads" type="Node3D" parent="World/LevelContent"]
+
+[node name="Walls" type="Node3D" parent="World/LevelContent"]
+
+[node name="Gates" type="Node3D" parent="World/LevelContent"]
+
+[node name="Buildings" type="Node3D" parent="World/LevelContent"]
+
+[node name="Stations" type="Node3D" parent="World/LevelContent"]
+
+[node name="Resources" type="Node3D" parent="World/LevelContent"]
+
+[node name="Mobs" type="Node3D" parent="World/LevelContent"]
+
+[node name="Props" type="Node3D" parent="World/LevelContent"]
+
+[node name="Lighting" type="Node3D" parent="World/LevelContent"]
+
+[node name="BasicLevelLighting" parent="World/LevelContent/Lighting" instance=ExtResource("10_basic_lighting")]
+
+[node name="Navigation" type="Node3D" parent="World/LevelContent"]
+
+[node name="PlayerInventory" type="Node" parent="."]
+script = ExtResource("5_player_inventory")
+debug_seed_item_ids = PackedStringArray("timber_t1", "stone_t1", "ore_t1", "cotton_t1", "hide_t1")
+debug_seed_quantity = 100
+
+[node name="InventoryPanel" parent="." instance=ExtResource("4_inventory_panel")]
+inventory_path = NodePath("../PlayerInventory")
+stats_path = NodePath("../World/Player/Stats")
+start_visible = true
+
+[node name="PlayerStatusHud" parent="." instance=ExtResource("8_player_status_hud")]
+player_name = "Barabtos6669"
+health_path = NodePath("../World/Player/Health")
+mana_path = NodePath("../World/Player/Mana")
+
+[node name="DeathMessageHud" parent="." instance=ExtResource("9_death_message_hud")]
+respawn_path = NodePath("../World/Player/Respawn")
+
+[node name="RefiningPanel" parent="." instance=ExtResource("6_refining_panel")]
+inventory_path = NodePath("../PlayerInventory")
+
+[node name="LootPanel" parent="." instance=ExtResource("7_loot_panel")]
+inventory_path = NodePath("../PlayerInventory")
+inventory_panel_path = NodePath("../InventoryPanel")

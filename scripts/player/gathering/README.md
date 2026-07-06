@@ -40,7 +40,7 @@ GDScript notes:
   module does not need to know whether a tree restores ticks in 30 seconds or a
   rare ore restores them much later.
 - `get_tree().get_first_node_in_group("player_inventory")` finds the inventory
-  without hard-wiring this script to `Main.tscn`.
+  without hard-wiring this script to one playable scene.
 - `Node3D.global_position` is used to calculate range and facing direction.
 
 Keep world resource data in `scripts/gathering/`; keep player behavior here.

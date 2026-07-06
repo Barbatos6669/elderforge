@@ -1,0 +1,332 @@
+{
+  "texture": "res://assets/textures/world/atlas/world_texture_atlas.png",
+  "atlas_size": [
+    1024,
+    1024
+  ],
+  "cell_size": 256,
+  "tile_size": 240,
+  "gutter": 8,
+  "tiles": {
+    "grass_meadow": {
+      "display_name": "Meadow Grass",
+      "category": "terrain",
+      "cell": [
+        0,
+        0
+      ],
+      "rect_px": [
+        8,
+        8,
+        240,
+        240
+      ],
+      "uv_rect": [
+        0.007812,
+        0.007812,
+        0.242188,
+        0.242188
+      ]
+    },
+    "worn_grass": {
+      "display_name": "Worn Grass",
+      "category": "terrain",
+      "cell": [
+        1,
+        0
+      ],
+      "rect_px": [
+        264,
+        8,
+        240,
+        240
+      ],
+      "uv_rect": [
+        0.257812,
+        0.007812,
+        0.492188,
+        0.242188
+      ]
+    },
+    "packed_dirt": {
+      "display_name": "Packed Dirt",
+      "category": "terrain",
+      "cell": [
+        2,
+        0
+      ],
+      "rect_px": [
+        520,
+        8,
+        240,
+        240
+      ],
+      "uv_rect": [
+        0.507812,
+        0.007812,
+        0.742188,
+        0.242188
+      ]
+    },
+    "dirt_path": {
+      "display_name": "Dirt Path",
+      "category": "terrain",
+      "cell": [
+        3,
+        0
+      ],
+      "rect_px": [
+        776,
+        8,
+        240,
+        240
+      ],
+      "uv_rect": [
+        0.757812,
+        0.007812,
+        0.992188,
+        0.242188
+      ]
+    },
+    "cut_stone": {
+      "display_name": "Cut Stone",
+      "category": "architecture",
+      "cell": [
+        0,
+        1
+      ],
+      "rect_px": [
+        8,
+        264,
+        240,
+        240
+      ],
+      "uv_rect": [
+        0.007812,
+        0.257812,
+        0.242188,
+        0.492188
+      ]
+    },
+    "cobblestone": {
+      "display_name": "Cobblestone",
+      "category": "terrain",
+      "cell": [
+        1,
+        1
+      ],
+      "rect_px": [
+        264,
+        264,
+        240,
+        240
+      ],
+      "uv_rect": [
+        0.257812,
+        0.257812,
+        0.492188,
+        0.492188
+      ]
+    },
+    "ruin_stone": {
+      "display_name": "Ruin Stone",
+      "category": "architecture",
+      "cell": [
+        2,
+        1
+      ],
+      "rect_px": [
+        520,
+        264,
+        240,
+        240
+      ],
+      "uv_rect": [
+        0.507812,
+        0.257812,
+        0.742188,
+        0.492188
+      ]
+    },
+    "dark_cracked_stone": {
+      "display_name": "Dark Cracked Stone",
+      "category": "architecture",
+      "cell": [
+        3,
+        1
+      ],
+      "rect_px": [
+        776,
+        264,
+        240,
+        240
+      ],
+      "uv_rect": [
+        0.757812,
+        0.257812,
+        0.992188,
+        0.492188
+      ]
+    },
+    "timber_planks": {
+      "display_name": "Timber Planks",
+      "category": "architecture",
+      "cell": [
+        0,
+        2
+      ],
+      "rect_px": [
+        8,
+        520,
+        240,
+        240
+      ],
+      "uv_rect": [
+        0.007812,
+        0.507812,
+        0.242188,
+        0.742188
+      ]
+    },
+    "tree_bark": {
+      "display_name": "Tree Bark",
+      "category": "nature",
+      "cell": [
+        1,
+        2
+      ],
+      "rect_px": [
+        264,
+        520,
+        240,
+        240
+      ],
+      "uv_rect": [
+        0.257812,
+        0.507812,
+        0.492188,
+        0.742188
+      ]
+    },
+    "moss": {
+      "display_name": "Moss",
+      "category": "nature",
+      "cell": [
+        2,
+        2
+      ],
+      "rect_px": [
+        520,
+        520,
+        240,
+        240
+      ],
+      "uv_rect": [
+        0.507812,
+        0.507812,
+        0.742188,
+        0.742188
+      ]
+    },
+    "vines": {
+      "display_name": "Vines",
+      "category": "nature",
+      "cell": [
+        3,
+        2
+      ],
+      "rect_px": [
+        776,
+        520,
+        240,
+        240
+      ],
+      "uv_rect": [
+        0.757812,
+        0.507812,
+        0.992188,
+        0.742188
+      ]
+    },
+    "sand": {
+      "display_name": "Sand",
+      "category": "terrain",
+      "cell": [
+        0,
+        3
+      ],
+      "rect_px": [
+        8,
+        776,
+        240,
+        240
+      ],
+      "uv_rect": [
+        0.007812,
+        0.757812,
+        0.242188,
+        0.992188
+      ]
+    },
+    "cliff_rock": {
+      "display_name": "Cliff Rock",
+      "category": "terrain",
+      "cell": [
+        1,
+        3
+      ],
+      "rect_px": [
+        264,
+        776,
+        240,
+        240
+      ],
+      "uv_rect": [
+        0.257812,
+        0.757812,
+        0.492188,
+        0.992188
+      ]
+    },
+    "blue_rune_stone": {
+      "display_name": "Blue Rune Stone",
+      "category": "accent",
+      "cell": [
+        2,
+        3
+      ],
+      "rect_px": [
+        520,
+        776,
+        240,
+        240
+      ],
+      "uv_rect": [
+        0.507812,
+        0.757812,
+        0.742188,
+        0.992188
+      ]
+    },
+    "gold_trim": {
+      "display_name": "Gold Trim",
+      "category": "accent",
+      "cell": [
+        3,
+        3
+      ],
+      "rect_px": [
+        776,
+        776,
+        240,
+        240
+      ],
+      "uv_rect": [
+        0.757812,
+        0.757812,
+        0.992188,
+        0.992188
+      ]
+    }
+  }
+}

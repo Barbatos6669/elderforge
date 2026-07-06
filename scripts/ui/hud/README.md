@@ -6,10 +6,18 @@ Files:
 
 - `channel_bar.gd`: listens to `PlayerChanneling` and shows action name,
   progress, and remaining time.
+- `death_message_hud.gd`: listens to `PlayerRespawn` and shows a death message
+  with a respawn countdown.
+- `player_status_hud.gd`: top-left player portrait, name, health bar, and mana
+  bar.
+- `hud_profile_portrait.gd`: code-drawn placeholder portrait used by the status
+  HUD until we have rendered character portraits.
 
 Related scene:
 
 - `scenes/ui/hud/ChannelBar.tscn`
+- `scenes/ui/hud/DeathMessageHud.tscn`
+- `scenes/ui/hud/PlayerStatusHud.tscn`
 
 GDScript notes:
 

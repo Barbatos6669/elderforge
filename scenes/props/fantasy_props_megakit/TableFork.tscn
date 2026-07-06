@@ -1,0 +1,9 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/models/props/fantasy_props_megakit/models/table_fork.gltf" id="1_model"]
+[ext_resource type="Script" path="res://scripts/visuals/toon_texture_style_3d.gd" id="2_toon_style"]
+
+[node name="TableFork" type="Node3D"]
+script = ExtResource("2_toon_style")
+
+[node name="Visual" parent="." instance=ExtResource("1_model")]

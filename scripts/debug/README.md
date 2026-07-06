@@ -5,11 +5,14 @@ gameplay dependencies.
 
 Files:
 
+- `debug_spawn_point_3d.gd`: visible Marker3D used to mark prototype spawn
+  points while still behaving like a normal spawn transform.
 - `isometric_grid.gd`: draws the isometric reference grid used in the main test
   scene.
 
 Related scene:
 
+- `scenes/debug/DebugSpawnPoint.tscn`
 - `scenes/debug/IsometricGrid.tscn`
 
 GDScript notes:

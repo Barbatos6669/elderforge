@@ -1,0 +1,49 @@
+[gd_scene format=3 uid="uid://lp4h4gfnqdij"]
+
+[ext_resource type="PackedScene" path="res://scenes/levels/PlayableLevelShell.tscn" id="1_shell"]
+[ext_resource type="PackedScene" path="res://scenes/entities/EnemyMob.tscn" id="2_k1onx"]
+[ext_resource type="PackedScene" uid="uid://cv6px61y3avdo" path="res://scenes/gathering/Tier1Rock.tscn" id="2_yhxlc"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/dead_trees/Tier1DeadTree1.tscn" id="3_dead_tree_1"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/dead_trees/Tier1DeadTree2.tscn" id="4_dead_tree_2"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/dead_trees/Tier1DeadTree3.tscn" id="5_dead_tree_3"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/dead_trees/Tier1DeadTree4.tscn" id="6_dead_tree_4"]
+[ext_resource type="PackedScene" path="res://scenes/gathering/dead_trees/Tier1DeadTree5.tscn" id="7_dead_tree_5"]
+
+[node name="StartingCity" unique_id=575234451 instance=ExtResource("1_shell")]
+
+[node name="DebugGrid" parent="World" index="0"]
+visible = false
+
+[node name="GroundMesh" parent="World/Ground" index="0"]
+transform = Transform3D(1.0006942, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="Tier1Rock" parent="World/Ground" index="2" unique_id=1534336151 instance=ExtResource("2_yhxlc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.012377262, 0.03427434, -6.217531)
+
+[node name="Tier1DeadTree1" parent="World/Ground" index="3" instance=ExtResource("3_dead_tree_1")]
+transform = Transform3D(0.95, 0, 0, 0, 0.95, 0, 0, 0, 0.95, -6.0, 0, -5.5)
+
+[node name="Tier1DeadTree2" parent="World/Ground" index="4" instance=ExtResource("4_dead_tree_2")]
+transform = Transform3D(0.95, 0, 0, 0, 0.95, 0, 0, 0, 0.95, -3.5, 0, -8.0)
+
+[node name="Tier1DeadTree3" parent="World/Ground" index="5" instance=ExtResource("5_dead_tree_3")]
+transform = Transform3D(-0.6717515, 0, 0.6717515, 0, 0.95, 0, -0.6717515, 0, -0.6717515, 3.5, 0, -8.0)
+
+[node name="Tier1DeadTree4" parent="World/Ground" index="6" instance=ExtResource("6_dead_tree_4")]
+transform = Transform3D(0, 0, 0.95, 0, 0.95, 0, -0.95, 0, 0, 6.0, 0, -5.5)
+
+[node name="Tier1DeadTree5" parent="World/Ground" index="7" instance=ExtResource("7_dead_tree_5")]
+transform = Transform3D(0.6717515, 0, 0.6717515, 0, 0.95, 0, -0.6717515, 0, 0.6717515, 0, 0, -9.8)
+
+[node name="PlayerSpawn" parent="World" index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.060655117, 0)
+spawn_id = "starting_city_demo_spawn"
+
+[node name="Player" parent="World" index="3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.1504879, 0.0861249, -0.7498723)
+
+[node name="EnemyMob" parent="World/LevelContent" index="11" unique_id=1685447675 instance=ExtResource("2_k1onx")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.825068, 0.00950967, -19.546844)
+
+[node name="PlayerInventory" parent="." index="2"]
+debug_seed_item_ids = []

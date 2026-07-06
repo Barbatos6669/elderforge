@@ -20,9 +20,9 @@
 			"mesh":0,
 			"name":"Toggle switch",
 			"translation":[
-				13,
 				0,
-				3
+				0,
+				-0.015575408935546875
 			]
 		},
 		{

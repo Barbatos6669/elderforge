@@ -20,9 +20,11 @@ so they can still feel predictable.
 | `gathering/` | World resource metadata, such as trees. |
 | `interaction/` | Shared hover, selection, and target feedback. |
 | `inventory/` | Item definitions, stacks, and player inventory state. |
+| `loot/` | World loot containers and dropper components. |
 | `player/` | Player prefab modules: input, movement, animation, combat, gathering. |
 | `ui/` | HUD, inventory, nameplates, and other player-facing UI. |
 | `visuals/` | Reserved for shared visual helpers that are not player-only. |
+| `world/` | Level and terrain setup helpers. |
 
 ## GDScript For C++ Readers
 

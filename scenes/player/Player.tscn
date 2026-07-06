@@ -26,6 +26,11 @@
 [ext_resource type="Script" uid="uid://bqyaxpya4rkwf" path="res://scripts/player/equipment/player_equipment_visuals.gd" id="23_equipment_visuals"]
 [ext_resource type="PackedScene" path="res://scenes/equipment/tools/axes/Tier1Axe.tscn" id="24_axe_preview"]
 [ext_resource type="Script" path="res://scripts/player/equipment/equipment_socket_3d.gd" id="25_equipment_socket"]
+[ext_resource type="Script" path="res://scripts/combat/combat_health.gd" id="26_health"]
+[ext_resource type="Script" path="res://scripts/combat/damage_number_emitter_3d.gd" id="27_damage_numbers"]
+[ext_resource type="Script" path="res://scripts/combat/combat_state.gd" id="28_combat_state"]
+[ext_resource type="Script" path="res://scripts/combat/resource_pool.gd" id="29_resource_pool"]
+[ext_resource type="Script" path="res://scripts/player/lifecycle/player_respawn.gd" id="30_respawn"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -64,6 +69,31 @@ script = ExtResource("21_gathering")
 
 [node name="Stats" type="Node" parent="." unique_id=1261507381]
 script = ExtResource("14_stats")
+
+[node name="Mana" type="Node" parent="."]
+script = ExtResource("29_resource_pool")
+display_name = "Mana"
+max_resource = 120.0
+current_resource = 120.0
+regeneration_per_second = 10.0
+
+[node name="Health" type="Node" parent="." unique_id=110614945]
+script = ExtResource("26_health")
+max_health = 1200.0
+current_health = 1200.0
+health_regeneration_per_second = 10.0
+
+[node name="CombatState" type="Node" parent="."]
+script = ExtResource("28_combat_state")
+out_of_combat_delay = 6.0
+
+[node name="Respawn" type="Node" parent="."]
+script = ExtResource("30_respawn")
+
+[node name="DamageNumbers" type="Node" parent="."]
+script = ExtResource("27_damage_numbers")
+spawn_offset = Vector3(0, 1.2, 0)
+damage_color = Color(1, 0.38, 0.28, 1)
 
 [node name="Movement" type="Node" parent="." unique_id=851313477]
 script = ExtResource("3_movement")
@@ -109,6 +139,7 @@ transform = Transform3D(-1, 0, 2.5351817e-06, 0, 1, 0, -2.5351817e-06, 0, -1, 0,
 bone_name = "hand_r"
 script = ExtResource("25_equipment_socket")
 slot_id = "main_hand"
+use_preview_transform = false
 
 [node name="MainHandPreview" parent="Visuals/BaseCharacter/Armature/Skeleton3D/MainHandAttachment" instance=ExtResource("24_axe_preview")]
 position = Vector3(-0.04, 0.11, 0.02)
@@ -120,6 +151,8 @@ material_override = SubResource("StandardMaterial3D_grip_marker")
 
 [node name="Nameplate" parent="." unique_id=889818390 instance=ExtResource("15_nameplate")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 0)
+player_name = "Barabtos6669"
+health_source_path = NodePath("../Health")
 
 [node name="ChannelBar" parent="." unique_id=202133527 instance=ExtResource("22_channel_bar")]
 

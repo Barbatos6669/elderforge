@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/hud/player_status_hud.gd" id="1_player_status_hud"]
+
+[node name="PlayerStatusHud" type="CanvasLayer"]
+script = ExtResource("1_player_status_hud")

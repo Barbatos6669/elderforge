@@ -18,12 +18,7 @@
 	"nodes":[
 		{
 			"mesh":0,
-			"name":"cone.003",
-			"translation":[
-				-3,
-				0,
-				-12
-			]
+			"name":"cone.003"
 		},
 		{
 			"children":[

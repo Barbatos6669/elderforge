@@ -1,14 +1,14 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://wq7rsdwx0u7l"]
 
 [ext_resource type="Script" uid="uid://c7onhc7t0w5tj" path="res://scripts/gathering/gatherable_resource_3d.gd" id="1_gatherable"]
 [ext_resource type="Script" uid="uid://br3ubcjkrdw57" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
 [ext_resource type="Script" uid="uid://cbxs8002i2pvm" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="3_hover_feedback"]
 [ext_resource type="Script" uid="uid://i4o11j0hk5eg" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="4_selection_feedback"]
 [ext_resource type="Material" path="res://assets/materials/hover/hover_outline_green.tres" id="5_hover_material"]
-[ext_resource type="Texture2D" path="res://assets/ui/cursors/gather_tool_cursor.png" id="6_gather_cursor"]
+[ext_resource type="Texture2D" uid="uid://e6dikk8cx8dp" path="res://assets/ui/cursors/gather_tool_cursor.png" id="6_gather_cursor"]
 [ext_resource type="Texture2D" uid="uid://cili1xiu4osa1" path="res://assets/ui/cursors/depleted_resource_cursor.png" id="7_depleted_cursor"]
-[ext_resource type="PackedScene" path="res://assets/models/resources/ores/t1_ore_full.glb" id="8_t1_ore_full"]
-[ext_resource type="PackedScene" path="res://assets/models/resources/ores/t1_ore_depleted.glb" id="9_t1_ore_depleted"]
+[ext_resource type="PackedScene" uid="uid://bg2x8kalqinfw" path="res://assets/models/resources/ores/t1_ore_full.glb" id="8_t1_ore_full"]
+[ext_resource type="PackedScene" uid="uid://c3y448wvupc3s" path="res://assets/models/resources/ores/t1_ore_depleted.glb" id="9_t1_ore_depleted"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_selectable"]
 radius = 0.95
@@ -17,13 +17,13 @@ radius = 0.95
 height = 0.7
 radius = 0.58
 
-[node name="Tier1Ore" type="Node3D"]
+[node name="Tier1Ore" type="Node3D" unique_id=454380520]
 script = ExtResource("1_gatherable")
 display_name = "Crude Ore"
 resource_family_id = "ore"
 yield_item_id = "ore_t1"
 
-[node name="Selectable" type="Area3D" parent="."]
+[node name="Selectable" type="Area3D" parent="." unique_id=1694946933]
 collision_layer = 8
 collision_mask = 0
 script = ExtResource("2_selectable")
@@ -31,19 +31,19 @@ display_name = "Crude Ore"
 relationship = 2
 neutral_color = Color(0.72, 0.72, 0.72, 1)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable" unique_id=1864516292]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.58, 0)
 shape = SubResource("SphereShape3D_selectable")
 
-[node name="ResourceBody" type="StaticBody3D" parent="."]
+[node name="ResourceBody" type="StaticBody3D" parent="." unique_id=125791159]
 collision_layer = 2
 collision_mask = 0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="ResourceBody"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ResourceBody" unique_id=751299249]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 0)
 shape = SubResource("CylinderShape3D_resource_body")
 
-[node name="HoverSelectionRing" type="MeshInstance3D" parent="."]
+[node name="HoverSelectionRing" type="MeshInstance3D" parent="." unique_id=407423980]
 script = ExtResource("3_hover_feedback")
 hover_collision_mask = 8
 ring_radius = 0.78
@@ -52,19 +52,19 @@ highlight_material = ExtResource("5_hover_material")
 hover_cursor_texture = ExtResource("6_gather_cursor")
 unavailable_hover_cursor_texture = ExtResource("7_depleted_cursor")
 
-[node name="SelectedRing" type="MeshInstance3D" parent="."]
+[node name="SelectedRing" type="MeshInstance3D" parent="." unique_id=250595003]
 script = ExtResource("4_selection_feedback")
 ring_radius = 0.86
 ring_color = Color(0.72, 0.72, 0.72, 1)
 fill_color = Color(0.72, 0.72, 0.72, 0.16)
 
-[node name="Visuals" type="Node3D" parent="."]
+[node name="Visuals" type="Node3D" parent="." unique_id=557869387]
 
-[node name="Active" type="Node3D" parent="Visuals"]
+[node name="Active" type="Node3D" parent="Visuals" unique_id=912492546]
 
-[node name="T1OreFullModel" parent="Visuals/Active" instance=ExtResource("8_t1_ore_full")]
+[node name="T1OreFullModel" parent="Visuals/Active" unique_id=1746741695 instance=ExtResource("8_t1_ore_full")]
 
-[node name="Depleted" type="Node3D" parent="Visuals"]
+[node name="Depleted" type="Node3D" parent="Visuals" unique_id=1535213204]
 visible = false
 
-[node name="T1OreDepletedModel" parent="Visuals/Depleted" instance=ExtResource("9_t1_ore_depleted")]
+[node name="T1OreDepletedModel" parent="Visuals/Depleted" unique_id=338910196 instance=ExtResource("9_t1_ore_depleted")]

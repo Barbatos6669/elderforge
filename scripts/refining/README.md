@@ -13,6 +13,9 @@ Files:
 - `toolmaker_station_3d.gd`: multi-output crafting station for gathering tools.
   It builds one recipe per available tool family per tier while reusing the
   same station interaction and UI flow.
+- `weapon_smith_station_3d.gd`: multi-output crafting station for weapon
+  families. The first recipe line crafts one-handed swords from refined ingots
+  and planks.
 
 Related scenes:
 
@@ -26,6 +29,8 @@ Related scenes:
 - `scenes/refining/LoomPrototype.tscn`: cotton-to-cloth refining base.
 - `scenes/refining/ToolmakerPrototype.tscn`: refined-material-to-tool crafting
   base.
+- `scenes/refining/WeaponSmithPrototype.tscn`: refined-material-to-weapon
+  crafting base.
 - `scenes/refining/sawmills/Tier1Sawmill.tscn` through
   `scenes/refining/sawmills/Tier8Sawmill.tscn`: tier-specific sawmill prefabs.
   Each tier inherits the shared base, sets its own `max_recipe_tier`, and owns
@@ -43,6 +48,9 @@ Related scenes:
 - `scenes/refining/toolmakers/Tier1Toolmaker.tscn` through
   `scenes/refining/toolmakers/Tier8Toolmaker.tscn`: tier-specific gathering
   tool crafting prefabs.
+- `scenes/refining/weapon_smiths/Tier1WeaponSmith.tscn` through
+  `scenes/refining/weapon_smiths/Tier8WeaponSmith.tscn`: tier-specific weapon
+  crafting prefabs.
 - `scenes/ui/refining/RefiningPanel.tscn`
 
 GDScript notes:
@@ -65,6 +73,8 @@ GDScript notes:
   refined resources of the same tier. The skinning knife currently asks for
   `worked_leather`, which will become craftable when a hide/tannery station is
   added.
+- Weapon smiths craft `one_handed_sword` items. The first prototype recipe
+  consumes same-tier `ingots` and `planks`.
 - `interaction_radius` limits station use to actors near the building. It is
   measured from the footprint edge using `interaction_half_extents`, so a 4x4
   building can still require the player to stand about 1m from the outside.

@@ -6,10 +6,14 @@ Each prefab keeps the imported model under a `Visual` child and applies
 `ToonTextureStyle3D` on the root so the prop uses the same prototype
 toon/nearest-filter material style as the character.
 
+The root is a `StaticBody3D` on the World physics layer. Its
+`CollisionShape3D` uses `VisualMeshCollisionShape3D` to build a static
+mesh collider from the visible model at runtime.
+
 Regenerate after adding or removing runtime models:
 
 ```powershell
-python tools/generate_modular_prototyping_prefabs.py
+python tools/godot/generate_modular_prototyping_prefabs.py
 ```
 
 Prefabs:

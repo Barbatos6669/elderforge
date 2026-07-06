@@ -5,11 +5,12 @@
 [ext_resource type="Script" uid="uid://cbxs8002i2pvm" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="3_hover_feedback"]
 [ext_resource type="Script" uid="uid://i4o11j0hk5eg" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="4_selection_feedback"]
 [ext_resource type="Material" path="res://assets/materials/hover/hover_outline_green.tres" id="5_hover_material"]
-[ext_resource type="Texture2D" path="res://assets/ui/cursors/gather_tool_cursor.png" id="6_gather_cursor"]
+[ext_resource type="Texture2D" uid="uid://e6dikk8cx8dp" path="res://assets/ui/cursors/gather_tool_cursor.png" id="6_gather_cursor"]
 [ext_resource type="Texture2D" uid="uid://cili1xiu4osa1" path="res://assets/ui/cursors/depleted_resource_cursor.png" id="7_depleted_cursor"]
 [ext_resource type="PackedScene" uid="uid://btcr168rxejqa" path="res://assets/models/resources/trees/t1_tree_trunk.glb" id="8_t1_tree_trunk"]
 [ext_resource type="PackedScene" uid="uid://dwty4xs4sx5ex" path="res://assets/models/resources/trees/t1_tree_stump.glb" id="9_t1_tree_stump"]
 [ext_resource type="PackedScene" uid="uid://ctcj8k4fkrsxs" path="res://assets/models/resources/trees/t1_tree_leaves.glb" id="10_t1_tree_leaves"]
+[ext_resource type="PackedScene" uid="uid://d2644a7udolt1" path="res://assets/models/environment/stylized_nature_megakit/models/common_tree_1.gltf" id="10_wduxl"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_selectable"]
 radius = 0.92
@@ -62,15 +63,17 @@ fill_color = Color(0.72, 0.72, 0.72, 0.16)
 
 [node name="Active" type="Node3D" parent="Visuals" unique_id=764823870]
 
-[node name="Trunk" type="Node3D" parent="Visuals/Active"]
+[node name="Trunk" type="Node3D" parent="Visuals/Active" unique_id=1573971681]
 
-[node name="T1TreeTrunkModel" parent="Visuals/Active/Trunk" instance=ExtResource("8_t1_tree_trunk")]
+[node name="T1TreeTrunkModel" parent="Visuals/Active/Trunk" unique_id=1968708737 instance=ExtResource("8_t1_tree_trunk")]
 
-[node name="Leaves" type="Node3D" parent="Visuals/Active"]
+[node name="Leaves" type="Node3D" parent="Visuals/Active" unique_id=2049352289]
 
-[node name="T1TreeLeavesModel" parent="Visuals/Active/Leaves" instance=ExtResource("10_t1_tree_leaves")]
+[node name="T1TreeLeavesModel" parent="Visuals/Active/Leaves" unique_id=677499841 instance=ExtResource("10_t1_tree_leaves")]
+
+[node name="common_tree_12" parent="Visuals/Active/Leaves" unique_id=1527560174 instance=ExtResource("10_wduxl")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.1078676, 0, -0.10564804)
 
 [node name="Depleted" type="Node3D" parent="Visuals" unique_id=2031206549]
-visible = false
 
-[node name="T1TreeStumpModel" parent="Visuals/Depleted" instance=ExtResource("9_t1_tree_stump")]
+[node name="T1TreeStumpModel" parent="Visuals/Depleted" unique_id=244445215 instance=ExtResource("9_t1_tree_stump")]
