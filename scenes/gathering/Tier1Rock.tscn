@@ -64,7 +64,7 @@ fill_color = Color(0.72, 0.72, 0.72, 0.16)
 [node name="Active" type="Node3D" parent="Visuals" unique_id=428218441]
 
 [node name="T1RockFullModel" parent="Visuals/Active" unique_id=1428942160 instance=ExtResource("8_rocks_rock_full")]
-transform = Transform3D(0.293, 0, 0, 0, 0.293, 0, 0, 0, 0.41, 0, -0.17261824, -0.17404577)
+transform = Transform3D(0.293, 0, 0, 0, 0.293, 0, 0, 0, 0.41, 0, 0.038492948, -0.17404577)
 script = ExtResource("10_tier_tint")
 
 [node name="Depleted" type="Node3D" parent="Visuals" unique_id=964756556]

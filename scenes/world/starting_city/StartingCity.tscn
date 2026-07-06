@@ -23,20 +23,11 @@
 
 [node name="StartingCity" unique_id=575234451 instance=ExtResource("1_shell")]
 
-[node name="DebugGrid" parent="World" index="0"]
-visible = false
-
 [node name="GroundMesh" parent="World/Ground" index="0"]
 transform = Transform3D(1.0006942, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 
 [node name="Tier1Rock" parent="World/Ground" index="2" unique_id=1534336151 instance=ExtResource("2_yhxlc")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.012377262, 0.03427434, -6.5020046)
-
-[node name="Tier1Rock" parent="World/Ground/Tier1Rock" index="5" unique_id=1545456154 instance=ExtResource("2_yhxlc")]
-transform = Transform3D(0.4128302, 0, 0.910808, 0, 1, 0, -0.910808, 0, 0.4128302, -10.894096, 0.03427434, 4.379714)
-
-[node name="Tier1Rock" parent="World/Ground/Tier1Rock/Tier1Rock" index="5" unique_id=161747394 instance=ExtResource("2_yhxlc")]
-transform = Transform3D(0.41283023, 0, 0.9108081, 0, 1, 0, -0.9108081, 0, 0.41283023, -1.30462, 0.03427434, 8.76777)
 
 [node name="Tier1DeadTree1" parent="World/Ground" index="3" unique_id=277000876 instance=ExtResource("3_dead_tree_1")]
 transform = Transform3D(0.95, 0, 0, 0, 0.95, 0, 0, 0, 0.95, -14.046373, 0, -2.7658894)
