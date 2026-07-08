@@ -5,6 +5,7 @@ param(
 	[switch]$RequirePlaytestCode,
 	[string]$PlaytestCode = $env:ELDERFORGE_PLAYTEST_CODE,
 	[string]$PlaytestCodeHash = $env:ELDERFORGE_PLAYTEST_CODE_HASH,
+	[string]$StatusUrl = $env:ELDERFORGE_PLAYTEST_STATUS_URL,
 	[string]$Repository = "Barbatos6669/elderforge",
 	[string]$ReleaseTag = "playtest-2026-07-08"
 )
@@ -107,6 +108,9 @@ function Write-PlaytestClientPackage {
 	$clientConfig = [ordered]@{
 		version_url = "$ReleaseBaseUrl/$VersionAssetName"
 		package_url = "$ReleaseBaseUrl/$PlaytestZipName"
+		status_url = $StatusUrl
+		server_address = $ServerAddress
+		server_port = $ServerPort
 		install_subdirectory = "Game"
 	}
 	$clientConfig |
@@ -128,6 +132,9 @@ if ([string]::IsNullOrWhiteSpace($ServerAddress)) {
 	$ServerAddress = Get-DefaultPlaytestServerAddress
 }
 $ServerPort = [Math]::Min([Math]::Max($ServerPort, 1024), 65535)
+if ([string]::IsNullOrWhiteSpace($StatusUrl)) {
+	$StatusUrl = "http://{0}:24567/status" -f $ServerAddress
+}
 $PlaytestCodeRequired = [bool]$RequirePlaytestCode
 if (-not [string]::IsNullOrWhiteSpace($PlaytestCode)) {
 	$PlaytestCodeHash = Get-Sha256Hex -Value $PlaytestCode.Trim()
@@ -181,6 +188,8 @@ $versionData = [ordered]@{
 	built_at_utc = $BuiltAtUtc
 	server_address = $ServerAddress
 	server_port = $ServerPort
+	server_status_url = $StatusUrl
+	package_url = "$ReleaseBaseUrl/$PlaytestZipName"
 	playtest_code_required = $PlaytestCodeRequired
 	repository = $Repository
 	release_tag = $ReleaseTag
@@ -200,6 +209,7 @@ If this playtest requires a code, enter the shared playtest code on the sign-in 
 
 For testers who should stay updated automatically, give them Elderforge_Playtest_Client.zip
 instead of this full package. They can extract it once and run Elderforge_Playtest_Client.bat.
+The launcher updates the game and shows the playtest server status before Play.
 
 Start_Elderforge_Playtest.bat is still included as a developer fallback.
 If the server address changes, update playtest_server.cfg or rebuild this package with -ServerAddress and -ServerPort.

@@ -2,7 +2,7 @@
 setlocal
 
 pushd "%~dp0"
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Elderforge_Playtest_Client.ps1"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -File "%~dp0Elderforge_Playtest_Client.ps1"
 set EXIT_CODE=%ERRORLEVEL%
 popd
 
