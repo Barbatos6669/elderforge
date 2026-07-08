@@ -124,6 +124,9 @@ function Write-PlaytestClientPackage {
 	New-Item -ItemType Directory -Path $ClientBuildDir -Force | Out-Null
 
 	Copy-Item -Path (Join-Path $ClientSourceDir "*") -Destination $ClientBuildDir -Recurse -Force
+	foreach ($importFile in Get-ChildItem -LiteralPath $ClientBuildDir -Recurse -Force -File -Filter "*.import") {
+		Remove-Item -LiteralPath $importFile.FullName -Force
+	}
 
 	$clientConfig = [ordered]@{
 		version_url = "$ReleaseBaseUrl/$VersionAssetName"
