@@ -13,6 +13,7 @@ $DefaultVersionUrl = "https://github.com/Barbatos6669/elderforge/releases/downlo
 $DefaultPackageUrl = "https://github.com/Barbatos6669/elderforge/releases/download/playtest-2026-07-08/Elderforge_Windows_Playtest.zip"
 $DefaultStatusUrl = "http://20.253.172.141:24567/status"
 $DefaultGameExe = "Elderforge_Playtest.exe"
+$LauncherHeroImage = Join-Path $PSScriptRoot "launcher_art\elderforge_playtest_banner.png"
 
 $script:Window = $null
 $script:IsBusy = $false
@@ -226,6 +227,21 @@ function Set-Dot {
 	if ($null -ne $Dot) {
 		$Dot.Fill = New-Brush -Color $Color
 	}
+}
+
+function Set-HeroImageSource {
+	if ($null -eq $script:HeroImage -or -not (Test-Path -LiteralPath $LauncherHeroImage)) {
+		return
+	}
+
+	$bitmap = New-Object System.Windows.Media.Imaging.BitmapImage
+	$bitmap.BeginInit()
+	$bitmap.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
+	$bitmap.UriSource = New-Object System.Uri($LauncherHeroImage)
+	$bitmap.EndInit()
+	$bitmap.Freeze()
+
+	$script:HeroImage.Source = $bitmap
 }
 
 function Set-Busy {
@@ -447,8 +463,8 @@ function Show-LauncherWindow {
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Elderforge Playtest Launcher"
-        Width="980"
-        Height="620"
+        Width="1024"
+        Height="612"
         ResizeMode="CanMinimize"
         WindowStartupLocation="CenterScreen"
         Background="#0b1116">
@@ -467,24 +483,21 @@ function Show-LauncherWindow {
 		</Border>
 		<Grid Grid.Column="1">
 			<Grid.RowDefinitions>
-				<RowDefinition Height="220" />
+				<RowDefinition Height="310" />
 				<RowDefinition Height="*" />
 				<RowDefinition Height="92" />
 			</Grid.RowDefinitions>
-			<Border Grid.Row="0">
-				<Border.Background>
-					<LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-						<GradientStop Color="#162437" Offset="0" />
-						<GradientStop Color="#613019" Offset="0.65" />
-						<GradientStop Color="#d29b3d" Offset="1" />
-					</LinearGradientBrush>
-				</Border.Background>
-				<Grid Margin="28,22,28,22">
-					<StackPanel VerticalAlignment="Center">
-						<TextBlock Text="ELDERFORGE" FontSize="56" FontWeight="Black" Foreground="#f6f0dc" />
-						<TextBlock Text="PUBLIC PLAYTEST LAUNCHER" FontSize="18" FontWeight="SemiBold" Foreground="#f0c866" Margin="4,-6,0,0" />
-						<TextBlock Text="Auto-update, server status, and quick launch for the current test build." FontSize="14" Foreground="#f7dfae" Margin="5,14,0,0" />
-					</StackPanel>
+			<Border Grid.Row="0" Background="#070b0f" ClipToBounds="True">
+				<Grid>
+					<Image x:Name="HeroImage" Stretch="UniformToFill" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+					<Rectangle VerticalAlignment="Bottom" Height="80">
+						<Rectangle.Fill>
+							<LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+								<GradientStop Color="#00000000" Offset="0" />
+								<GradientStop Color="#bf0b1116" Offset="1" />
+							</LinearGradientBrush>
+						</Rectangle.Fill>
+					</Rectangle>
 				</Grid>
 			</Border>
 			<Grid Grid.Row="1" Margin="20">
@@ -568,6 +581,8 @@ function Show-LauncherWindow {
 	$script:LogBox = $script:Window.FindName("LogBox")
 	$script:ServerDot = $script:Window.FindName("ServerDot")
 	$script:UpdateDot = $script:Window.FindName("UpdateDot")
+	$script:HeroImage = $script:Window.FindName("HeroImage")
+	Set-HeroImageSource
 
 	$script:PlayButton.Add_Click({
 		try {
