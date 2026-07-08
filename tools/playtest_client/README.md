@@ -25,3 +25,6 @@ Tester entry point:
 
 - `Elderforge_Playtest_Launcher.exe` is the normal no-console launcher.
 - `Elderforge_Playtest_Client.bat` is a fallback for debugging.
+
+Launcher UI/updater changes are shipped by replacing `Elderforge_Playtest_Client.zip`.
+Game builds still update automatically through the launcher after the client is installed.

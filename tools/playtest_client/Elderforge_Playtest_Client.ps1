@@ -56,6 +56,29 @@ function Remove-DirectorySafely {
 	Remove-Item -LiteralPath $target -Recurse -Force
 }
 
+function Invoke-WithRetry {
+	param(
+		[scriptblock]$Action,
+		[string]$Description,
+		[int]$Attempts = 6,
+		[int]$DelayMilliseconds = 500
+	)
+
+	for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
+		try {
+			& $Action
+			return
+		}
+		catch {
+			if ($attempt -ge $Attempts) {
+				throw "$Description failed: $($_.Exception.Message)"
+			}
+
+			Start-Sleep -Milliseconds $DelayMilliseconds
+		}
+	}
+}
+
 function Get-ObjectValue {
 	param(
 		[object]$Object,
@@ -263,6 +286,88 @@ function Get-GameExePath {
 	return Join-Path (Get-GameDirectory) $DefaultGameExe
 }
 
+function Get-InstalledGameProcesses {
+	param([string]$ExePath)
+
+	$matches = @()
+	$targetPath = Get-FullPath -Path $ExePath
+
+	try {
+		$processes = Get-CimInstance Win32_Process -Filter "Name = '$DefaultGameExe'" -ErrorAction Stop
+		foreach ($process in $processes) {
+			if ($null -eq $process.ExecutablePath) {
+				continue
+			}
+
+			if ((Get-FullPath -Path $process.ExecutablePath) -eq $targetPath) {
+				$matches += [pscustomobject]@{
+					Id = [int]$process.ProcessId
+					Path = [string]$process.ExecutablePath
+				}
+			}
+		}
+	}
+	catch {
+		foreach ($process in Get-Process -Name ([System.IO.Path]::GetFileNameWithoutExtension($DefaultGameExe)) -ErrorAction SilentlyContinue) {
+			try {
+				$processPath = $process.MainModule.FileName
+				if ((Get-FullPath -Path $processPath) -eq $targetPath) {
+					$matches += [pscustomobject]@{
+						Id = [int]$process.Id
+						Path = [string]$processPath
+					}
+				}
+			}
+			catch {
+			}
+		}
+	}
+
+	return $matches
+}
+
+function Stop-InstalledGameProcesses {
+	param([string]$ExePath)
+
+	$processes = @(Get-InstalledGameProcesses -ExePath $ExePath)
+	if ($processes.Count -eq 0) {
+		return
+	}
+
+	Set-LauncherStatus -Message "Closing running game before update..."
+	foreach ($processInfo in $processes) {
+		try {
+			$process = Get-Process -Id $processInfo.Id -ErrorAction Stop
+			if ($process.MainWindowHandle -ne 0) {
+				[void]$process.CloseMainWindow()
+			}
+		}
+		catch {
+		}
+	}
+
+	foreach ($processInfo in $processes) {
+		try {
+			Wait-Process -Id $processInfo.Id -Timeout 5 -ErrorAction SilentlyContinue
+		}
+		catch {
+		}
+	}
+
+	$remaining = @(Get-InstalledGameProcesses -ExePath $ExePath)
+	foreach ($processInfo in $remaining) {
+		Stop-Process -Id $processInfo.Id -Force -ErrorAction SilentlyContinue
+	}
+
+	foreach ($processInfo in $remaining) {
+		try {
+			Wait-Process -Id $processInfo.Id -Timeout 3 -ErrorAction SilentlyContinue
+		}
+		catch {
+		}
+	}
+}
+
 function Get-InstalledManifest {
 	return Read-JsonFile -Path (Join-Path (Get-GameDirectory) "playtest_version.json")
 }
@@ -327,11 +432,15 @@ function Install-PlaytestBuild {
 
 	$cacheDir = Join-Path $script:InstallRoot "DownloadCache"
 	$stageDir = Join-Path $script:InstallRoot "Stage"
+	$backupDir = Join-Path $script:InstallRoot "PreviousGame"
 	$gameDir = Get-GameDirectory
+	$gameExePath = Get-GameExePath
 	$zipPath = Join-Path $cacheDir "Elderforge_Windows_Playtest.zip"
 
 	New-Directory -Path $cacheDir
-	Remove-DirectorySafely -Path $stageDir -BasePath $script:InstallRoot
+	Invoke-WithRetry -Description "Removing stale staged build" -Action {
+		Remove-DirectorySafely -Path $stageDir -BasePath $script:InstallRoot
+	}
 	New-Directory -Path $stageDir
 
 	Set-LauncherStatus -Message "Downloading latest playtest build..."
@@ -340,8 +449,36 @@ function Install-PlaytestBuild {
 	Set-LauncherStatus -Message "Installing playtest build..."
 	Expand-Archive -LiteralPath $zipPath -DestinationPath $stageDir -Force
 
-	Remove-DirectorySafely -Path $gameDir -BasePath $script:InstallRoot
-	Move-Item -LiteralPath $stageDir -Destination $gameDir -Force
+	Stop-InstalledGameProcesses -ExePath $gameExePath
+	Invoke-WithRetry -Description "Removing previous backup build" -Action {
+		Remove-DirectorySafely -Path $backupDir -BasePath $script:InstallRoot
+	}
+
+	if (Test-Path -LiteralPath $gameDir) {
+		Invoke-WithRetry -Description "Moving current game aside" -Action {
+			Move-Item -LiteralPath $gameDir -Destination $backupDir -Force
+		}
+	}
+
+	try {
+		Invoke-WithRetry -Description "Installing staged game build" -Action {
+			Move-Item -LiteralPath $stageDir -Destination $gameDir -Force
+		}
+	}
+	catch {
+		if ((Test-Path -LiteralPath $backupDir) -and -not (Test-Path -LiteralPath $gameDir)) {
+			Move-Item -LiteralPath $backupDir -Destination $gameDir -Force
+		}
+
+		throw
+	}
+
+	try {
+		Remove-DirectorySafely -Path $backupDir -BasePath $script:InstallRoot
+	}
+	catch {
+		Append-Log -Message "Could not remove previous build backup yet: $($_.Exception.Message)"
+	}
 
 	Set-LauncherStatus -Message "Playtest build installed."
 }
