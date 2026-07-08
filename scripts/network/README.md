@@ -4,7 +4,8 @@ Early multiplayer lives here.
 
 - `multiplayer_test_manager.gd`: direct-connect test harness for small playtests.
   The server process hosts, and signed-in clients auto-join the configured
-  playtest address.
+  playtest address. Auto-join retries briefly after the world loads so the
+  sign-in-to-world handoff does not miss the connection window.
 
 This is presence sync only: it lets players see each other moving in the same
 scene. Combat, gathering, inventory, loot, and crafting are still local
@@ -41,9 +42,9 @@ If that port is already busy, run the server on another port:
 & 'C:\Godot\Godot_v4.7-stable_win64_console.exe' --headless --path . --server --port=24566
 ```
 
-The sign-in scene currently targets `127.0.0.1:24566` by default. For a friend
-build, set `AuthPanel.playtest_server_address` to the host LAN/VPN IP before
-exporting.
+The sign-in scene targets `127.0.0.1:24566` by default in-editor. Exported
+playtest zips can include `playtest_server.cfg` beside the exe to point players
+at the active tunnel without making them type an IP.
 
 For LAN, the joining player uses the host computer's local IP address.
 

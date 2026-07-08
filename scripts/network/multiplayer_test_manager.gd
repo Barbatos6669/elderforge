@@ -20,6 +20,10 @@ const DEFAULT_PORT := 24565
 @export var allow_command_line_server := true
 ## Clients coming from the sign-in scene auto-join the selected playtest server.
 @export var auto_join_from_auth_session := true
+## How long the world scene keeps looking for a signed-in auth session to join.
+@export var auto_join_retry_duration := 8.0
+## Delay between auto-join checks while the sign-in handoff settles.
+@export var auto_join_retry_interval := 0.25
 ## Port used by the Host and Join buttons.
 @export_range(1024, 65535, 1) var default_port := DEFAULT_PORT
 ## Maximum clients accepted by the host.
@@ -40,6 +44,8 @@ var _status_label: Label
 var _address_field: LineEdit
 var _port_field: LineEdit
 var _name_field: LineEdit
+var _auto_join_elapsed := 0.0
+var _auto_join_interval_elapsed := 0.0
 
 
 func _ready() -> void:
@@ -58,6 +64,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_update_auto_join_retry(delta)
 	if not _is_network_active():
 		return
 
@@ -302,6 +309,17 @@ func _is_network_active() -> bool:
 	)
 
 
+func _is_network_connecting_or_active() -> bool:
+	if multiplayer.multiplayer_peer == null:
+		return false
+
+	var status := multiplayer.multiplayer_peer.get_connection_status()
+	return (
+		status == MultiplayerPeer.CONNECTION_CONNECTING
+		or status == MultiplayerPeer.CONNECTION_CONNECTED
+	)
+
+
 func _get_local_player() -> Node3D:
 	return get_node_or_null(local_player_path) as Node3D
 
@@ -464,10 +482,29 @@ func _set_status(message: String) -> void:
 		print("[Network] %s" % message)
 
 
+func _update_auto_join_retry(delta: float) -> void:
+	if _is_command_line_server:
+		return
+	if not auto_join_from_auth_session:
+		return
+	if _is_network_connecting_or_active():
+		return
+	if _auto_join_elapsed >= auto_join_retry_duration:
+		return
+
+	_auto_join_elapsed += maxf(delta, 0.0)
+	_auto_join_interval_elapsed += maxf(delta, 0.0)
+	if _auto_join_interval_elapsed < auto_join_retry_interval:
+		return
+
+	_auto_join_interval_elapsed = 0.0
+	_try_auto_join_from_auth_session()
+
+
 func _try_auto_join_from_auth_session() -> void:
 	if not auto_join_from_auth_session:
 		return
-	if _is_network_active():
+	if _is_network_connecting_or_active():
 		return
 
 	var auth_session := get_node_or_null("/root/PrototypeAuthSession")
