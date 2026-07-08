@@ -18,6 +18,11 @@ GDScript notes:
 - `_physics_process(delta)` is used because movement and combat timing should
   advance on the physics tick.
 - The controller should call methods on modules, not copy their logic.
+- Remote multiplayer players are visual-only copies. Network packets update a
+  target position/facing, and `player_controller.gd` smooths the visible copy
+  toward that target each physics tick. Tune `remote_position_smoothing_hz`,
+  `remote_rotation_smoothing_hz`, and `remote_snap_distance` on the Player
+  scene if online movement feels too floaty or too snappy.
 - Refining station and loot bag clicks are small exceptions for now: the
   controller stores one pending interactable, asks it for
   `get_interaction_destination(...)`, and opens it once

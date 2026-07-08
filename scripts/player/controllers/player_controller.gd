@@ -13,6 +13,12 @@ const WORLD_INPUT_BLOCKER_GROUP := "blocking_world_input"
 @export var is_local_player: bool = true
 ## Multiplayer peer id represented by this player. Zero means not assigned yet.
 @export var network_peer_id: int = 0
+## How quickly visual-only remote players catch up to received network positions.
+@export_range(1.0, 60.0, 0.5) var remote_position_smoothing_hz: float = 18.0
+## How quickly visual-only remote players turn toward received network facing.
+@export_range(1.0, 60.0, 0.5) var remote_rotation_smoothing_hz: float = 24.0
+## Large corrections beyond this distance snap instead of smoothing across the map.
+@export var remote_snap_distance: float = 5.0
 
 @onready var input_reader = $Input
 @onready var stats: PlayerStats = $Stats
@@ -35,6 +41,10 @@ const WORLD_INPUT_BLOCKER_GROUP := "blocking_world_input"
 var _pending_refining_station: Node
 var _pending_loot_container: Node
 var _is_respawn_locked := false
+var _has_remote_network_state := false
+var _remote_target_position := Vector3.ZERO
+var _remote_target_visual_yaw := 0.0
+var _remote_target_is_moving := false
 
 
 func _ready() -> void:
@@ -64,6 +74,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	if not is_local_player:
+		_update_remote_network_interpolation(delta)
 		return
 
 	if _is_player_respawn_locked():
@@ -510,13 +521,15 @@ func apply_remote_network_state(position_value: Vector3, visual_yaw: float, is_m
 	if is_local_player:
 		return
 
-	global_position = position_value
-	if visuals != null:
-		visuals.global_rotation.y = visual_yaw
-	if animation != null:
-		animation.set_moving(is_moving)
-	if footstep_audio != null:
-		footstep_audio.set_moving(is_moving)
+	_remote_target_position = position_value
+	_remote_target_visual_yaw = visual_yaw
+	_remote_target_is_moving = is_moving
+
+	if not _has_remote_network_state:
+		_has_remote_network_state = true
+		global_position = _remote_target_position
+		_apply_remote_visual_yaw(_remote_target_visual_yaw)
+		_set_remote_moving(false)
 
 
 func _configure_remote_runtime() -> void:
@@ -539,6 +552,46 @@ func _configure_remote_runtime() -> void:
 			camera.current = false
 	if has_node("ChannelBar"):
 		$ChannelBar.visible = false
+
+
+func _update_remote_network_interpolation(delta: float) -> void:
+	if not _has_remote_network_state:
+		return
+
+	var distance_to_target := global_position.distance_to(_remote_target_position)
+	if distance_to_target >= remote_snap_distance:
+		global_position = _remote_target_position
+	elif distance_to_target > 0.01:
+		var position_blend := _exponential_blend(remote_position_smoothing_hz, delta)
+		global_position = global_position.lerp(_remote_target_position, position_blend)
+	else:
+		global_position = _remote_target_position
+
+	if visuals != null:
+		var rotation_blend := _exponential_blend(remote_rotation_smoothing_hz, delta)
+		visuals.global_rotation.y = lerp_angle(
+			visuals.global_rotation.y,
+			_remote_target_visual_yaw,
+			rotation_blend
+		)
+
+	_set_remote_moving(_remote_target_is_moving or distance_to_target > 0.04)
+
+
+func _apply_remote_visual_yaw(visual_yaw: float) -> void:
+	if visuals != null:
+		visuals.global_rotation.y = visual_yaw
+
+
+func _set_remote_moving(is_moving: bool) -> void:
+	if animation != null:
+		animation.set_moving(is_moving)
+	if footstep_audio != null:
+		footstep_audio.set_moving(is_moving)
+
+
+func _exponential_blend(rate_hz: float, delta: float) -> float:
+	return 1.0 - exp(-maxf(rate_hz, 0.01) * maxf(delta, 0.0))
 
 
 func _disable_remote_node(node: Node) -> void:
