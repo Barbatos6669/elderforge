@@ -93,6 +93,26 @@ function Get-Sha256Hex {
 	}
 }
 
+function Get-CSharpCompiler {
+	$command = Get-Command csc.exe -ErrorAction SilentlyContinue
+	if ($null -ne $command -and -not [string]::IsNullOrWhiteSpace($command.Source)) {
+		return $command.Source
+	}
+
+	$candidates = @(
+		"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe",
+		"C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe"
+	)
+
+	foreach ($candidate in $candidates) {
+		if (Test-Path -LiteralPath $candidate) {
+			return $candidate
+		}
+	}
+
+	return $null
+}
+
 function Write-PlaytestClientPackage {
 	if (-not (Test-Path -LiteralPath $ClientSourceDir)) {
 		throw "Playtest client source folder missing: $ClientSourceDir"
@@ -116,6 +136,20 @@ function Write-PlaytestClientPackage {
 	$clientConfig |
 		ConvertTo-Json -Depth 4 |
 		Set-Content -LiteralPath (Join-Path $ClientBuildDir "client_config.json") -Encoding ASCII
+
+	$launcherSource = Join-Path $ClientBuildDir "Elderforge_Playtest_Launcher.cs"
+	$launcherExe = Join-Path $ClientBuildDir "Elderforge_Playtest_Launcher.exe"
+	$csharpCompiler = Get-CSharpCompiler
+	if ([string]::IsNullOrWhiteSpace($csharpCompiler)) {
+		Write-Warning "C# compiler not found. The client zip will include only the batch fallback launcher."
+	}
+	else {
+		Write-Host "Compiling no-console playtest launcher..."
+		& $csharpCompiler /nologo /target:winexe /reference:System.Windows.Forms.dll "/out:$launcherExe" "$launcherSource"
+		if ($LASTEXITCODE -ne 0) {
+			throw "Failed to compile Elderforge_Playtest_Launcher.exe."
+		}
+	}
 
 	if (Test-Path -LiteralPath $ClientZipPath) {
 		Remove-Item -LiteralPath $ClientZipPath -Force
@@ -208,8 +242,11 @@ The game automatically connects to $ServerAddress`:$ServerPort using playtest_se
 If this playtest requires a code, enter the shared playtest code on the sign-in screen.
 
 For testers who should stay updated automatically, give them Elderforge_Playtest_Client.zip
-instead of this full package. They can extract it once and run Elderforge_Playtest_Client.bat.
+instead of this full package. They can extract it once and run Elderforge_Playtest_Launcher.exe.
 The launcher updates the game and shows the playtest server status before Play.
+
+Elderforge_Playtest_Client.bat is included only as a fallback if Windows blocks
+the launcher exe.
 
 Start_Elderforge_Playtest.bat is still included as a developer fallback.
 If the server address changes, update playtest_server.cfg or rebuild this package with -ServerAddress and -ServerPort.

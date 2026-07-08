@@ -20,3 +20,8 @@ Why this exists:
 `build_windows_playtest.ps1` packages these files into
 `Elderforge_Playtest_Client.zip` and writes `client_config.json` with the active
 release URLs and server status URL.
+
+Tester entry point:
+
+- `Elderforge_Playtest_Launcher.exe` is the normal no-console launcher.
+- `Elderforge_Playtest_Client.bat` is a fallback for debugging.
