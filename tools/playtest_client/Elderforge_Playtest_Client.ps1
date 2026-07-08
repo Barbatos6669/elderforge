@@ -88,6 +88,35 @@ function Read-JsonFile {
 		return $null
 	}
 
+	return Convert-JsonText -Content $content
+}
+
+function Convert-JsonText {
+	param([object]$Content)
+
+	if ($null -eq $Content) {
+		return $null
+	}
+
+	if ($Content -is [byte[]]) {
+		$content = [System.Text.Encoding]::UTF8.GetString($Content)
+	}
+	else {
+		$content = [string]$Content
+	}
+
+	if ([string]::IsNullOrWhiteSpace($content)) {
+		return $null
+	}
+
+	$content = $content.Trim()
+	if ($content.Length -gt 0 -and [int][char]$content[0] -eq 0xfeff) {
+		$content = $content.Substring(1)
+	}
+	if ($content.Length -ge 3 -and [int][char]$content[0] -eq 239 -and [int][char]$content[1] -eq 187 -and [int][char]$content[2] -eq 191) {
+		$content = $content.Substring(3)
+	}
+
 	return $content | ConvertFrom-Json
 }
 
@@ -229,7 +258,8 @@ function Get-RemoteManifest {
 	}
 
 	try {
-		return Invoke-RestMethod -Uri $url -TimeoutSec 10
+		$response = Invoke-WebRequest -Uri $url -TimeoutSec 10 -UseBasicParsing
+		return Convert-JsonText -Content $response.Content
 	}
 	catch {
 		Append-Log -Message "Could not reach version manifest: $($_.Exception.Message)"

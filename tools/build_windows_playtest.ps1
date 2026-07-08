@@ -115,7 +115,7 @@ function Write-PlaytestClientPackage {
 	}
 	$clientConfig |
 		ConvertTo-Json -Depth 4 |
-		Set-Content -LiteralPath (Join-Path $ClientBuildDir "client_config.json") -Encoding UTF8
+		Set-Content -LiteralPath (Join-Path $ClientBuildDir "client_config.json") -Encoding ASCII
 
 	if (Test-Path -LiteralPath $ClientZipPath) {
 		Remove-Item -LiteralPath $ClientZipPath -Force
@@ -197,8 +197,8 @@ $versionData = [ordered]@{
 	version_asset = $VersionAssetName
 }
 $versionJson = $versionData | ConvertTo-Json -Depth 8
-Set-Content -LiteralPath $VersionPath -Value $versionJson -Encoding UTF8
-Set-Content -LiteralPath $VersionAssetPath -Value $versionJson -Encoding UTF8
+Set-Content -LiteralPath $VersionPath -Value $versionJson -Encoding ASCII
+Set-Content -LiteralPath $VersionAssetPath -Value $versionJson -Encoding ASCII
 
 $readmeContents = @"
 Elderforge Windows Playtest
