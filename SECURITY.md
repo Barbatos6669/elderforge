@@ -20,3 +20,14 @@ Security-sensitive areas will include:
 - Inventory, trade, economy, and item duplication prevention.
 - Chat, moderation, and user-generated content.
 - Deployment scripts and secrets management.
+
+## Public Repository Rules
+
+This repository is public. Do not commit:
+
+- Playit agent secrets, tunnel config files, or private tunnel tokens.
+- Cloud provider API keys, SSH private keys, `.env` files, or deployment credentials.
+- Private server IPs, admin passwords, database files, or account data.
+- Paid or non-redistributable art/audio/model assets.
+
+Public release assets may contain the current playtest server address. That address is not a secret; it only points clients at the test server. The server itself must still treat all clients as untrusted.

@@ -24,3 +24,21 @@
 __pycache__/
 Thumbs.db
 .DS_Store
+
+# Local secrets, credentials, and tunnel configs
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.ppk
+*.private
+*.secret
+secrets/
+playit.toml
+playit*.toml
+playit*.json
+client_config.local.json
+playtest_server.local.cfg
