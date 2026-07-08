@@ -1,9 +1,0 @@
-[gd_resource type="Resource" script_class="EquipmentAnimationProfile" load_steps=2 format=3]
-
-[ext_resource type="Script" path="res://scripts/player/animation/equipment_animation_profile.gd" id="1_profile"]
-
-[resource]
-script = ExtResource("1_profile")
-profile_id = "sickle_t1"
-default_gathering_animation_name = &"TreeChopping"
-cotton_gathering_animation_name = &"TreeChopping"

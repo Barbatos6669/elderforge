@@ -9,6 +9,10 @@ const WORLD_INPUT_BLOCKER_GROUP := "blocking_world_input"
 
 ## Allows scenes or tests to temporarily disable local player control.
 @export var input_enabled: bool = true
+## Local players read input and own the active camera. Remote network copies are visual only.
+@export var is_local_player: bool = true
+## Multiplayer peer id represented by this player. Zero means not assigned yet.
+@export var network_peer_id: int = 0
 
 @onready var input_reader = $Input
 @onready var stats: PlayerStats = $Stats
@@ -26,6 +30,7 @@ const WORLD_INPUT_BLOCKER_GROUP := "blocking_world_input"
 @onready var health = get_node_or_null("Health")
 @onready var combat_state = get_node_or_null("CombatState")
 @onready var respawn = get_node_or_null("Respawn")
+@onready var visuals: Node3D = $Visuals
 
 var _pending_refining_station: Node
 var _pending_loot_container: Node
@@ -33,8 +38,15 @@ var _is_respawn_locked := false
 
 
 func _ready() -> void:
-	add_to_group("player")
-	camera_rig.set_target(camera_target)
+	if is_local_player:
+		add_to_group("player")
+		camera_rig.set_target(camera_target)
+	else:
+		_configure_remote_runtime()
+
+	if not is_local_player:
+		return
+
 	auto_attack.attack_started.connect(_on_auto_attack_started)
 	auto_attack.attack_landed.connect(_on_auto_attack_landed)
 	channeling.channel_started.connect(_on_channel_started)
@@ -51,6 +63,9 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if not is_local_player:
+		return
+
 	if _is_player_respawn_locked():
 		_pause_player_for_respawn()
 		return
@@ -465,6 +480,81 @@ func _sync_health_regeneration_with_combat() -> void:
 		and bool(combat_state.call("is_in_combat"))
 	)
 	health.call("set_regeneration_enabled", not is_in_combat)
+
+
+## Converts this prefab instance into a visual-only network copy.
+func configure_as_remote_player(peer_id: int, player_name: String = "") -> void:
+	is_local_player = false
+	network_peer_id = peer_id
+	input_enabled = false
+	if is_inside_tree():
+		_configure_remote_runtime()
+	_set_nameplate_player_name(_remote_display_name(peer_id, player_name))
+
+
+## Returns compact state used by the prototype multiplayer presence sync.
+func get_network_state() -> Dictionary:
+	var visual_yaw := 0.0
+	if visuals != null:
+		visual_yaw = visuals.global_rotation.y
+
+	return {
+		"position": global_position,
+		"visual_yaw": visual_yaw,
+		"is_moving": Vector3(velocity.x, 0.0, velocity.z).length_squared() > 0.01,
+	}
+
+
+## Applies a network update to a remote visual copy.
+func apply_remote_network_state(position_value: Vector3, visual_yaw: float, is_moving: bool) -> void:
+	if is_local_player:
+		return
+
+	global_position = position_value
+	if visuals != null:
+		visuals.global_rotation.y = visual_yaw
+	if animation != null:
+		animation.set_moving(is_moving)
+	if footstep_audio != null:
+		footstep_audio.set_moving(is_moving)
+
+
+func _configure_remote_runtime() -> void:
+	input_enabled = false
+	collision_layer = 0
+	collision_mask = 0
+	remove_from_group("player")
+	add_to_group("remote_player")
+	_disable_remote_node(input_reader)
+	_disable_remote_node(targeting)
+	_disable_remote_node(auto_attack)
+	_disable_remote_node(channeling)
+	_disable_remote_node(gathering)
+	_disable_remote_node(movement_motor)
+	_disable_remote_node(click_feedback)
+	if camera_rig != null:
+		camera_rig.process_mode = Node.PROCESS_MODE_DISABLED
+		var camera := camera_rig.get_node_or_null("Camera3D") as Camera3D
+		if camera != null:
+			camera.current = false
+	if has_node("ChannelBar"):
+		$ChannelBar.visible = false
+
+
+func _disable_remote_node(node: Node) -> void:
+	if node != null:
+		node.process_mode = Node.PROCESS_MODE_DISABLED
+
+
+func _set_nameplate_player_name(player_name: String) -> void:
+	var nameplate := get_node_or_null("Nameplate")
+	if nameplate != null and nameplate.has_method("set_player_name"):
+		nameplate.call("set_player_name", player_name)
+
+
+func _remote_display_name(peer_id: int, player_name: String) -> String:
+	var trimmed_name := player_name.strip_edges()
+	return trimmed_name if not trimmed_name.is_empty() else "Player %d" % peer_id
 
 
 func _on_channel_started(_action_name: String, _duration: float, context: Dictionary) -> void:

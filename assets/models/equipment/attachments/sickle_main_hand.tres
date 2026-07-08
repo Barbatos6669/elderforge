@@ -1,9 +1,0 @@
-[gd_resource type="Resource" script_class="EquipmentAttachmentProfile" load_steps=2 format=3]
-
-[ext_resource type="Script" path="res://scripts/player/equipment/equipment_attachment_profile.gd" id="1_profile"]
-
-[resource]
-script = ExtResource("1_profile")
-slot_id = "main_hand"
-local_position = Vector3(-0.04, 0.11, 0.02)
-local_rotation_degrees = Vector3(0, 90, 90)

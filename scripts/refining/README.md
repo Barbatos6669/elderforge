@@ -1,4 +1,4 @@
-ok now# Refining Scripts
+# Refining Scripts
 
 World refining station logic lives here.
 
@@ -19,38 +19,9 @@ Files:
 
 Related scenes:
 
-- `scenes/refining/RefiningStationBase.tscn`: shared collision, selection,
-  hover, interaction, and script base for new refining station families.
-- `scenes/refining/SawmillPrototype.tscn`: shared sawmill base with station
-  logic, collision, hover feedback, selection feedback, and the common
-  placeholder model.
-- `scenes/refining/StonecutterPrototype.tscn`: stone-to-block refining base.
-- `scenes/refining/SmelterPrototype.tscn`: ore-to-ingot refining base.
-- `scenes/refining/LoomPrototype.tscn`: cotton-to-cloth refining base.
-- `scenes/refining/ToolmakerPrototype.tscn`: refined-material-to-tool crafting
-  base.
-- `scenes/refining/WeaponSmithPrototype.tscn`: refined-material-to-weapon
-  crafting base.
-- `scenes/refining/sawmills/Tier1Sawmill.tscn` through
-  `scenes/refining/sawmills/Tier8Sawmill.tscn`: tier-specific sawmill prefabs.
-  Each tier inherits the shared base, sets its own `max_recipe_tier`, and owns
-  placeholder visual pieces that can be replaced by tier-specific Blender/GLB
-  art later.
-- `scenes/refining/stonecutters/Tier1Stonecutter.tscn` through
-  `scenes/refining/stonecutters/Tier8Stonecutter.tscn`: tier-specific stone
-  refining prefabs.
-- `scenes/refining/smelters/Tier1Smelter.tscn` through
-  `scenes/refining/smelters/Tier8Smelter.tscn`: tier-specific ore refining
-  prefabs.
-- `scenes/refining/looms/Tier1Loom.tscn` through
-  `scenes/refining/looms/Tier8Loom.tscn`: tier-specific cotton refining
-  prefabs.
-- `scenes/refining/toolmakers/Tier1Toolmaker.tscn` through
-  `scenes/refining/toolmakers/Tier8Toolmaker.tscn`: tier-specific gathering
-  tool crafting prefabs.
-- `scenes/refining/weapon_smiths/Tier1WeaponSmith.tscn` through
-  `scenes/refining/weapon_smiths/Tier8WeaponSmith.tscn`: tier-specific weapon
-  crafting prefabs.
+- Refining station world scenes were removed during the imported-mesh cleanup.
+  Keep these scripts as reusable behavior for future station scenes rebuilt with
+  Godot-native prototypes or project-owned art.
 - `scenes/ui/refining/RefiningPanel.tscn`
 
 GDScript notes:

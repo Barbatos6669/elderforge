@@ -56,6 +56,9 @@ func _make_toon_material(source_material: Material) -> Material:
 			material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		return material
 
+	if source_material is ShaderMaterial:
+		return source_material.duplicate(true)
+
 	var fallback := StandardMaterial3D.new()
 	fallback.albedo_color = Color(0.68, 0.62, 0.54, 1.0)
 	fallback.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON

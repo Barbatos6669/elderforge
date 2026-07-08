@@ -45,10 +45,8 @@ GDScript notes:
 - Equippable definitions use `equip_slot`; the current axe, hammer, pickaxe,
   sickle, skinning knife, and one-handed sword previews equip to `main_hand`.
 - Tools or gear that have a world/paper-doll prefab can set
-  `equipment_scene_path`. Axe, hammer, pickaxe, sickle, and skinning knife
-  tiers currently point at separate scenes under `scenes/equipment/tools/`.
-  One-handed swords point at `scenes/equipment/weapons/`. Each tier can own its
-  model, textures, and VFX later.
+  `equipment_scene_path` later. The current imported equipment scenes were
+  removed, so equippable prototype items are data/icons only for now.
 - Equipment can set `equipment_attachment_profile_path` when the item needs a
   reusable local offset for a character socket.
 - Equipment can set `equipment_animation_profile_path` when the item needs

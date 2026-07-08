@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/bootstrap/sign_in_gateway.gd" id="1_gateway"]
+[ext_resource type="PackedScene" path="res://scenes/ui/auth/AuthPanel.tscn" id="2_auth_panel"]
+
+[node name="SignInGateway" type="Node"]
+script = ExtResource("1_gateway")
+
+[node name="AuthPanel" parent="." instance=ExtResource("2_auth_panel")]
+start_visible = true

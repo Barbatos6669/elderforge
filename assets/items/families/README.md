@@ -15,6 +15,7 @@ Folders:
 Common edits:
 
 - Change tier display names in `tier_names`.
+- Add real lore or gameplay identity with `tier_descriptions`.
 - Change the inventory art lookup with `icon_id`.
 - Change stack size with `max_stack`.
 - For tools and weapons, change the hand model path with

@@ -6,54 +6,36 @@ Use this as the quick rulebook for where files should go.
 
 | Folder | What Goes Here |
 | --- | --- |
-| `assets/` | Art, audio, materials, item data, textures, Blender source, and runtime model exports. |
+| `assets/` | Character art, animation packs, audio, materials, textures, UI art, and item data. |
 | `scenes/` | Godot scenes and prefabs you can instance in the editor. |
 | `scripts/` | GDScript behavior attached to scenes or reusable gameplay systems. |
-| `docs/` | Learning notes, roadmap, design rules, and project guides. |
-| `tools/` | Automation scripts for Blender, Godot scene generation, and art helpers. |
+| `docs/` | Learning notes, roadmap, design rules, lore, and project guides. |
+| `tools/` | Small automation helpers that do not depend on deleted imported model folders. |
 
-## Custom Prop Layout
+## Current Art Rule
 
-Custom props made for Elderforge live here:
-
-```text
-assets/models/props/barbatos_props/
-```
-
-Each prop should use this layout:
+The project currently keeps the base character, shared animation packs, and
+project-owned resource art:
 
 ```text
-prop_name/
-  source/      editable Blender files
-  models/      exported .glb or .gltf files used by Godot
-  textures/    texture atlases and prop-specific images
+assets/characters/base/
+assets/animations/
+assets/trees/
 ```
 
-Matching prefab scenes go here:
-
-```text
-scenes/props/barbatos_props/
-```
-
-Regenerate those wrapper scenes with:
-
-```powershell
-python tools/godot/generate_barbatos_prop_prefabs.py
-```
+World props, terrain pieces, gathering nodes, equipment, and buildings should
+come from project-owned assets or Godot-native prototypes.
 
 ## Tool Layout
 
 | Folder | Purpose |
 | --- | --- |
-| `tools/blender/` | Scripts that open Blender or export Blender-authored assets. |
-| `tools/godot/` | Scripts that generate Godot scenes/resources from existing assets. |
 | `tools/art/` | Small helper scripts for generated textures or images. |
 
 ## Naming Rules
 
-- Use lowercase folder names with underscores: `table_v1`, not `Tablev1`.
-- Use `source/`, `models/`, and `textures/` for art assets that will be edited
-  and exported later.
-- Use descriptive scene names in PascalCase: `TableV1.tscn`,
-  `RetainingWall1.tscn`.
+- Use lowercase folder names with underscores: `player_stats`, not `PlayerStats`.
+- Use descriptive scene names in PascalCase: `PlayerNameplate.tscn`.
 - Avoid placeholder folders like `New Folder` or names with spaces.
+- Keep future imported art in a clearly named, project-owned folder and document
+  the workflow before adding broad asset packs again.

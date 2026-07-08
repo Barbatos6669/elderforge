@@ -1,0 +1,108 @@
+[gd_scene load_steps=14 format=3 uid="uid://dg0xw3b0kmoon"]
+
+[ext_resource type="Script" uid="uid://c7onhc7t0w5tj" path="res://scripts/gathering/gatherable_resource_3d.gd" id="1_gatherable"]
+[ext_resource type="PackedScene" uid="uid://bjgb6shge7rsb" path="res://assets/Rocks/Moonchalk_Var1.glb" id="2_rock_model"]
+[ext_resource type="Script" uid="uid://br3ubcjkrdw57" path="res://scripts/interaction/selection/selectable_3d.gd" id="3_selectable"]
+[ext_resource type="Script" uid="uid://cbxs8002i2pvm" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="4_hover"]
+[ext_resource type="Script" uid="uid://i4o11j0hk5eg" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="5_selection"]
+[ext_resource type="Texture2D" uid="uid://e6dikk8cx8dp" path="res://assets/ui/cursors/gather_tool_cursor.png" id="6_gather_cursor"]
+[ext_resource type="Texture2D" uid="uid://cili1xiu4osa1" path="res://assets/ui/cursors/depleted_resource_cursor.png" id="7_depleted_cursor"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
+size = Vector3(0.85, 0.55, 0.8)
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_selectable"]
+radius = 0.8
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_depleted"]
+albedo_color = Color(0.45, 0.43, 0.39, 1)
+roughness = 0.96
+
+[sub_resource type="BoxMesh" id="BoxMesh_depleted_1"]
+material = SubResource("StandardMaterial3D_depleted")
+size = Vector3(0.48, 0.16, 0.34)
+
+[sub_resource type="BoxMesh" id="BoxMesh_depleted_2"]
+material = SubResource("StandardMaterial3D_depleted")
+size = Vector3(0.3, 0.13, 0.26)
+
+[sub_resource type="BoxMesh" id="BoxMesh_depleted_3"]
+material = SubResource("StandardMaterial3D_depleted")
+size = Vector3(0.24, 0.1, 0.2)
+
+[node name="MoonchalkRockT1" type="Node3D"]
+script = ExtResource("1_gatherable")
+display_name = "Moonchalk Rock"
+resource_family_id = "stone"
+yield_item_id = "stone_t1"
+tier = 1
+yield_quantity = 1
+max_gather_ticks = 3
+gather_duration = 2.0
+active_visuals_path = NodePath("Visuals/Active")
+depleted_visuals_path = NodePath("Visuals/Depleted")
+
+[node name="Visuals" type="Node3D" parent="."]
+
+[node name="Active" type="Node3D" parent="Visuals"]
+
+[node name="RockModel" parent="Visuals/Active" instance=ExtResource("2_rock_model")]
+transform = Transform3D(0.45, 0, 0, 0, 0.45, 0, 0, 0, 0.45, 0, 0, 0)
+
+[node name="Depleted" type="Node3D" parent="Visuals"]
+visible = false
+
+[node name="Rubble1" type="MeshInstance3D" parent="Visuals/Depleted"]
+transform = Transform3D(0.965926, 0, -0.258819, 0, 1, 0, 0.258819, 0, 0.965926, -0.08, 0.08, 0.02)
+mesh = SubResource("BoxMesh_depleted_1")
+
+[node name="Rubble2" type="MeshInstance3D" parent="Visuals/Depleted"]
+transform = Transform3D(0.819152, 0, 0.573576, 0, 1, 0, -0.573576, 0, 0.819152, 0.26, 0.065, -0.12)
+mesh = SubResource("BoxMesh_depleted_2")
+
+[node name="Rubble3" type="MeshInstance3D" parent="Visuals/Depleted"]
+transform = Transform3D(0.573576, 0, -0.819152, 0, 1, 0, 0.819152, 0, 0.573576, -0.28, 0.05, 0.16)
+mesh = SubResource("BoxMesh_depleted_3")
+
+[node name="Body" type="StaticBody3D" parent="."]
+collision_layer = 2
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.275, 0)
+shape = SubResource("BoxShape3D_body")
+
+[node name="Selectable" type="Area3D" parent="."]
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("3_selectable")
+display_name = "Moonchalk Rock"
+relationship = 2
+neutral_color = Color(0.72, 0.72, 0.72, 1)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.38, 0)
+shape = SubResource("SphereShape3D_selectable")
+
+[node name="HoverFeedback" type="MeshInstance3D" parent="."]
+script = ExtResource("4_hover")
+visuals_path = NodePath("../Visuals")
+screen_hover_padding_pixels = 8.0
+screen_body_line_radius_pixels = 34.0
+screen_body_line_height = 0.85
+hover_collision_mask = 8
+ring_radius = 0.52
+ring_y_offset = 0.045
+hover_cursor_texture = ExtResource("6_gather_cursor")
+hover_cursor_hotspot = Vector2(12, 12)
+unavailable_hover_cursor_texture = ExtResource("7_depleted_cursor")
+unavailable_hover_cursor_hotspot = Vector2(12, 12)
+
+[node name="SelectedRing" type="MeshInstance3D" parent="."]
+script = ExtResource("5_selection")
+ring_radius = 0.58
+ring_width = 0.08
+ring_y_offset = 0.045
+ring_color = Color(0.72, 0.72, 0.72, 1)
+fill_color = Color(0.72, 0.72, 0.72, 0.16)
+fill_selection_color_mix = 0.2

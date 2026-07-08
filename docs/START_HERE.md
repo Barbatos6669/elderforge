@@ -28,11 +28,15 @@ map-specific things you place by hand.
 | Move the player spawn | `scenes/world/starting_city/StartingCity.tscn` |
 | Change player movement/camera/combat modules | `scenes/player/Player.tscn` |
 | Tune shared level setup | `scenes/levels/PlayableLevelShell.tscn` |
+| Tune lighting and atmosphere | `scenes/levels/lighting/BasicLevelLighting.tscn` |
+| Move or tune mist patches | `scenes/levels/atmosphere/AtmosphereField.tscn` |
 | Add or change prototype items | `scripts/inventory/prototype_item_catalog.gd` |
+| Read or change resource lore | `docs/lore/resources/` |
 | Change inventory behavior | `scripts/inventory/player_inventory.gd` |
 | Change inventory UI | `scripts/ui/inventory/inventory_panel.gd` |
 | Change gathering behavior | `scripts/player/gathering/player_gathering.gd` |
 | Change resource node behavior | `scripts/gathering/gatherable_resource_3d.gd` |
+| Edit the T1 tree prefab | `scenes/gathering/trees/SilverneedlePineT1.tscn` |
 | Change auto attack | `scripts/player/combat/player_auto_attack.gd` |
 | Change player stats | `scripts/player/stats/player_stats.gd` |
 

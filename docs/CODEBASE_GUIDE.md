@@ -191,8 +191,8 @@ appear, enable `force_hover` on that node to confirm hover detection and outline
 behavior before tuning detection.
 
 Gatherable resources can also set `hover_cursor_texture` on their
-`HoverSelectionRing` node. `Tier1Tree` uses the pickaxe cursor asset so hovering
-a gatherable tree replaces the normal mouse pointer. Tune
+`HoverSelectionRing` node. `SilverneedlePineT1` uses the gather cursor asset so
+hovering a gatherable tree replaces the normal mouse pointer. Tune
 `hover_cursor_hotspot` if the click point feels offset from the icon. It also
 uses `unavailable_hover_cursor_texture` for the red X cursor shown when the tree
 is depleted and cannot currently be gathered.
@@ -657,18 +657,10 @@ And eight axe gathering tool previews:
 - `Sunsteel Axe VII`
 - `Elder Axe VIII`
 
-Axes declare `equip_slot = "main_hand"`, so dragging one from the bag onto the
-Main Hand gear slot equips it. Dragging the equipped axe back onto a bag slot
-unequips it; dropping another axe onto Main Hand swaps the old one back into the
-bag. They also set `equipment_scene_path` to tier-specific scenes like
-`Tier1Axe.tscn` through `Tier8Axe.tscn`, plus
-`equipment_attachment_profile_path` to the current axe main-hand offset profile.
-
-Each tier scene under `scenes/equipment/tools/axes/` instances its matching GLB
-from `assets/equipment/tools/axes/t#/models/`, which is exported from the
-editable Blender source in `assets/equipment/tools/axes/t#/source/`. The prefab
-includes a `GripPoint` marker at the root and a `HitPoint` near the blade so
-future gathering, VFX, or hand-socket systems have stable attachment references.
+Tools still declare `equip_slot = "main_hand"` in data so the inventory rules can
+keep evolving. During the imported-mesh cleanup, the actual tool/weapon visual
+prefabs and attachment profiles were removed, so these items currently equip as
+data only.
 
 `Player.tscn` has an `EquipmentVisuals` child that listens to
 `PlayerInventory.equipped_slots_changed`. When the main hand slot contains an
@@ -685,13 +677,9 @@ This matches the usual production pattern:
 - Runtime equip logic only spawns or clears scenes; it does not hand-tune
   positions.
 
-For visual tuning, `Player.tscn` also contains
-`Visuals/BaseCharacter/Armature/Skeleton3D/MainHandAttachment/MainHandPreview`.
-This is a visible editor-only axe preview with a yellow grip marker. Move,
-rotate, or scale that preview node to line up the grip in the character's hand;
-`EquipmentVisuals` copies the preview's local transform to the real equipped
-axe and hides the preview at runtime. The profile resource is the reusable data
-home for item-specific offsets once we add more item shapes.
+That production pattern is still the intended direction once project-owned item
+visuals come back. `Player.tscn` keeps the `main_hand` bone socket, but the old
+editor-only axe preview was removed with the imported mesh assets.
 
 `InventoryItemIcon` draws the item card frame, small tier marker, and
 bottom-right quantity. Log, stone, ore, cotton, and hide items use transparent
@@ -702,38 +690,18 @@ blue, red, orange, yellow, and white for tiers I through VIII.
 
 ## Gathering Prototypes
 
-`scenes/gathering/Tier1Tree.tscn`
-`scenes/gathering/Tier1Rock.tscn`
 `scripts/gathering/gatherable_resource_3d.gd`
 
-`Tier1Tree` is the first gatherable node. The scene owns the gameplay wrapper,
-while the visuals come from Blender-authored exports in
-`assets/models/resources/trees/`. Open `t1_tree.blend` to edit the model, then
-export over the same `.glb` paths so Godot updates the resource scene without
-touching gathering, selection, or collision wiring. The trunk, leaves, and
-depleted stump are separate runtime exports, which gives future scripts clean
-targets for canopy hiding, fading, seasonal swaps, or different tree crowns. The
-leaves use the shared T1 light gray tier color, while the trunk uses simple
-brown bark materials.
+`scenes/gathering/trees/SilverneedlePineT1.tscn`
 
-`Tier1Rock` follows the same resource-scene pattern for stone. Its visuals come
-from `assets/models/resources/rocks/t1_rock.blend`, exported as
-`t1_rock_full.glb` and `t1_rock_depleted.glb`. It uses
-`resource_family_id = "stone"` and `yield_item_id = "stone_t1"`, so each
-completed gather tick adds one T1 stone stack item.
+The first project-owned gatherable resource is Silverneedle Pine. It wraps the
+user-authored `assets/trees/Silverneedle_Pine_T1.glb` model and keeps gameplay
+scale, colliders, selection, hover cursor, and gather metadata in the prefab.
 
 The root has `GatherableResource3D`, which stores the resource family, tier,
 yield item id, per-tick yield quantity, gather duration, and remaining gather
-ticks. The current T1 tree and T1 rock both have 3 ticks and give 1 item per
-completed tick. Missing ticks replenish one at a time every 30 seconds. The
-scene also has a neutral `Selectable` area plus hover and selected rings, so it
-can already be targeted like other world objects.
-
-The tree also has a separate `ResourceBody` `StaticBody3D` collider on the
-`ResourceObstacle` physics layer. This is the solid obstacle the player collides
-with. It is intentionally smaller than the selectable capsule, because clicking
-and hovering should be forgiving while physical collision should stay close to
-the trunk.
+ticks. The Silverneedle prefab pairs it with a neutral `Selectable` area,
+hover cursor support, a selected ring, and a separate trunk collider.
 
 Clicking the tree now starts the first gathering flow:
 
@@ -742,7 +710,8 @@ Clicking the tree now starts the first gathering flow:
 3. The player moves into gather range and faces the tree.
 4. `PlayerChanneling` starts a timed gathering channel.
 5. `ChannelBar` shows the channel progress.
-6. `PlayerAnimationController` loops `Shield_OneShot` while the channel is active.
+6. `PlayerAnimationController` loops the active gathering animation while the
+   channel is active.
 7. On completion, `PlayerInventory.add_item("timber_t1", quantity)` adds 1 log.
 8. `GatherableResource3D.consume_gather_tick()` subtracts one available tick.
 9. If ticks remain, `PlayerGathering` queues the next gathering channel.
@@ -751,15 +720,20 @@ Clicking the tree now starts the first gathering flow:
 11. Every 30 seconds, `GatherableResource3D` restores one missing tick. When
     the first tick returns, the full tree visual and selection come back.
 
-Useful exported values on `Tier1Tree`:
+Useful exported values on `SilverneedlePineT1`:
 
 - `yield_quantity`
 - `max_gather_ticks`
 - `gather_duration`
 - `replenish_enabled`
 - `replenish_interval_seconds`
-- `active_visuals_path`
-- `depleted_visuals_path`
+- `selectable_path`
+
+Useful exported values on `VisualState`:
+
+- `active_mesh_names`
+- `occluded_mesh_names`
+- `depleted_mesh_names`
 
 ## Channel Bar
 

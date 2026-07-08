@@ -7,8 +7,7 @@
 [ext_resource type="PackedScene" path="res://scenes/camera/IsometricCameraRig.tscn" id="5_camera_rig"]
 [ext_resource type="Script" uid="uid://cbx45o07luo52" path="res://scripts/player/feedback/player_click_feedback.gd" id="6_feedback"]
 [ext_resource type="PackedScene" path="res://scenes/effects/ClickMoveIndicator.tscn" id="7_click_indicator"]
-[ext_resource type="PackedScene" uid="uid://ban0on7ckj2wx" path="res://assets/characters/base/Superhero_Male_FullBody.gltf" id="8_base_character"]
-[ext_resource type="Script" uid="uid://du6hmvsfmcssp" path="res://scripts/player/visuals/player_visual_style.gd" id="9_visual_style"]
+[ext_resource type="PackedScene" uid="uid://hywtsvmqjd7i" path="res://assets/characters/base/BaseCharacter.glb" id="8_base_character"]
 [ext_resource type="Script" uid="uid://cw62d0ikuxg7t" path="res://scripts/player/animation/player_animation_controller.gd" id="10_animation"]
 [ext_resource type="PackedScene" uid="uid://crtjf3qpcvdd2" path="res://assets/animations/universal_animation_library_1/UAL1_Standard.glb" id="11_animation_library"]
 [ext_resource type="Script" uid="uid://e4vucijm23n4" path="res://scripts/player/audio/player_footstep_audio.gd" id="12_footstep_audio"]
@@ -24,13 +23,13 @@
 [ext_resource type="Script" uid="uid://cw8nh2sfs1k4j" path="res://scripts/player/gathering/player_gathering.gd" id="21_gathering"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/ChannelBar.tscn" id="22_channel_bar"]
 [ext_resource type="Script" uid="uid://bqyaxpya4rkwf" path="res://scripts/player/equipment/player_equipment_visuals.gd" id="23_equipment_visuals"]
-[ext_resource type="PackedScene" path="res://scenes/equipment/tools/axes/Tier1Axe.tscn" id="24_axe_preview"]
 [ext_resource type="Script" path="res://scripts/player/equipment/equipment_socket_3d.gd" id="25_equipment_socket"]
 [ext_resource type="Script" path="res://scripts/combat/combat_health.gd" id="26_health"]
 [ext_resource type="Script" path="res://scripts/combat/damage_number_emitter_3d.gd" id="27_damage_numbers"]
 [ext_resource type="Script" path="res://scripts/combat/combat_state.gd" id="28_combat_state"]
 [ext_resource type="Script" path="res://scripts/combat/resource_pool.gd" id="29_resource_pool"]
 [ext_resource type="Script" path="res://scripts/player/lifecycle/player_respawn.gd" id="30_respawn"]
+[ext_resource type="Script" path="res://scripts/player/visuals/player_occlusion_silhouette.gd" id="31_occlusion_silhouette"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -38,15 +37,6 @@ height = 1.8
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_hover"]
 radius = 0.6
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_grip_marker"]
-albedo_color = Color(1, 0.82, 0, 1)
-emission_enabled = true
-emission = Color(1, 0.82, 0, 1)
-
-[sub_resource type="SphereMesh" id="SphereMesh_grip_marker"]
-radius = 0.035
-height = 0.07
 
 [node name="Player" type="CharacterBody3D" unique_id=2050980311]
 collision_mask = 3
@@ -105,8 +95,8 @@ direction_change_snap_angle = 0.85
 [node name="Facing" type="Node" parent="." unique_id=124228613]
 script = ExtResource("4_facing")
 
-[node name="VisualStyle" type="Node" parent="." unique_id=1562770274]
-script = ExtResource("9_visual_style")
+[node name="OcclusionSilhouette" type="Node" parent="."]
+script = ExtResource("31_occlusion_silhouette")
 
 [node name="EquipmentVisuals" type="Node" parent="." unique_id=1427824957]
 script = ExtResource("23_equipment_visuals")
@@ -140,14 +130,6 @@ bone_name = "hand_r"
 script = ExtResource("25_equipment_socket")
 slot_id = "main_hand"
 use_preview_transform = false
-
-[node name="MainHandPreview" parent="Visuals/BaseCharacter/Armature/Skeleton3D/MainHandAttachment" instance=ExtResource("24_axe_preview")]
-position = Vector3(-0.04, 0.11, 0.02)
-rotation = Vector3(0, 1.5708, 1.5708)
-
-[node name="GripMarker" type="MeshInstance3D" parent="Visuals/BaseCharacter/Armature/Skeleton3D/MainHandAttachment/MainHandPreview"]
-mesh = SubResource("SphereMesh_grip_marker")
-material_override = SubResource("StandardMaterial3D_grip_marker")
 
 [node name="Nameplate" parent="." unique_id=889818390 instance=ExtResource("15_nameplate")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 0)

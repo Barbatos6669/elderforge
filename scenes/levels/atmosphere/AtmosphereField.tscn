@@ -1,0 +1,68 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/visuals/atmospheric_mist_3d.gd" id="1_mist_script"]
+[ext_resource type="Shader" path="res://assets/materials/world/ambient_mist.gdshader" id="2_mist_shader"]
+[ext_resource type="Script" path="res://scripts/visuals/ambient_particles_3d.gd" id="3_particles_script"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_mist_pale"]
+render_priority = -2
+shader = ExtResource("2_mist_shader")
+shader_parameter/mist_color = Color(0.58, 0.75, 0.82, 0.22)
+shader_parameter/alpha_strength = 0.22
+shader_parameter/edge_softness = 2.7
+shader_parameter/noise_scale = 8.5
+shader_parameter/drift_speed = 0.035
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_mist_cool"]
+render_priority = -2
+shader = ExtResource("2_mist_shader")
+shader_parameter/mist_color = Color(0.46, 0.58, 0.66, 0.18)
+shader_parameter/alpha_strength = 0.18
+shader_parameter/edge_softness = 2.2
+shader_parameter/noise_scale = 11.0
+shader_parameter/drift_speed = 0.045
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_mist_large"]
+material = SubResource("ShaderMaterial_mist_pale")
+size = Vector2(18, 10)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_mist_medium"]
+material = SubResource("ShaderMaterial_mist_cool")
+size = Vector2(12, 7)
+
+[node name="AtmosphereField" type="Node3D"]
+script = ExtResource("1_mist_script")
+drift_amplitude = 0.42
+drift_speed = 0.14
+rotation_wobble_degrees = 0.9
+
+[node name="AmbientParticles" type="Node3D" parent="."]
+script = ExtResource("3_particles_script")
+emission_extents = Vector3(26, 3.6, 26)
+emission_center_height = 1.65
+moon_mote_amount = 120
+leaf_fleck_amount = 42
+
+[node name="MistPatchNorth" type="MeshInstance3D" parent="."]
+position = Vector3(4, 0.045, -8)
+rotation = Vector3(0, 0.436332, 0)
+mesh = SubResource("PlaneMesh_mist_large")
+cast_shadow = 0
+
+[node name="MistPatchTrees" type="MeshInstance3D" parent="."]
+position = Vector3(8, 0.052, 4)
+rotation = Vector3(0, -0.261799, 0)
+mesh = SubResource("PlaneMesh_mist_large")
+cast_shadow = 0
+
+[node name="MistPatchSpawn" type="MeshInstance3D" parent="."]
+position = Vector3(-4, 0.05, 2)
+rotation = Vector3(0, 0.872665, 0)
+mesh = SubResource("PlaneMesh_mist_medium")
+cast_shadow = 0
+
+[node name="MistPatchSouth" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.047, 12)
+rotation = Vector3(0, -0.610865, 0)
+mesh = SubResource("PlaneMesh_mist_medium")
+cast_shadow = 0

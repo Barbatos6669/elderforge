@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://d3ghlu7kw3efi"]
+
+[ext_resource type="PackedScene" uid="uid://cwlc0xqnr5hs3" path="res://assets/terrain_decor/Hil_1.glb" id="1_of3bc"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_5pbvn"]
+size = Vector3(4.081421, 1, 2.720581)
+
+[node name="Hil_1" unique_id=442624712 instance=ExtResource("1_of3bc")]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Plane" parent_id_path=PackedInt32Array(509897931) index="0" unique_id=21301227]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.048034668, -0.4607941, 0.8602905)
+shape = SubResource("BoxShape3D_5pbvn")
+disabled = true

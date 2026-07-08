@@ -8,6 +8,8 @@ This project may take inspiration from the broad sandbox MMO genre, including ga
 
 The repository is in the early local prototype stage. We have a playable Godot scene with a reusable player prefab, click-to-move controls, an isometric camera, placeholder character visuals, animation, footsteps, and zeroed player stat tracking. Backend services, multiplayer authority, inventory, combat, persistence, and the content pipeline still need to be designed and implemented.
 
+For friend testing, see [Playtest Builds](docs/playtest_builds.md).
+
 ## Design Pillars
 
 - Player-driven economy: most equipment and consumables should come from player gathering and crafting.

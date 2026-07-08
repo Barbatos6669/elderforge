@@ -2,9 +2,8 @@
 
 Project automation lives here.
 
-- `blender/`: scripts that create, import, or export Blender/GLB asset files.
-- `godot/`: scripts that generate Godot scenes or resources from existing data.
 - `art/`: lightweight image/texture generation helpers.
 
-Keep editor-facing generation scripts in `tools/godot/` and DCC asset pipeline
-scripts in `tools/blender/` so contributors know which program a tool expects.
+The old Blender/GLB and prefab-generation folders were removed with the
+imported-mesh cleanup. Add new tool folders only when the workflow is active
+again.

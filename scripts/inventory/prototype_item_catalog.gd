@@ -123,6 +123,7 @@ static func _append_family_definition(definitions: Array, family_definition: Res
 	var item_id_prefix := String(family_definition.get("item_id_prefix"))
 	var category := String(family_definition.get("category"))
 	var tier_names := PackedStringArray(family_definition.get("tier_names"))
+	var tier_descriptions := PackedStringArray(family_definition.get("tier_descriptions"))
 	var base_weight := float(family_definition.get("base_weight"))
 	var weight_per_tier := float(family_definition.get("weight_per_tier"))
 	var usage_text := String(family_definition.get("usage_text"))
@@ -156,7 +157,13 @@ static func _append_family_definition(definitions: Array, family_definition: Res
 		definition.max_stack = max_stack
 		definition.unit_weight = base_weight + float(tier - 1) * weight_per_tier
 		definition.color = tier_color(tier)
-		definition.description = "Tier %s %s used for %s prototypes." % [roman, family_id, usage_text]
+		definition.description = _definition_description(
+			tier_descriptions,
+			tier_index,
+			roman,
+			family_id,
+			usage_text
+		)
 		definitions.append(definition)
 
 
@@ -168,3 +175,18 @@ static func _resolve_tier_path(path_template: String, tier: int) -> String:
 		return path_template % tier
 
 	return path_template % [tier, tier]
+
+
+static func _definition_description(
+	tier_descriptions: PackedStringArray,
+	tier_index: int,
+	roman: String,
+	family_id: String,
+	usage_text: String
+) -> String:
+	if tier_index < tier_descriptions.size():
+		var custom_description := tier_descriptions[tier_index].strip_edges()
+		if not custom_description.is_empty():
+			return custom_description
+
+	return "Tier %s %s used for %s prototypes." % [roman, family_id, usage_text]

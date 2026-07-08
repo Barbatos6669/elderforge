@@ -11,6 +11,9 @@ extends Resource
 @export var item_id_prefix: String = ""
 @export var category: String = "Resource"
 @export var tier_names: PackedStringArray = PackedStringArray()
+## Optional per-tier descriptions. When an entry is empty, the catalog falls
+## back to the generated prototype description for that tier.
+@export var tier_descriptions: PackedStringArray = PackedStringArray()
 @export_range(0.0, 1000.0, 0.001) var base_weight: float = 0.0
 @export_range(0.0, 1000.0, 0.001) var weight_per_tier: float = 0.0
 @export_multiline var usage_text: String = ""

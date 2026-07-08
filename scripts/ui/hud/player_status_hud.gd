@@ -103,6 +103,15 @@ func _build_ui() -> void:
 	stack.add_child(_build_bar_row(false))
 
 
+## Updates the HUD name after the auth flow chooses a character name.
+func set_player_name(new_player_name: String) -> void:
+	player_name = new_player_name.strip_edges()
+	if player_name.is_empty():
+		player_name = "Player"
+	if _name_label != null:
+		_name_label.text = player_name
+
+
 func _build_bar_row(is_health: bool) -> Control:
 	var holder := Control.new()
 	holder.name = "HealthRow" if is_health else "ManaRow"

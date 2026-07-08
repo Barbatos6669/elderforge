@@ -8,6 +8,7 @@ Folders:
 - `hud/`: in-game HUD widgets, such as the channel bar.
 - `inventory/`: inventory and equipment UI.
 - `nameplates/`: world-space nameplates above characters and targets.
+- `auth/`: first-pass sign-in and account creation screens.
 
 GDScript notes:
 

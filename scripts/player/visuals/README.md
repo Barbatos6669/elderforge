@@ -6,8 +6,12 @@ Files:
 
 - `player_facing.gd`: rotates the visual model toward movement, combat, or
   gathering direction.
-- `player_visual_style.gd`: applies the current toon-like placeholder material
-  style to the base character.
+- `player_occlusion_silhouette.gd`: shows a depth-disabled filled character
+  silhouette with an outline when buildings, trunks, walls, or registered
+  visual occluders such as fading leaves block the camera.
+- `player_visual_style.gd`: optional prototype material override used by NPCs or
+  test characters. The local player currently preserves `BaseCharacter.glb`'s
+  imported material.
 
 Related scene:
 

@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/auth/auth_panel.gd" id="1_auth_panel"]
+
+[node name="AuthPanel" type="CanvasLayer"]
+script = ExtResource("1_auth_panel")
+playtest_server_port = 24566
