@@ -21,6 +21,7 @@ $ExePath = Join-Path $BuildDir "Elderforge_Playtest.exe"
 $ZipPath = Join-Path $PackageDir "Elderforge_Windows_Playtest.zip"
 $LauncherPath = Join-Path $BuildDir "Start_Elderforge_Playtest.bat"
 $ReadmePath = Join-Path $BuildDir "PLAYTEST_README.txt"
+$ConfigPath = Join-Path $BuildDir "playtest_server.cfg"
 
 function Get-DefaultPlaytestServerAddress {
 	try {
@@ -75,14 +76,22 @@ popd
 "@
 Set-Content -LiteralPath $LauncherPath -Value $launcherContents -Encoding ASCII
 
+Write-Host "Writing embedded playtest server config..."
+$configContents = @"
+[server]
+address="$ServerAddress"
+port=$ServerPort
+"@
+Set-Content -LiteralPath $ConfigPath -Value $configContents -Encoding ASCII
+
 $readmeContents = @"
 Elderforge Windows Playtest
 
-Run Start_Elderforge_Playtest.bat, then sign in or use Guest.
-The launcher connects to $ServerAddress`:$ServerPort.
+Run Elderforge_Playtest.exe, then sign in or use Guest.
+The game automatically connects to $ServerAddress`:$ServerPort using playtest_server.cfg.
 
-If you are testing on the same computer as the server, Elderforge_Playtest.exe also works directly.
-If the server address changes, edit Start_Elderforge_Playtest.bat and replace the value after --connect=.
+Start_Elderforge_Playtest.bat is still included as a developer fallback.
+If the server address changes, update playtest_server.cfg or rebuild this package with -ServerAddress and -ServerPort.
 "@
 Set-Content -LiteralPath $ReadmePath -Value $readmeContents -Encoding ASCII
 

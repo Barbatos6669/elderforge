@@ -8,6 +8,7 @@ extends CanvasLayer
 signal authentication_succeeded(display_name: String)
 
 const WORLD_INPUT_BLOCKER_GROUP := "blocking_world_input"
+const PLAYTEST_CONFIG_FILE := "playtest_server.cfg"
 
 @export var start_visible := true
 @export var default_display_name := "Barabtos6669"
@@ -35,6 +36,7 @@ func _ready() -> void:
 	layer = 120
 	add_to_group(WORLD_INPUT_BLOCKER_GROUP)
 	_session = get_node_or_null("/root/PrototypeAuthSession")
+	_apply_sidecar_playtest_target()
 	_apply_command_line_playtest_target()
 	_build_ui()
 	visible = start_visible and not _is_command_line_server()
@@ -255,6 +257,36 @@ func _apply_command_line_playtest_target() -> void:
 			playtest_server_port = _parse_port(clean_argument.get_slice("=", 1), playtest_server_port)
 		elif normalized_argument.begins_with("--playtest-port="):
 			playtest_server_port = _parse_port(clean_argument.get_slice("=", 1), playtest_server_port)
+
+
+func _apply_sidecar_playtest_target() -> void:
+	for config_path in _playtest_config_paths():
+		var config := ConfigFile.new()
+		var error := config.load(config_path)
+		if error != OK:
+			continue
+
+		var configured_address := String(config.get_value("server", "address", "")).strip_edges()
+		if not configured_address.is_empty():
+			playtest_server_address = configured_address
+
+		playtest_server_port = _parse_port(
+			str(config.get_value("server", "port", playtest_server_port)),
+			playtest_server_port
+		)
+		return
+
+
+func _playtest_config_paths() -> PackedStringArray:
+	var paths := PackedStringArray()
+	paths.append("res://%s" % PLAYTEST_CONFIG_FILE)
+
+	var executable_path := OS.get_executable_path()
+	var executable_dir := executable_path.get_base_dir()
+	if not executable_dir.is_empty():
+		paths.append(executable_dir.path_join(PLAYTEST_CONFIG_FILE))
+
+	return paths
 
 
 func _apply_connect_argument(raw_value: String) -> void:
