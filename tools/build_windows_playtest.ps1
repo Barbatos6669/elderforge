@@ -21,8 +21,9 @@ if (-not (Test-Path -LiteralPath $GodotExe)) {
 	throw "Godot console executable not found. Set GODOT_EXE or pass -GodotExe."
 }
 
-$BuildDir = Join-Path $ProjectRoot "builds\windows-playtest"
-$PackageDir = Join-Path $ProjectRoot "builds\packages"
+$BuildsRoot = Join-Path $ProjectRoot "builds"
+$BuildDir = Join-Path $BuildsRoot "windows-playtest"
+$PackageDir = Join-Path $BuildsRoot "packages"
 $ExePath = Join-Path $BuildDir "Elderforge_Playtest.exe"
 $PlaytestZipName = "Elderforge_Windows_Playtest.zip"
 $VersionAssetName = "Elderforge_Windows_Playtest.version.json"
@@ -34,7 +35,7 @@ $LauncherPath = Join-Path $BuildDir "Start_Elderforge_Playtest.bat"
 $ReadmePath = Join-Path $BuildDir "PLAYTEST_README.txt"
 $ConfigPath = Join-Path $BuildDir "playtest_server.cfg"
 $ClientSourceDir = Join-Path $ProjectRoot "tools\playtest_client"
-$ClientBuildDir = Join-Path $ProjectRoot "builds\playtest-client"
+$ClientBuildDir = Join-Path $BuildsRoot "playtest-client"
 $ClientZipPath = Join-Path $PackageDir $ClientZipName
 
 function Get-DefaultPlaytestServerAddress {
@@ -162,6 +163,8 @@ function Write-PlaytestClientPackage {
 	Compress-Archive -Path (Join-Path $ClientBuildDir "*") -DestinationPath $ClientZipPath -Force
 }
 
+New-Item -ItemType Directory -Path $BuildsRoot -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $BuildsRoot ".gdignore") -Value "" -Encoding ASCII
 New-Item -ItemType Directory -Path $BuildDir -Force | Out-Null
 New-Item -ItemType Directory -Path $PackageDir -Force | Out-Null
 
