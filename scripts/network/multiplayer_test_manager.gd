@@ -304,16 +304,16 @@ func _on_server_disconnected() -> void:
 
 func _is_network_active() -> bool:
 	return (
-		multiplayer.multiplayer_peer != null
-		and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED
+		_peer != null
+		and _peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED
 	)
 
 
 func _is_network_connecting_or_active() -> bool:
-	if multiplayer.multiplayer_peer == null:
+	if _peer == null:
 		return false
 
-	var status := multiplayer.multiplayer_peer.get_connection_status()
+	var status := _peer.get_connection_status()
 	return (
 		status == MultiplayerPeer.CONNECTION_CONNECTING
 		or status == MultiplayerPeer.CONNECTION_CONNECTED
