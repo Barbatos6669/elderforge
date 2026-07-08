@@ -28,6 +28,8 @@ The output is:
 
 ```text
 builds/packages/Elderforge_Windows_Playtest.zip
+builds/packages/Elderforge_Playtest_Client.zip
+builds/packages/Elderforge_Windows_Playtest.version.json
 ```
 
 Send that zip to your tester. They should extract the folder and run
@@ -48,6 +50,10 @@ to ask the tester for a code:
 .\tools\build_windows_playtest.ps1 -ServerAddress thursday-scottish.gl.at.ply.gg -ServerPort 54355 -RequirePlaytestCode
 ```
 
+Each build also writes `playtest_version.json`, `playtest_server.cfg`, and
+`playtest_status.json` into the exported game folder. The server config and
+status metadata include the required build id for that exact package.
+
 ## Multiplayer Friend Test
 
 Run the test server on the host PC:
@@ -64,11 +70,26 @@ variable, not in the public repo:
 & 'C:\Godot\Godot_v4.7-stable_win64_console.exe' --headless --path . --server --port=24566 --playtest-code="your-private-code"
 ```
 
+When publishing an update while players are online, use the maintenance gate:
+
+1. Set the status metadata to maintenance so the launcher warns new players.
+2. Ask connected testers to relaunch from the launcher.
+3. Stop the Godot server.
+4. Deploy the new exported server package.
+5. Start the Godot server with the new package/config.
+6. Clear maintenance after the status endpoint advertises the new required build.
+
+Clients send their installed `playtest_version.json` build id during the first
+server handshake. If the server requires a different build, it rejects the
+connection with an update-required message instead of accepting stale clients.
+
 The tester signs in and the client auto-joins the configured playtest server.
 `F9` still opens the manual multiplayer panel for debugging. The client also
 accepts `--connect=address:port`, `--playtest-server=address:port`,
 `--connect-port=port`, `--playtest-port=port`, `--playtest-code=code`, and
-`--playtest-code-hash=sha256`.
+`--playtest-code-hash=sha256`. Dedicated hosts can also override the version
+gate with `--maintenance=true`, `--maintenance-message=...`,
+`--required-build-id=...`, or `--required-commit=...`.
 
 For LAN, use the host computer's local IP. For internet tests, use a VPN-style
 tool such as Tailscale/ZeroTier/Radmin, or forward UDP on the chosen port.

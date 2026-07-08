@@ -7,7 +7,9 @@ param(
 	[string]$PlaytestCodeHash = $env:ELDERFORGE_PLAYTEST_CODE_HASH,
 	[string]$StatusUrl = $env:ELDERFORGE_PLAYTEST_STATUS_URL,
 	[string]$Repository = "Barbatos6669/elderforge",
-	[string]$ReleaseTag = "playtest-2026-07-08"
+	[string]$ReleaseTag = "playtest-2026-07-08",
+	[switch]$MaintenanceMode,
+	[string]$MaintenanceMessage = "Server maintenance is active. Please update and try again soon."
 )
 
 $ErrorActionPreference = "Stop"
@@ -34,6 +36,7 @@ $VersionAssetPath = Join-Path $PackageDir $VersionAssetName
 $LauncherPath = Join-Path $BuildDir "Start_Elderforge_Playtest.bat"
 $ReadmePath = Join-Path $BuildDir "PLAYTEST_README.txt"
 $ConfigPath = Join-Path $BuildDir "playtest_server.cfg"
+$StatusMetadataPath = Join-Path $BuildDir "playtest_status.json"
 $ClientSourceDir = Join-Path $ProjectRoot "tools\playtest_client"
 $ClientBuildDir = Join-Path $BuildsRoot "playtest-client"
 $ClientZipPath = Join-Path $PackageDir $ClientZipName
@@ -215,6 +218,12 @@ port=$ServerPort
 [playtest]
 require_code=$($PlaytestCodeRequired.ToString().ToLowerInvariant())
 access_code_hash=""
+
+[version_gate]
+maintenance=$($MaintenanceMode.IsPresent.ToString().ToLowerInvariant())
+maintenance_message="$MaintenanceMessage"
+required_build_id="$BuildId"
+required_commit="$GitCommit"
 "@
 Set-Content -LiteralPath $ConfigPath -Value $configContents -Encoding ASCII
 
@@ -231,6 +240,8 @@ $versionData = [ordered]@{
 	server_status_url = $StatusUrl
 	package_url = "$ReleaseBaseUrl/$PlaytestZipName"
 	playtest_code_required = $PlaytestCodeRequired
+	required_build_id = $BuildId
+	required_commit = $GitCommit
 	repository = $Repository
 	release_tag = $ReleaseTag
 	package_asset = $PlaytestZipName
@@ -239,6 +250,23 @@ $versionData = [ordered]@{
 $versionJson = $versionData | ConvertTo-Json -Depth 8
 Set-Content -LiteralPath $VersionPath -Value $versionJson -Encoding ASCII
 Set-Content -LiteralPath $VersionAssetPath -Value $versionJson -Encoding ASCII
+
+Write-Host "Writing playtest status metadata..."
+$statusMetadata = [ordered]@{
+	schema_version = 1
+	server_name = "Elderforge_Azure_Playtest"
+	maintenance = $MaintenanceMode.IsPresent
+	maintenance_message = $MaintenanceMessage
+	accepting_connections = (-not $MaintenanceMode.IsPresent)
+	required_build_id = $BuildId
+	required_commit = $GitCommit
+	minimum_client_build = $BuildId
+	package_url = "$ReleaseBaseUrl/$PlaytestZipName"
+	version_url = "$ReleaseBaseUrl/$VersionAssetName"
+}
+$statusMetadata |
+	ConvertTo-Json -Depth 8 |
+	Set-Content -LiteralPath $StatusMetadataPath -Encoding ASCII
 
 $readmeContents = @"
 Elderforge Windows Playtest
@@ -250,6 +278,8 @@ If this playtest requires a code, enter the shared playtest code on the sign-in 
 For testers who should stay updated automatically, give them Elderforge_Playtest_Client.zip
 instead of this full package. They can extract it once and run Elderforge_Playtest_Launcher.exe.
 The launcher updates the game and shows the playtest server status before Play.
+If the server advertises a newer required build, the launcher blocks Play until
+the matching build is installed. The server also rejects mismatched clients.
 
 Elderforge_Playtest_Client.bat is included only as a fallback if Windows blocks
 the launcher exe.

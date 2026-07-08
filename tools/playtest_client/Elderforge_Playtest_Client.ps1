@@ -19,6 +19,7 @@ $script:Window = $null
 $script:IsBusy = $false
 $script:Config = $null
 $script:RemoteManifest = $null
+$script:ServerStatus = $null
 $script:InstallRoot = $null
 
 function Get-FullPath {
@@ -419,6 +420,86 @@ function Update-BuildText {
 	Set-Text -Control $script:BuildText -Text "Build: $label"
 }
 
+function Get-ShortBuildLabel {
+	param([string]$BuildId)
+
+	if ([string]::IsNullOrWhiteSpace($BuildId)) {
+		return "unknown"
+	}
+
+	if ($BuildId.Length -gt 22) {
+		return $BuildId.Substring(0, 22)
+	}
+
+	return $BuildId
+}
+
+function Test-ServerLaunchGate {
+	param(
+		[object]$Status,
+		[object]$InstalledManifest
+	)
+
+	$result = [ordered]@{
+		CanLaunch = $true
+		NeedsUpdate = $false
+		Message = ""
+	}
+
+	if ($null -eq $Status) {
+		return [pscustomobject]$result
+	}
+
+	$isOnline = [bool](Get-ObjectValue -Object $Status -Name "online" -DefaultValue $false)
+	if (-not $isOnline) {
+		$result.CanLaunch = $false
+		$result.Message = "Server is offline."
+		return [pscustomobject]$result
+	}
+
+	$isMaintenance = [bool](Get-ObjectValue -Object $Status -Name "maintenance" -DefaultValue $false)
+	if ($isMaintenance) {
+		$message = [string](Get-ObjectValue -Object $Status -Name "maintenance_message" -DefaultValue "")
+		if ([string]::IsNullOrWhiteSpace($message)) {
+			$message = "Server maintenance is active."
+		}
+		$result.CanLaunch = $false
+		$result.Message = $message
+		return [pscustomobject]$result
+	}
+
+	$acceptingConnections = [bool](Get-ObjectValue -Object $Status -Name "accepting_connections" -DefaultValue $true)
+	if (-not $acceptingConnections) {
+		$message = [string](Get-ObjectValue -Object $Status -Name "message" -DefaultValue "")
+		if ([string]::IsNullOrWhiteSpace($message)) {
+			$message = "Server is not accepting new connections."
+		}
+		$result.CanLaunch = $false
+		$result.Message = $message
+		return [pscustomobject]$result
+	}
+
+	$requiredBuild = [string](Get-ObjectValue -Object $Status -Name "required_build_id" -DefaultValue "")
+	$installedBuild = [string](Get-ObjectValue -Object $InstalledManifest -Name "build_id" -DefaultValue "")
+	if (-not [string]::IsNullOrWhiteSpace($requiredBuild) -and $installedBuild -ne $requiredBuild) {
+		$result.CanLaunch = $false
+		$result.NeedsUpdate = $true
+		$result.Message = "Update required. Server wants build $(Get-ShortBuildLabel -BuildId $requiredBuild)."
+		return [pscustomobject]$result
+	}
+
+	$requiredCommit = [string](Get-ObjectValue -Object $Status -Name "required_commit" -DefaultValue "")
+	$installedCommit = [string](Get-ObjectValue -Object $InstalledManifest -Name "commit" -DefaultValue "")
+	if ([string]::IsNullOrWhiteSpace($requiredBuild) -and -not [string]::IsNullOrWhiteSpace($requiredCommit) -and $installedCommit -ne $requiredCommit) {
+		$result.CanLaunch = $false
+		$result.NeedsUpdate = $true
+		$result.Message = "Update required. Server wants commit $(Get-ShortBuildLabel -BuildId $requiredCommit)."
+		return [pscustomobject]$result
+	}
+
+	return [pscustomobject]$result
+}
+
 function Install-PlaytestBuild {
 	param([object]$RemoteManifest)
 
@@ -529,6 +610,7 @@ function Invoke-LauncherUpdate {
 function Update-ServerStatus {
 	$statusUrl = Get-StatusUrl
 	if ([string]::IsNullOrWhiteSpace($statusUrl)) {
+		$script:ServerStatus = $null
 		Set-Dot -Dot $script:ServerDot -Color "#d9a441"
 		Set-Text -Control $script:ServerStatusText -Text "Server status: unknown"
 		return
@@ -538,20 +620,30 @@ function Update-ServerStatus {
 		Set-Text -Control $script:ServerStatusText -Text "Server status: checking..."
 		Refresh-Ui
 		$status = Invoke-RestMethod -Uri $statusUrl -TimeoutSec 5
+		$script:ServerStatus = $status
 		$isOnline = [bool](Get-ObjectValue -Object $status -Name "online" -DefaultValue $false)
 		$message = [string](Get-ObjectValue -Object $status -Name "message" -DefaultValue "")
 		$name = [string](Get-ObjectValue -Object $status -Name "server_name" -DefaultValue "Elderforge Playtest")
+		$launchGate = Test-ServerLaunchGate -Status $status -InstalledManifest (Get-InstalledManifest)
 
-		if ($isOnline) {
-			Set-Dot -Dot $script:ServerDot -Color "#2fd66f"
-			if ([string]::IsNullOrWhiteSpace($message)) {
-				$message = "Server is online."
-			}
-		}
-		else {
+		if (-not $isOnline) {
 			Set-Dot -Dot $script:ServerDot -Color "#e34848"
 			if ([string]::IsNullOrWhiteSpace($message)) {
 				$message = "Server is offline."
+			}
+		}
+		elseif (-not $launchGate.CanLaunch) {
+			$dotColor = "#d9a441"
+			if (-not $launchGate.NeedsUpdate) {
+				$dotColor = "#e34848"
+			}
+			Set-Dot -Dot $script:ServerDot -Color $dotColor
+			$message = $launchGate.Message
+		}
+		else {
+			Set-Dot -Dot $script:ServerDot -Color "#2fd66f"
+			if ([string]::IsNullOrWhiteSpace($message)) {
+				$message = "Server is online."
 			}
 		}
 
@@ -559,6 +651,7 @@ function Update-ServerStatus {
 		Append-Log -Message "Server status refreshed: $message"
 	}
 	catch {
+		$script:ServerStatus = $null
 		Set-Dot -Dot $script:ServerDot -Color "#e34848"
 		Set-Text -Control $script:ServerStatusText -Text "Server status: unavailable"
 		Append-Log -Message "Server status check failed: $($_.Exception.Message)"
@@ -570,9 +663,23 @@ function Start-Game {
 	if (-not (Test-Path -LiteralPath $exePath)) {
 		Invoke-LauncherUpdate
 	}
+	else {
+		Invoke-LauncherUpdate
+	}
 
 	if (-not (Test-Path -LiteralPath $exePath)) {
 		throw "Game executable is missing after update."
+	}
+
+	Update-ServerStatus
+	$launchGate = Test-ServerLaunchGate -Status $script:ServerStatus -InstalledManifest (Get-InstalledManifest)
+	if ((-not $launchGate.CanLaunch) -and $launchGate.NeedsUpdate) {
+		Invoke-LauncherUpdate
+		Update-ServerStatus
+		$launchGate = Test-ServerLaunchGate -Status $script:ServerStatus -InstalledManifest (Get-InstalledManifest)
+	}
+	if (-not $launchGate.CanLaunch) {
+		throw $launchGate.Message
 	}
 
 	Set-LauncherStatus -Message "Starting Elderforge..."

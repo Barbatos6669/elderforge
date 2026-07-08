@@ -8,6 +8,7 @@ extends Node
 const PLAYER_SCENE := preload("res://scenes/player/Player.tscn")
 const DEFAULT_PORT := 24565
 const PLAYTEST_CONFIG_FILE := "playtest_server.cfg"
+const PLAYTEST_VERSION_FILE := "playtest_version.json"
 
 ## Existing local player in the level shell.
 @export var local_player_path: NodePath = NodePath("../World/Player")
@@ -39,6 +40,14 @@ const PLAYTEST_CONFIG_FILE := "playtest_server.cfg"
 @export var require_playtest_code := false
 ## SHA-256 hash of the playtest code. Prefer setting this from config/CLI, not in the public repo.
 @export var playtest_access_code_hash := ""
+## If true, the server accepts no new clients until the status/config gate is cleared.
+@export var maintenance_mode := false
+## Message shown to clients when maintenance mode blocks a connection.
+@export var maintenance_message := "Server maintenance is active. Please update and try again soon."
+## Exact exported build id required by this server. Empty means any build id is accepted.
+@export var required_client_build_id := ""
+## Fallback commit gate if no build id is configured. Empty means any commit is accepted.
+@export var required_client_commit := ""
 
 var _peer: ENetMultiplayerPeer
 var _remote_players := {}
@@ -194,12 +203,26 @@ func _client_remove_remote_player(peer_id: int) -> void:
 
 
 @rpc("any_peer", "reliable")
-func _server_submit_playtest_code(playtest_code_hash: String, player_name: String) -> void:
+func _server_submit_playtest_code(
+	playtest_code_hash: String,
+	player_name: String,
+	client_build_id: String = "",
+	client_commit: String = ""
+) -> void:
 	if not multiplayer.is_server():
 		return
 
 	var sender_id := multiplayer.get_remote_sender_id()
 	if sender_id <= 0:
+		return
+
+	var version_result := _server_client_version_result(client_build_id, client_commit)
+	if not bool(version_result.get("accepted", false)):
+		var version_message := String(version_result.get("message", "Update required."))
+		rpc_id(sender_id, "_client_receive_playtest_code_result", false, version_message)
+		_set_status("Rejected peer %d: %s" % [sender_id, version_message])
+		if _peer != null:
+			_peer.disconnect_peer(sender_id)
 		return
 
 	var clean_hash := playtest_code_hash.strip_edges().to_lower()
@@ -323,12 +346,12 @@ func _connect_multiplayer_signals() -> void:
 
 func _on_peer_connected(peer_id: int) -> void:
 	if multiplayer.is_server():
-		if not _server_requires_playtest_code():
+		if not _server_requires_client_handshake():
 			_authorized_peers[peer_id] = true
 		if _is_command_line_server:
-			_set_status("Peer %d joined%s." % [peer_id, "" if not _server_requires_playtest_code() else " and is awaiting code"])
+			_set_status("Peer %d joined%s." % [peer_id, "" if not _server_requires_client_handshake() else " and is awaiting access check"])
 		else:
-			_set_status("Hosting. Peer %d joined%s." % [peer_id, "" if not _server_requires_playtest_code() else " and is awaiting code"])
+			_set_status("Hosting. Peer %d joined%s." % [peer_id, "" if not _server_requires_client_handshake() else " and is awaiting access check"])
 
 
 func _on_peer_disconnected(peer_id: int) -> void:
@@ -590,18 +613,38 @@ func _submit_playtest_code_to_server() -> void:
 		return
 
 	var code_hash := _configured_client_playtest_code_hash()
-	rpc_id(1, "_server_submit_playtest_code", code_hash, _local_player_name())
+	var build_metadata := _client_build_metadata()
+	rpc_id(
+		1,
+		"_server_submit_playtest_code",
+		code_hash,
+		_local_player_name(),
+		String(build_metadata.get("build_id", "")),
+		String(build_metadata.get("commit", ""))
+	)
 
 
 func _is_peer_authorized(peer_id: int) -> bool:
-	if not _server_requires_playtest_code():
+	if not _server_requires_client_handshake():
 		return true
 
 	return bool(_authorized_peers.get(peer_id, false))
 
 
+func _server_requires_client_handshake() -> bool:
+	return _server_requires_playtest_code() or _server_requires_client_version_gate()
+
+
 func _server_requires_playtest_code() -> bool:
 	return require_playtest_code or not playtest_access_code_hash.strip_edges().is_empty()
+
+
+func _server_requires_client_version_gate() -> bool:
+	return (
+		maintenance_mode
+		or not required_client_build_id.strip_edges().is_empty()
+		or not required_client_commit.strip_edges().is_empty()
+	)
 
 
 func _is_playtest_code_accepted(received_hash: String) -> bool:
@@ -610,6 +653,54 @@ func _is_playtest_code_accepted(received_hash: String) -> bool:
 		return not require_playtest_code
 
 	return received_hash.strip_edges().to_lower() == expected_hash
+
+
+func _server_client_version_result(client_build_id: String, client_commit: String) -> Dictionary:
+	if maintenance_mode:
+		var clean_message := maintenance_message.strip_edges()
+		if clean_message.is_empty():
+			clean_message = "Server maintenance is active. Please update and try again soon."
+		return {
+			"accepted": false,
+			"message": clean_message,
+		}
+
+	var required_build := required_client_build_id.strip_edges()
+	var clean_build := client_build_id.strip_edges()
+	if not required_build.is_empty() and clean_build != required_build:
+		return {
+			"accepted": false,
+			"message": "Update required. Restart the launcher to install the current playtest build.",
+		}
+
+	var required_commit := required_client_commit.strip_edges()
+	var clean_commit := client_commit.strip_edges()
+	if required_build.is_empty() and not required_commit.is_empty() and clean_commit != required_commit:
+		return {
+			"accepted": false,
+			"message": "Update required. Restart the launcher to install the current playtest build.",
+		}
+
+	return {
+		"accepted": true,
+		"message": "",
+	}
+
+
+func _client_build_metadata() -> Dictionary:
+	for version_path in _playtest_version_paths():
+		if not FileAccess.file_exists(version_path):
+			continue
+
+		var file := FileAccess.open(version_path, FileAccess.READ)
+		if file == null:
+			continue
+
+		var parsed: Variant = JSON.parse_string(file.get_as_text())
+		if parsed is Dictionary:
+			return parsed as Dictionary
+
+	return {}
 
 
 func _configured_client_playtest_code_hash() -> String:
@@ -662,6 +753,16 @@ func _apply_sidecar_playtest_security() -> void:
 		playtest_access_code_hash = String(
 			config.get_value("playtest", "access_code_hash", playtest_access_code_hash)
 		).strip_edges().to_lower()
+		maintenance_mode = bool(config.get_value("version_gate", "maintenance", maintenance_mode))
+		maintenance_message = String(
+			config.get_value("version_gate", "maintenance_message", maintenance_message)
+		).strip_edges()
+		required_client_build_id = String(
+			config.get_value("version_gate", "required_build_id", required_client_build_id)
+		).strip_edges()
+		required_client_commit = String(
+			config.get_value("version_gate", "required_commit", required_client_commit)
+		).strip_edges()
 		return
 
 
@@ -677,6 +778,16 @@ func _apply_command_line_playtest_security() -> void:
 			require_playtest_code = true
 		elif normalized_argument.begins_with("--playtest-code-required="):
 			require_playtest_code = _parse_bool(clean_argument.get_slice("=", 1), require_playtest_code)
+		elif normalized_argument.begins_with("--maintenance="):
+			maintenance_mode = _parse_bool(clean_argument.get_slice("=", 1), maintenance_mode)
+		elif normalized_argument.begins_with("--maintenance-message="):
+			maintenance_message = clean_argument.get_slice("=", 1).strip_edges()
+		elif normalized_argument.begins_with("--required-build-id="):
+			required_client_build_id = clean_argument.get_slice("=", 1).strip_edges()
+		elif normalized_argument.begins_with("--required-client-build="):
+			required_client_build_id = clean_argument.get_slice("=", 1).strip_edges()
+		elif normalized_argument.begins_with("--required-commit="):
+			required_client_commit = clean_argument.get_slice("=", 1).strip_edges()
 
 
 func _command_line_playtest_code_hash() -> String:
@@ -699,6 +810,18 @@ func _playtest_config_paths() -> PackedStringArray:
 	var executable_dir := executable_path.get_base_dir()
 	if not executable_dir.is_empty():
 		paths.append(executable_dir.path_join(PLAYTEST_CONFIG_FILE))
+
+	return paths
+
+
+func _playtest_version_paths() -> PackedStringArray:
+	var paths := PackedStringArray()
+	paths.append("res://%s" % PLAYTEST_VERSION_FILE)
+
+	var executable_path := OS.get_executable_path()
+	var executable_dir := executable_path.get_base_dir()
+	if not executable_dir.is_empty():
+		paths.append(executable_dir.path_join(PLAYTEST_VERSION_FILE))
 
 	return paths
 
