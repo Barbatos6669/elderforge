@@ -14,6 +14,23 @@ prototype systems until we move to server-authoritative gameplay.
 Press `F9` during play to show or hide the multiplayer test panel. It is hidden
 by default now, because normal client flow is sign in -> auto-join.
 
+## Playtest Code
+
+The direct-connect server can require a playtest access code before accepting
+client state. This is a lightweight gate for early friend tests, not production
+authentication.
+
+Start the server with a private code:
+
+```powershell
+& 'C:\Godot\Godot_v4.7-stable_win64_console.exe' --headless --path . --server --port=24566 --playtest-code="your-private-code"
+```
+
+Clients enter that code on the sign-in screen. Exported builds may include
+`playtest_server.cfg` with `playtest.require_code=true`, but the accepted hash
+belongs on the server launch command or in private server config. Do not commit
+or ship the raw code.
+
 ## Testing
 
 For two copies on one machine, host in one game window and join `127.0.0.1` from

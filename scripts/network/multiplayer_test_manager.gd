@@ -7,6 +7,7 @@ extends Node
 
 const PLAYER_SCENE := preload("res://scenes/player/Player.tscn")
 const DEFAULT_PORT := 24565
+const PLAYTEST_CONFIG_FILE := "playtest_server.cfg"
 
 ## Existing local player in the level shell.
 @export var local_player_path: NodePath = NodePath("../World/Player")
@@ -34,16 +35,23 @@ const DEFAULT_PORT := 24565
 @export var fallback_player_name := "Player"
 ## Name shown in logs if this process is running as a dedicated test host.
 @export var command_line_server_name := "Elderforge Test Server"
+## If true, the server requires a matching playtest code hash before accepting client state.
+@export var require_playtest_code := false
+## SHA-256 hash of the playtest code. Prefer setting this from config/CLI, not in the public repo.
+@export var playtest_access_code_hash := ""
 
 var _peer: ENetMultiplayerPeer
 var _remote_players := {}
+var _authorized_peers := {}
 var _send_elapsed := 0.0
 var _is_command_line_server := false
+var _client_playtest_code_accepted := false
 var _panel: Control
 var _status_label: Label
 var _address_field: LineEdit
 var _port_field: LineEdit
 var _name_field: LineEdit
+var _code_field: LineEdit
 var _auto_join_elapsed := 0.0
 var _auto_join_interval_elapsed := 0.0
 
@@ -51,6 +59,8 @@ var _auto_join_interval_elapsed := 0.0
 func _ready() -> void:
 	_connect_multiplayer_signals()
 	_ensure_remote_players_root()
+	_apply_sidecar_playtest_security()
+	_apply_command_line_playtest_security()
 	_is_command_line_server = allow_command_line_server and _has_command_line_server_flag()
 	if _is_command_line_server:
 		_configure_command_line_server_runtime()
@@ -99,6 +109,8 @@ func host(port: int = default_port) -> bool:
 		return false
 
 	multiplayer.multiplayer_peer = _peer
+	_authorized_peers.clear()
+	_client_playtest_code_accepted = true
 	_send_elapsed = 0.0
 	_apply_local_player_name()
 	if _is_command_line_server:
@@ -122,6 +134,7 @@ func join(address: String, port: int = default_port) -> bool:
 		return false
 
 	multiplayer.multiplayer_peer = _peer
+	_client_playtest_code_accepted = false
 	_send_elapsed = 0.0
 	_apply_local_player_name()
 	_set_status("Connecting to %s:%d" % [trimmed_address, port])
@@ -133,6 +146,8 @@ func disconnect_from_session() -> void:
 		multiplayer.multiplayer_peer.close()
 		multiplayer.multiplayer_peer = null
 	_peer = null
+	_authorized_peers.clear()
+	_client_playtest_code_accepted = false
 	_send_elapsed = 0.0
 	_clear_remote_players()
 	_set_status("Offline")
@@ -158,6 +173,8 @@ func _server_receive_player_state(position: Vector3, visual_yaw: float, is_movin
 	var sender_id := multiplayer.get_remote_sender_id()
 	if sender_id <= 0:
 		return
+	if not _is_peer_authorized(sender_id):
+		return
 
 	_apply_remote_player_state(sender_id, position, visual_yaw, is_moving, player_name)
 	rpc("_client_receive_player_state", sender_id, position, visual_yaw, is_moving, player_name)
@@ -176,8 +193,43 @@ func _client_remove_remote_player(peer_id: int) -> void:
 	_remove_remote_player(peer_id)
 
 
+@rpc("any_peer", "reliable")
+func _server_submit_playtest_code(playtest_code_hash: String, player_name: String) -> void:
+	if not multiplayer.is_server():
+		return
+
+	var sender_id := multiplayer.get_remote_sender_id()
+	if sender_id <= 0:
+		return
+
+	var clean_hash := playtest_code_hash.strip_edges().to_lower()
+	if _is_playtest_code_accepted(clean_hash):
+		_authorized_peers[sender_id] = true
+		rpc_id(sender_id, "_client_receive_playtest_code_result", true, "Playtest code accepted.")
+		_set_status("Peer %d authorized as %s." % [sender_id, player_name.strip_edges()])
+		return
+
+	rpc_id(sender_id, "_client_receive_playtest_code_result", false, "Playtest code rejected.")
+	_set_status("Rejected peer %d: bad playtest code." % sender_id)
+	if _peer != null:
+		_peer.disconnect_peer(sender_id)
+
+
+@rpc("authority", "reliable")
+func _client_receive_playtest_code_result(accepted: bool, message: String) -> void:
+	_client_playtest_code_accepted = accepted
+	if not accepted:
+		disconnect_from_session()
+		_set_status(message if not message.is_empty() else "Playtest code rejected")
+		return
+
+	_set_status(message if not message.is_empty() else "Connected")
+
+
 func _send_local_state() -> void:
 	if _is_command_line_server:
+		return
+	if not multiplayer.is_server() and not _client_playtest_code_accepted:
 		return
 
 	var local_player := _get_local_player()
@@ -271,14 +323,17 @@ func _connect_multiplayer_signals() -> void:
 
 func _on_peer_connected(peer_id: int) -> void:
 	if multiplayer.is_server():
+		if not _server_requires_playtest_code():
+			_authorized_peers[peer_id] = true
 		if _is_command_line_server:
-			_set_status("Peer %d joined." % peer_id)
+			_set_status("Peer %d joined%s." % [peer_id, "" if not _server_requires_playtest_code() else " and is awaiting code"])
 		else:
-			_set_status("Hosting. Peer %d joined." % peer_id)
+			_set_status("Hosting. Peer %d joined%s." % [peer_id, "" if not _server_requires_playtest_code() else " and is awaiting code"])
 
 
 func _on_peer_disconnected(peer_id: int) -> void:
 	_remove_remote_player(peer_id)
+	_authorized_peers.erase(peer_id)
 	if multiplayer.is_server():
 		rpc("_client_remove_remote_player", peer_id)
 		if _is_command_line_server:
@@ -289,16 +344,19 @@ func _on_peer_disconnected(peer_id: int) -> void:
 
 func _on_connected_to_server() -> void:
 	_apply_local_player_name()
-	_set_status("Connected as peer %d" % multiplayer.get_unique_id())
+	_set_status("Connected as peer %d. Checking playtest code..." % multiplayer.get_unique_id())
+	_submit_playtest_code_to_server()
 
 
 func _on_connection_failed() -> void:
 	_clear_remote_players()
+	_client_playtest_code_accepted = false
 	_set_status("Connection failed")
 
 
 func _on_server_disconnected() -> void:
 	_clear_remote_players()
+	_client_playtest_code_accepted = false
 	_set_status("Server disconnected")
 
 
@@ -378,6 +436,7 @@ func _build_test_panel() -> void:
 	_name_field = _add_line_edit_row(rows, "Name", _initial_local_player_name())
 	_address_field = _add_line_edit_row(rows, "IP", _configured_playtest_address())
 	_port_field = _add_line_edit_row(rows, "Port", str(_configured_playtest_port()))
+	_code_field = _add_line_edit_row(rows, "Code", "", true)
 
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 6)
@@ -408,7 +467,7 @@ func _build_test_panel() -> void:
 	rows.add_child(_status_label)
 
 
-func _add_line_edit_row(parent: Control, label_text: String, value: String) -> LineEdit:
+func _add_line_edit_row(parent: Control, label_text: String, value: String, is_secret: bool = false) -> LineEdit:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	parent.add_child(row)
@@ -420,6 +479,7 @@ func _add_line_edit_row(parent: Control, label_text: String, value: String) -> L
 
 	var field := LineEdit.new()
 	field.text = value
+	field.secret = is_secret
 	field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(field)
 	return field
@@ -524,6 +584,60 @@ func _try_auto_join_from_auth_session() -> void:
 	join(address, clampi(port, 1024, 65535))
 
 
+func _submit_playtest_code_to_server() -> void:
+	if multiplayer.is_server():
+		_client_playtest_code_accepted = true
+		return
+
+	var code_hash := _configured_client_playtest_code_hash()
+	rpc_id(1, "_server_submit_playtest_code", code_hash, _local_player_name())
+
+
+func _is_peer_authorized(peer_id: int) -> bool:
+	if not _server_requires_playtest_code():
+		return true
+
+	return bool(_authorized_peers.get(peer_id, false))
+
+
+func _server_requires_playtest_code() -> bool:
+	return require_playtest_code or not playtest_access_code_hash.strip_edges().is_empty()
+
+
+func _is_playtest_code_accepted(received_hash: String) -> bool:
+	var expected_hash := playtest_access_code_hash.strip_edges().to_lower()
+	if expected_hash.is_empty():
+		return not require_playtest_code
+
+	return received_hash.strip_edges().to_lower() == expected_hash
+
+
+func _configured_client_playtest_code_hash() -> String:
+	var field_hash := _hash_playtest_code(_code_field.text if _code_field != null else "")
+	if not field_hash.is_empty():
+		return field_hash
+
+	var auth_session := get_node_or_null("/root/PrototypeAuthSession")
+	if auth_session != null:
+		var session_hash := String(auth_session.get("playtest_access_code_hash")).strip_edges().to_lower()
+		if not session_hash.is_empty():
+			return session_hash
+
+	var command_line_hash := _command_line_playtest_code_hash()
+	if not command_line_hash.is_empty():
+		return command_line_hash
+
+	return ""
+
+
+func _hash_playtest_code(raw_code: String) -> String:
+	var clean_code := raw_code.strip_edges()
+	if clean_code.is_empty():
+		return ""
+
+	return clean_code.sha256_text().to_lower()
+
+
 func _configure_command_line_server_runtime() -> void:
 	var local_player := _get_local_player()
 	if local_player != null:
@@ -535,6 +649,58 @@ func _configure_command_line_server_runtime() -> void:
 	var viewport := get_viewport()
 	if viewport != null:
 		viewport.gui_disable_input = true
+
+
+func _apply_sidecar_playtest_security() -> void:
+	for config_path in _playtest_config_paths():
+		var config := ConfigFile.new()
+		var error := config.load(config_path)
+		if error != OK:
+			continue
+
+		require_playtest_code = bool(config.get_value("playtest", "require_code", require_playtest_code))
+		playtest_access_code_hash = String(
+			config.get_value("playtest", "access_code_hash", playtest_access_code_hash)
+		).strip_edges().to_lower()
+		return
+
+
+func _apply_command_line_playtest_security() -> void:
+	for argument in _all_command_line_arguments():
+		var clean_argument := argument.strip_edges()
+		var normalized_argument := clean_argument.to_lower()
+		if normalized_argument.begins_with("--playtest-code-hash="):
+			playtest_access_code_hash = clean_argument.get_slice("=", 1).strip_edges().to_lower()
+			require_playtest_code = true
+		elif normalized_argument.begins_with("--playtest-code="):
+			playtest_access_code_hash = _hash_playtest_code(clean_argument.get_slice("=", 1))
+			require_playtest_code = true
+		elif normalized_argument.begins_with("--playtest-code-required="):
+			require_playtest_code = _parse_bool(clean_argument.get_slice("=", 1), require_playtest_code)
+
+
+func _command_line_playtest_code_hash() -> String:
+	for argument in _all_command_line_arguments():
+		var clean_argument := argument.strip_edges()
+		var normalized_argument := clean_argument.to_lower()
+		if normalized_argument.begins_with("--playtest-code-hash="):
+			return clean_argument.get_slice("=", 1).strip_edges().to_lower()
+		if normalized_argument.begins_with("--playtest-code="):
+			return _hash_playtest_code(clean_argument.get_slice("=", 1))
+
+	return ""
+
+
+func _playtest_config_paths() -> PackedStringArray:
+	var paths := PackedStringArray()
+	paths.append("res://%s" % PLAYTEST_CONFIG_FILE)
+
+	var executable_path := OS.get_executable_path()
+	var executable_dir := executable_path.get_base_dir()
+	if not executable_dir.is_empty():
+		paths.append(executable_dir.path_join(PLAYTEST_CONFIG_FILE))
+
+	return paths
 
 
 func _has_command_line_server_flag() -> bool:
@@ -649,6 +815,16 @@ func _parse_port(raw_value: String, fallback: int) -> int:
 		return fallback
 
 	return clampi(int(clean_value), 1024, 65535)
+
+
+func _parse_bool(raw_value: String, fallback: bool) -> bool:
+	var normalized_value := raw_value.strip_edges().to_lower()
+	if normalized_value in ["true", "1", "yes", "y", "on"]:
+		return true
+	if normalized_value in ["false", "0", "no", "n", "off"]:
+		return false
+
+	return fallback
 
 
 func _all_command_line_arguments() -> PackedStringArray:

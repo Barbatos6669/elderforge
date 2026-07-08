@@ -18,6 +18,8 @@ const PLAYTEST_CONFIG_FILE := "playtest_server.cfg"
 @export var auto_join_after_sign_in := true
 @export var playtest_server_address := "127.0.0.1"
 @export_range(1024, 65535, 1) var playtest_server_port := 24566
+@export var require_playtest_code := true
+@export var playtest_access_code_hash := ""
 
 var _session: Node
 var _root: Control
@@ -26,10 +28,12 @@ var _title_label: Label
 var _account_field: LineEdit
 var _password_field: LineEdit
 var _display_name_field: LineEdit
+var _playtest_code_field: LineEdit
 var _status_label: Label
 var _sign_in_button: Button
 var _create_button: Button
 var _guest_button: Button
+var _prefilled_playtest_code := ""
 
 
 func _ready() -> void:
@@ -78,9 +82,9 @@ func _build_ui() -> void:
 	_window.mouse_filter = Control.MOUSE_FILTER_STOP
 	_window.set_anchors_preset(Control.PRESET_CENTER)
 	_window.offset_left = -215.0
-	_window.offset_top = -190.0
+	_window.offset_top = -220.0
 	_window.offset_right = 215.0
-	_window.offset_bottom = 190.0
+	_window.offset_bottom = 220.0
 	_window.add_theme_stylebox_override("panel", _panel_style())
 	_root.add_child(_window)
 
@@ -108,6 +112,8 @@ func _build_ui() -> void:
 	_password_field = _build_field(layout, "Password", true)
 	_display_name_field = _build_field(layout, "Character Name", false)
 	_display_name_field.text = default_display_name
+	_playtest_code_field = _build_field(layout, "Playtest Code", true)
+	_playtest_code_field.text = _prefilled_playtest_code
 
 	var button_row := HBoxContainer.new()
 	button_row.add_theme_constant_override("separation", 8)
@@ -137,6 +143,7 @@ func _build_ui() -> void:
 	_account_field.text_submitted.connect(_on_text_submitted)
 	_password_field.text_submitted.connect(_on_text_submitted)
 	_display_name_field.text_submitted.connect(_on_text_submitted)
+	_playtest_code_field.text_submitted.connect(_on_text_submitted)
 
 
 func _build_field(parent: Control, placeholder: String, is_secret: bool) -> LineEdit:
@@ -169,6 +176,8 @@ func _on_sign_in_pressed() -> void:
 	if _session == null:
 		_set_status("Auth session not available.")
 		return
+	if not _validate_playtest_access_code():
+		return
 	_handle_auth_result(_session.sign_in(_account_field.text, _password_field.text))
 
 
@@ -176,12 +185,16 @@ func _on_create_pressed() -> void:
 	if _session == null:
 		_set_status("Auth session not available.")
 		return
+	if not _validate_playtest_access_code():
+		return
 	_handle_auth_result(_session.create_account(_account_field.text, _display_name_field.text, _password_field.text))
 
 
 func _on_guest_pressed() -> void:
 	if _session == null:
 		_set_status("Auth session not available.")
+		return
+	if not _validate_playtest_access_code():
 		return
 	_handle_auth_result(_session.play_as_guest(_display_name_field.text))
 
@@ -200,7 +213,8 @@ func _handle_auth_result(result: Dictionary) -> void:
 			"set_playtest_server",
 			playtest_server_address,
 			playtest_server_port,
-			auto_join_after_sign_in
+			auto_join_after_sign_in,
+			_entered_playtest_code_hash()
 		)
 	_apply_signed_in_display_name(_session.display_name)
 	authentication_succeeded.emit(String(_session.display_name))
@@ -236,6 +250,35 @@ func _set_status(message: String) -> void:
 		_status_label.text = message
 
 
+func _validate_playtest_access_code() -> bool:
+	var code_hash := _entered_playtest_code_hash()
+	if require_playtest_code and code_hash.is_empty():
+		_set_status("Enter the playtest code.")
+		return false
+
+	var expected_hash := playtest_access_code_hash.strip_edges().to_lower()
+	if not expected_hash.is_empty() and code_hash != expected_hash:
+		_set_status("Playtest code does not match.")
+		return false
+
+	return true
+
+
+func _entered_playtest_code_hash() -> String:
+	if _playtest_code_field == null:
+		return ""
+
+	return _hash_playtest_code(_playtest_code_field.text)
+
+
+func _hash_playtest_code(raw_code: String) -> String:
+	var clean_code := raw_code.strip_edges()
+	if clean_code.is_empty():
+		return ""
+
+	return clean_code.sha256_text().to_lower()
+
+
 func _is_command_line_server() -> bool:
 	for argument in _all_command_line_arguments():
 		var normalized_argument := argument.strip_edges().to_lower()
@@ -257,6 +300,15 @@ func _apply_command_line_playtest_target() -> void:
 			playtest_server_port = _parse_port(clean_argument.get_slice("=", 1), playtest_server_port)
 		elif normalized_argument.begins_with("--playtest-port="):
 			playtest_server_port = _parse_port(clean_argument.get_slice("=", 1), playtest_server_port)
+		elif normalized_argument.begins_with("--playtest-code-hash="):
+			playtest_access_code_hash = clean_argument.get_slice("=", 1).strip_edges().to_lower()
+			require_playtest_code = true
+		elif normalized_argument.begins_with("--playtest-code="):
+			_prefilled_playtest_code = clean_argument.get_slice("=", 1).strip_edges()
+			playtest_access_code_hash = _hash_playtest_code(_prefilled_playtest_code)
+			require_playtest_code = true
+		elif normalized_argument.begins_with("--playtest-code-required="):
+			require_playtest_code = _parse_bool(clean_argument.get_slice("=", 1), require_playtest_code)
 
 
 func _apply_sidecar_playtest_target() -> void:
@@ -274,6 +326,11 @@ func _apply_sidecar_playtest_target() -> void:
 			str(config.get_value("server", "port", playtest_server_port)),
 			playtest_server_port
 		)
+
+		require_playtest_code = bool(config.get_value("playtest", "require_code", require_playtest_code))
+		playtest_access_code_hash = String(
+			config.get_value("playtest", "access_code_hash", playtest_access_code_hash)
+		).strip_edges().to_lower()
 		return
 
 
@@ -308,6 +365,16 @@ func _parse_port(raw_value: String, fallback: int) -> int:
 		return fallback
 
 	return clampi(int(clean_value), 1024, 65535)
+
+
+func _parse_bool(raw_value: String, fallback: bool) -> bool:
+	var normalized_value := raw_value.strip_edges().to_lower()
+	if normalized_value in ["true", "1", "yes", "y", "on"]:
+		return true
+	if normalized_value in ["false", "0", "no", "n", "off"]:
+		return false
+
+	return fallback
 
 
 func _all_command_line_arguments() -> PackedStringArray:

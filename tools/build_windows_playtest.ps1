@@ -2,6 +2,9 @@ param(
 	[string]$GodotExe = $env:GODOT_EXE,
 	[string]$ServerAddress = $env:ELDERFORGE_PLAYTEST_SERVER,
 	[int]$ServerPort = 24566,
+	[switch]$RequirePlaytestCode,
+	[string]$PlaytestCode = $env:ELDERFORGE_PLAYTEST_CODE,
+	[string]$PlaytestCodeHash = $env:ELDERFORGE_PLAYTEST_CODE_HASH,
 	[string]$Repository = "Barbatos6669/elderforge",
 	[string]$ReleaseTag = "playtest-2026-07-08"
 )
@@ -75,6 +78,20 @@ function Get-GitCommit {
 	return "unknown"
 }
 
+function Get-Sha256Hex {
+	param([string]$Value)
+
+	$bytes = [System.Text.Encoding]::UTF8.GetBytes($Value)
+	$sha256 = [System.Security.Cryptography.SHA256]::Create()
+	try {
+		$hashBytes = $sha256.ComputeHash($bytes)
+		return -join ($hashBytes | ForEach-Object { $_.ToString("x2") })
+	}
+	finally {
+		$sha256.Dispose()
+	}
+}
+
 function Write-PlaytestClientPackage {
 	if (-not (Test-Path -LiteralPath $ClientSourceDir)) {
 		throw "Playtest client source folder missing: $ClientSourceDir"
@@ -111,6 +128,15 @@ if ([string]::IsNullOrWhiteSpace($ServerAddress)) {
 	$ServerAddress = Get-DefaultPlaytestServerAddress
 }
 $ServerPort = [Math]::Min([Math]::Max($ServerPort, 1024), 65535)
+$PlaytestCodeRequired = [bool]$RequirePlaytestCode
+if (-not [string]::IsNullOrWhiteSpace($PlaytestCode)) {
+	$PlaytestCodeHash = Get-Sha256Hex -Value $PlaytestCode.Trim()
+	$PlaytestCodeRequired = $true
+}
+if (-not [string]::IsNullOrWhiteSpace($PlaytestCodeHash)) {
+	$PlaytestCodeHash = $PlaytestCodeHash.Trim().ToLowerInvariant()
+	$PlaytestCodeRequired = $true
+}
 $ReleaseBaseUrl = "https://github.com/$Repository/releases/download/$ReleaseTag"
 $BuiltAtUtc = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 $GitCommit = Get-GitCommit
@@ -138,6 +164,10 @@ $configContents = @"
 [server]
 address="$ServerAddress"
 port=$ServerPort
+
+[playtest]
+require_code=$($PlaytestCodeRequired.ToString().ToLowerInvariant())
+access_code_hash=""
 "@
 Set-Content -LiteralPath $ConfigPath -Value $configContents -Encoding ASCII
 
@@ -151,6 +181,7 @@ $versionData = [ordered]@{
 	built_at_utc = $BuiltAtUtc
 	server_address = $ServerAddress
 	server_port = $ServerPort
+	playtest_code_required = $PlaytestCodeRequired
 	repository = $Repository
 	release_tag = $ReleaseTag
 	package_asset = $PlaytestZipName
@@ -165,12 +196,14 @@ Elderforge Windows Playtest
 
 Run Elderforge_Playtest.exe, then sign in or use Guest.
 The game automatically connects to $ServerAddress`:$ServerPort using playtest_server.cfg.
+If this playtest requires a code, enter the shared playtest code on the sign-in screen.
 
 For testers who should stay updated automatically, give them Elderforge_Playtest_Client.zip
 instead of this full package. They can extract it once and run Elderforge_Playtest_Client.bat.
 
 Start_Elderforge_Playtest.bat is still included as a developer fallback.
 If the server address changes, update playtest_server.cfg or rebuild this package with -ServerAddress and -ServerPort.
+If the playtest code changes, restart the server with the new code and privately share it with testers.
 "@
 Set-Content -LiteralPath $ReadmePath -Value $readmeContents -Encoding ASCII
 

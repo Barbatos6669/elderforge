@@ -15,6 +15,7 @@ var display_name := ""
 var auto_join_server := true
 var server_address := "127.0.0.1"
 var server_port := 24566
+var playtest_access_code_hash := ""
 
 
 ## Creates a local prototype account and signs into it immediately.
@@ -77,11 +78,17 @@ func sign_out() -> void:
 
 
 ## Stores the playtest server selected by the sign-in scene.
-func set_playtest_server(address: String, port: int, should_auto_join: bool = true) -> void:
+func set_playtest_server(
+	address: String,
+	port: int,
+	should_auto_join: bool = true,
+	access_code_hash: String = ""
+) -> void:
 	var clean_address := address.strip_edges()
 	server_address = clean_address if not clean_address.is_empty() else "127.0.0.1"
 	server_port = clampi(port, 1024, 65535)
 	auto_join_server = should_auto_join
+	playtest_access_code_hash = access_code_hash.strip_edges().to_lower()
 
 
 func _sign_in_as(new_account_name: String, new_display_name: String) -> void:

@@ -28,6 +28,11 @@ This repository is public. Do not commit:
 - Playit agent secrets, tunnel config files, or private tunnel tokens.
 - Cloud provider API keys, SSH private keys, `.env` files, or deployment credentials.
 - Private server IPs, admin passwords, database files, or account data.
+- Raw playtest access codes. Use a local note, environment variable, or private
+  deployment config instead.
 - Paid or non-redistributable art/audio/model assets.
 
-Public release assets may contain the current playtest server address. That address is not a secret; it only points clients at the test server. The server itself must still treat all clients as untrusted.
+Public release assets may contain the current playtest server address and a flag
+that says a playtest code is required. Do not ship the raw code or accepted
+access-code hash in public files. The server itself must still treat all clients
+as untrusted.
