@@ -1,7 +1,9 @@
 param(
 	[string]$GodotExe = $env:GODOT_EXE,
 	[string]$ServerAddress = $env:ELDERFORGE_PLAYTEST_SERVER,
-	[int]$ServerPort = 24566
+	[int]$ServerPort = 24566,
+	[string]$Repository = "Barbatos6669/elderforge",
+	[string]$ReleaseTag = "playtest-2026-07-08"
 )
 
 $ErrorActionPreference = "Stop"
@@ -18,10 +20,18 @@ if (-not (Test-Path -LiteralPath $GodotExe)) {
 $BuildDir = Join-Path $ProjectRoot "builds\windows-playtest"
 $PackageDir = Join-Path $ProjectRoot "builds\packages"
 $ExePath = Join-Path $BuildDir "Elderforge_Playtest.exe"
-$ZipPath = Join-Path $PackageDir "Elderforge_Windows_Playtest.zip"
+$PlaytestZipName = "Elderforge_Windows_Playtest.zip"
+$VersionAssetName = "Elderforge_Windows_Playtest.version.json"
+$ClientZipName = "Elderforge_Playtest_Client.zip"
+$ZipPath = Join-Path $PackageDir $PlaytestZipName
+$VersionPath = Join-Path $BuildDir "playtest_version.json"
+$VersionAssetPath = Join-Path $PackageDir $VersionAssetName
 $LauncherPath = Join-Path $BuildDir "Start_Elderforge_Playtest.bat"
 $ReadmePath = Join-Path $BuildDir "PLAYTEST_README.txt"
 $ConfigPath = Join-Path $BuildDir "playtest_server.cfg"
+$ClientSourceDir = Join-Path $ProjectRoot "tools\playtest_client"
+$ClientBuildDir = Join-Path $ProjectRoot "builds\playtest-client"
+$ClientZipPath = Join-Path $PackageDir $ClientZipName
 
 function Get-DefaultPlaytestServerAddress {
 	try {
@@ -52,6 +62,48 @@ function Get-DefaultPlaytestServerAddress {
 	return "127.0.0.1"
 }
 
+function Get-GitCommit {
+	try {
+		$commit = (& git -C $ProjectRoot rev-parse --short=12 HEAD 2>$null)
+		if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($commit)) {
+			return $commit.Trim()
+		}
+	}
+	catch {
+	}
+
+	return "unknown"
+}
+
+function Write-PlaytestClientPackage {
+	if (-not (Test-Path -LiteralPath $ClientSourceDir)) {
+		throw "Playtest client source folder missing: $ClientSourceDir"
+	}
+
+	if (Test-Path -LiteralPath $ClientBuildDir) {
+		Remove-Item -LiteralPath $ClientBuildDir -Recurse -Force
+	}
+	New-Item -ItemType Directory -Path $ClientBuildDir -Force | Out-Null
+
+	Copy-Item -Path (Join-Path $ClientSourceDir "*") -Destination $ClientBuildDir -Recurse -Force
+
+	$clientConfig = [ordered]@{
+		version_url = "$ReleaseBaseUrl/$VersionAssetName"
+		package_url = "$ReleaseBaseUrl/$PlaytestZipName"
+		install_subdirectory = "Game"
+	}
+	$clientConfig |
+		ConvertTo-Json -Depth 4 |
+		Set-Content -LiteralPath (Join-Path $ClientBuildDir "client_config.json") -Encoding UTF8
+
+	if (Test-Path -LiteralPath $ClientZipPath) {
+		Remove-Item -LiteralPath $ClientZipPath -Force
+	}
+
+	Write-Host "Packaging auto-updating playtest client..."
+	Compress-Archive -Path (Join-Path $ClientBuildDir "*") -DestinationPath $ClientZipPath -Force
+}
+
 New-Item -ItemType Directory -Path $BuildDir -Force | Out-Null
 New-Item -ItemType Directory -Path $PackageDir -Force | Out-Null
 
@@ -59,6 +111,11 @@ if ([string]::IsNullOrWhiteSpace($ServerAddress)) {
 	$ServerAddress = Get-DefaultPlaytestServerAddress
 }
 $ServerPort = [Math]::Min([Math]::Max($ServerPort, 1024), 65535)
+$ReleaseBaseUrl = "https://github.com/$Repository/releases/download/$ReleaseTag"
+$BuiltAtUtc = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+$GitCommit = Get-GitCommit
+$BuildStamp = (Get-Date).ToUniversalTime().ToString("yyyyMMddHHmmss")
+$BuildId = "$GitCommit-$BuildStamp"
 
 Write-Host "Exporting Windows playtest build..."
 & $GodotExe --headless --path $ProjectRoot --export-release "Windows Playtest" $ExePath
@@ -84,11 +141,33 @@ port=$ServerPort
 "@
 Set-Content -LiteralPath $ConfigPath -Value $configContents -Encoding ASCII
 
+Write-Host "Writing playtest version manifest..."
+$versionData = [ordered]@{
+	schema_version = 1
+	game = "Elderforge"
+	channel = "playtest"
+	build_id = $BuildId
+	commit = $GitCommit
+	built_at_utc = $BuiltAtUtc
+	server_address = $ServerAddress
+	server_port = $ServerPort
+	repository = $Repository
+	release_tag = $ReleaseTag
+	package_asset = $PlaytestZipName
+	version_asset = $VersionAssetName
+}
+$versionJson = $versionData | ConvertTo-Json -Depth 8
+Set-Content -LiteralPath $VersionPath -Value $versionJson -Encoding UTF8
+Set-Content -LiteralPath $VersionAssetPath -Value $versionJson -Encoding UTF8
+
 $readmeContents = @"
 Elderforge Windows Playtest
 
 Run Elderforge_Playtest.exe, then sign in or use Guest.
 The game automatically connects to $ServerAddress`:$ServerPort using playtest_server.cfg.
+
+For testers who should stay updated automatically, give them Elderforge_Playtest_Client.zip
+instead of this full package. They can extract it once and run Elderforge_Playtest_Client.bat.
 
 Start_Elderforge_Playtest.bat is still included as a developer fallback.
 If the server address changes, update playtest_server.cfg or rebuild this package with -ServerAddress and -ServerPort.
@@ -102,4 +181,8 @@ if (Test-Path -LiteralPath $ZipPath) {
 Write-Host "Packaging playtest zip..."
 Compress-Archive -Path (Join-Path $BuildDir "*") -DestinationPath $ZipPath -Force
 
+Write-PlaytestClientPackage
+
 Write-Host "Created $ZipPath"
+Write-Host "Created $VersionAssetPath"
+Write-Host "Created $ClientZipPath"
