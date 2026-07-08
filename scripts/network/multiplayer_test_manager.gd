@@ -358,8 +358,8 @@ func _build_test_panel() -> void:
 	rows.add_child(title)
 
 	_name_field = _add_line_edit_row(rows, "Name", _initial_local_player_name())
-	_address_field = _add_line_edit_row(rows, "IP", "127.0.0.1")
-	_port_field = _add_line_edit_row(rows, "Port", str(default_port))
+	_address_field = _add_line_edit_row(rows, "IP", _configured_playtest_address())
+	_port_field = _add_line_edit_row(rows, "Port", str(_configured_playtest_port()))
 
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 6)
@@ -483,6 +483,7 @@ func _try_auto_join_from_auth_session() -> void:
 	if address.is_empty():
 		address = "127.0.0.1"
 
+	_sync_test_panel_target(address, port)
 	join(address, clampi(port, 1024, 65535))
 
 
@@ -515,6 +516,102 @@ func _command_line_port() -> int:
 			return clampi(int(normalized_argument.trim_prefix("--port=")), 1024, 65535)
 
 	return default_port
+
+
+func _configured_playtest_address() -> String:
+	var command_line_address := _command_line_connect_address()
+	if not command_line_address.is_empty():
+		return command_line_address
+
+	var auth_session := get_node_or_null("/root/PrototypeAuthSession")
+	if auth_session != null:
+		var session_address := String(auth_session.get("server_address")).strip_edges()
+		if not session_address.is_empty():
+			return session_address
+
+	return "127.0.0.1"
+
+
+func _configured_playtest_port() -> int:
+	var command_line_port := _command_line_connect_port()
+	if command_line_port >= 0:
+		return command_line_port
+
+	var auth_session := get_node_or_null("/root/PrototypeAuthSession")
+	if auth_session != null:
+		var session_port := int(auth_session.get("server_port"))
+		return clampi(session_port, 1024, 65535)
+
+	return default_port
+
+
+func _sync_test_panel_target(address: String, port: int) -> void:
+	if _address_field != null:
+		_address_field.text = address
+	if _port_field != null:
+		_port_field.text = str(clampi(port, 1024, 65535))
+
+
+func _command_line_connect_address() -> String:
+	var connect_target := _command_line_connect_target()
+	if connect_target.is_empty():
+		return ""
+
+	return _address_from_connect_target(connect_target)
+
+
+func _command_line_connect_port() -> int:
+	for argument in _all_command_line_arguments():
+		var clean_argument := argument.strip_edges()
+		var normalized_argument := clean_argument.to_lower()
+		if normalized_argument.begins_with("--connect-port="):
+			return _parse_port(clean_argument.get_slice("=", 1), -1)
+		if normalized_argument.begins_with("--playtest-port="):
+			return _parse_port(clean_argument.get_slice("=", 1), -1)
+
+	var connect_target := _command_line_connect_target()
+	if connect_target.is_empty():
+		return -1
+
+	return _port_from_connect_target(connect_target, -1)
+
+
+func _command_line_connect_target() -> String:
+	for argument in _all_command_line_arguments():
+		var clean_argument := argument.strip_edges()
+		var normalized_argument := clean_argument.to_lower()
+		if normalized_argument.begins_with("--connect="):
+			return clean_argument.get_slice("=", 1).strip_edges()
+		if normalized_argument.begins_with("--playtest-server="):
+			return clean_argument.get_slice("=", 1).strip_edges()
+
+	return ""
+
+
+func _address_from_connect_target(raw_value: String) -> String:
+	var clean_value := raw_value.strip_edges()
+	var separator_index := clean_value.rfind(":")
+	if separator_index > 0 and separator_index < clean_value.length() - 1:
+		return clean_value.substr(0, separator_index)
+
+	return clean_value
+
+
+func _port_from_connect_target(raw_value: String, fallback: int) -> int:
+	var clean_value := raw_value.strip_edges()
+	var separator_index := clean_value.rfind(":")
+	if separator_index <= 0 or separator_index >= clean_value.length() - 1:
+		return fallback
+
+	return _parse_port(clean_value.substr(separator_index + 1), fallback)
+
+
+func _parse_port(raw_value: String, fallback: int) -> int:
+	var clean_value := raw_value.strip_edges()
+	if not clean_value.is_valid_int():
+		return fallback
+
+	return clampi(int(clean_value), 1024, 65535)
 
 
 func _all_command_line_arguments() -> PackedStringArray:
