@@ -175,7 +175,14 @@ func set_local_player_name(player_name: String) -> void:
 
 
 @rpc("any_peer", "unreliable")
-func _server_receive_player_state(position: Vector3, visual_yaw: float, is_moving: bool, player_name: String) -> void:
+func _server_receive_player_state(
+	position: Vector3,
+	visual_yaw: float,
+	is_moving: bool,
+	player_name: String,
+	action_state: String = "",
+	action_context: Dictionary = {}
+) -> void:
 	if not multiplayer.is_server():
 		return
 
@@ -185,16 +192,24 @@ func _server_receive_player_state(position: Vector3, visual_yaw: float, is_movin
 	if not _is_peer_authorized(sender_id):
 		return
 
-	_apply_remote_player_state(sender_id, position, visual_yaw, is_moving, player_name)
-	rpc("_client_receive_player_state", sender_id, position, visual_yaw, is_moving, player_name)
+	_apply_remote_player_state(sender_id, position, visual_yaw, is_moving, player_name, action_state, action_context)
+	rpc("_client_receive_player_state", sender_id, position, visual_yaw, is_moving, player_name, action_state, action_context)
 
 
 @rpc("authority", "unreliable")
-func _client_receive_player_state(peer_id: int, position: Vector3, visual_yaw: float, is_moving: bool, player_name: String) -> void:
+func _client_receive_player_state(
+	peer_id: int,
+	position: Vector3,
+	visual_yaw: float,
+	is_moving: bool,
+	player_name: String,
+	action_state: String = "",
+	action_context: Dictionary = {}
+) -> void:
 	if peer_id == multiplayer.get_unique_id():
 		return
 
-	_apply_remote_player_state(peer_id, position, visual_yaw, is_moving, player_name)
+	_apply_remote_player_state(peer_id, position, visual_yaw, is_moving, player_name, action_state, action_context)
 
 
 @rpc("authority", "reliable")
@@ -264,11 +279,25 @@ func _send_local_state() -> void:
 	var visual_yaw := float(state.get("visual_yaw", 0.0))
 	var is_moving := bool(state.get("is_moving", false))
 	var player_name := _local_player_name()
+	var action_state := String(state.get("action_state", ""))
+	var action_context := {}
+	var action_context_value: Variant = state.get("action_context", {})
+	if action_context_value is Dictionary:
+		action_context = action_context_value.duplicate(true)
 
 	if multiplayer.is_server():
-		rpc("_client_receive_player_state", multiplayer.get_unique_id(), position, visual_yaw, is_moving, player_name)
+		rpc(
+			"_client_receive_player_state",
+			multiplayer.get_unique_id(),
+			position,
+			visual_yaw,
+			is_moving,
+			player_name,
+			action_state,
+			action_context
+		)
 	else:
-		rpc_id(1, "_server_receive_player_state", position, visual_yaw, is_moving, player_name)
+		rpc_id(1, "_server_receive_player_state", position, visual_yaw, is_moving, player_name, action_state, action_context)
 
 
 func _apply_remote_player_state(
@@ -276,14 +305,16 @@ func _apply_remote_player_state(
 	position: Vector3,
 	visual_yaw: float,
 	is_moving: bool,
-	player_name: String
+	player_name: String,
+	action_state: String = "",
+	action_context: Dictionary = {}
 ) -> void:
 	var remote_player := _get_or_create_remote_player(peer_id, player_name)
 	if remote_player == null:
 		return
 
 	if remote_player.has_method("apply_remote_network_state"):
-		remote_player.call("apply_remote_network_state", position, visual_yaw, is_moving)
+		remote_player.call("apply_remote_network_state", position, visual_yaw, is_moving, action_state, action_context)
 
 
 func _get_or_create_remote_player(peer_id: int, player_name: String) -> Node3D:

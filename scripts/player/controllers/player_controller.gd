@@ -6,6 +6,8 @@ class_name PlayerController
 extends CharacterBody3D
 
 const WORLD_INPUT_BLOCKER_GROUP := "blocking_world_input"
+const NETWORK_ACTION_NONE := ""
+const NETWORK_ACTION_GATHERING := "gathering"
 
 ## Allows scenes or tests to temporarily disable local player control.
 @export var input_enabled: bool = true
@@ -45,6 +47,8 @@ var _has_remote_network_state := false
 var _remote_target_position := Vector3.ZERO
 var _remote_target_visual_yaw := 0.0
 var _remote_target_is_moving := false
+var _remote_target_action_state := NETWORK_ACTION_NONE
+var _remote_target_action_context := {}
 
 
 func _ready() -> void:
@@ -508,28 +512,44 @@ func get_network_state() -> Dictionary:
 	var visual_yaw := 0.0
 	if visuals != null:
 		visual_yaw = visuals.global_rotation.y
+	var action_state := NETWORK_ACTION_NONE
+	var action_context := {}
+	if channeling != null and channeling.is_channel_type(NETWORK_ACTION_GATHERING):
+		action_state = NETWORK_ACTION_GATHERING
+		action_context = _network_action_context_from_channel(channeling.get_context())
 
 	return {
 		"position": global_position,
 		"visual_yaw": visual_yaw,
 		"is_moving": Vector3(velocity.x, 0.0, velocity.z).length_squared() > 0.01,
+		"action_state": action_state,
+		"action_context": action_context,
 	}
 
 
 ## Applies a network update to a remote visual copy.
-func apply_remote_network_state(position_value: Vector3, visual_yaw: float, is_moving: bool) -> void:
+func apply_remote_network_state(
+	position_value: Vector3,
+	visual_yaw: float,
+	is_moving: bool,
+	action_state: String = NETWORK_ACTION_NONE,
+	action_context: Dictionary = {}
+) -> void:
 	if is_local_player:
 		return
 
 	_remote_target_position = position_value
 	_remote_target_visual_yaw = visual_yaw
 	_remote_target_is_moving = is_moving
+	_remote_target_action_state = action_state
+	_remote_target_action_context = action_context.duplicate(true)
 
 	if not _has_remote_network_state:
 		_has_remote_network_state = true
 		global_position = _remote_target_position
 		_apply_remote_visual_yaw(_remote_target_visual_yaw)
 		_set_remote_moving(false)
+		_set_remote_action_state(_remote_target_action_state, _remote_target_action_context)
 
 
 func _configure_remote_runtime() -> void:
@@ -575,7 +595,9 @@ func _update_remote_network_interpolation(delta: float) -> void:
 			rotation_blend
 		)
 
-	_set_remote_moving(_remote_target_is_moving or distance_to_target > 0.04)
+	var is_action_locked := _remote_target_action_state == NETWORK_ACTION_GATHERING
+	_set_remote_moving(not is_action_locked and (_remote_target_is_moving or distance_to_target > 0.04))
+	_set_remote_action_state(_remote_target_action_state, _remote_target_action_context)
 
 
 func _apply_remote_visual_yaw(visual_yaw: float) -> void:
@@ -588,6 +610,30 @@ func _set_remote_moving(is_moving: bool) -> void:
 		animation.set_moving(is_moving)
 	if footstep_audio != null:
 		footstep_audio.set_moving(is_moving)
+
+
+func _set_remote_action_state(action_state: String, action_context: Dictionary) -> void:
+	if animation == null:
+		return
+
+	if action_state == NETWORK_ACTION_GATHERING:
+		var context := action_context.duplicate(true)
+		context["type"] = NETWORK_ACTION_GATHERING
+		animation.set_gathering(true, context)
+	else:
+		animation.set_gathering(false)
+
+
+func _network_action_context_from_channel(context: Dictionary) -> Dictionary:
+	return {
+		"type": String(context.get("type", "")),
+		"resource_family_id": String(context.get("resource_family_id", "")),
+		"required_tool_family_id": String(context.get("required_tool_family_id", "")),
+		"tool_family_id": String(context.get("tool_family_id", "")),
+		"tool_animation_profile_path": String(context.get("tool_animation_profile_path", "")),
+		"tool_tier": int(context.get("tool_tier", 0)),
+		"resource_tier": int(context.get("resource_tier", 0)),
+	}
 
 
 func _exponential_blend(rate_hz: float, delta: float) -> float:
