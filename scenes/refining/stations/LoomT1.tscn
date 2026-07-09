@@ -1,0 +1,114 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/refining/refining_station_3d.gd" id="1_station"]
+[ext_resource type="Script" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
+[ext_resource type="Script" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="3_selection"]
+[ext_resource type="Script" path="res://scripts/refining/refining_station_tier_visuals.gd" id="4_tier_visuals"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_base"]
+albedo_color = Color(0.2, 0.16, 0.12, 1)
+roughness = 0.88
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wood"]
+albedo_color = Color(0.48, 0.27, 0.13, 1)
+roughness = 0.75
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_cloth"]
+albedo_color = Color(0.86, 0.8, 0.66, 1)
+roughness = 0.96
+
+[sub_resource type="BoxMesh" id="BoxMesh_base"]
+material = SubResource("StandardMaterial3D_base")
+size = Vector3(3.8, 0.35, 3.8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_frame_horizontal"]
+material = SubResource("StandardMaterial3D_wood")
+size = Vector3(2.7, 0.16, 0.16)
+
+[sub_resource type="BoxMesh" id="BoxMesh_frame_vertical"]
+material = SubResource("StandardMaterial3D_wood")
+size = Vector3(0.16, 1.25, 0.16)
+
+[sub_resource type="BoxMesh" id="BoxMesh_cloth"]
+material = SubResource("StandardMaterial3D_cloth")
+size = Vector3(1.85, 0.08, 1.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
+size = Vector3(3.8, 1.4, 3.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_selectable"]
+size = Vector3(4.8, 2.5, 4.8)
+
+[node name="LoomT1" type="Node3D"]
+script = ExtResource("1_station")
+display_name = "Loom"
+station_type = "loom"
+input_item_id_prefix = "cotton"
+output_item_id_prefix = "cloth"
+input_quantity = 4
+output_quantity = 1
+require_lower_tier_refined_input = true
+seconds_per_action = 1.0
+interaction_radius = 1.0
+interaction_half_extents = Vector2(1.9, 1.9)
+
+[node name="Visuals" type="Node3D" parent="."]
+
+[node name="Base" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.175, 0)
+mesh = SubResource("BoxMesh_base")
+
+[node name="BackBeam" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0.72)
+mesh = SubResource("BoxMesh_frame_horizontal")
+
+[node name="FrontBeam" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.68, -0.72)
+mesh = SubResource("BoxMesh_frame_horizontal")
+
+[node name="LeftPost" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.32, 0.88, 0)
+mesh = SubResource("BoxMesh_frame_vertical")
+
+[node name="RightPost" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.32, 0.88, 0)
+mesh = SubResource("BoxMesh_frame_vertical")
+
+[node name="ClothRoll" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 0.34202, -0.939693, 0, 0.939693, 0.34202, 0, 0.88, 0.02)
+mesh = SubResource("BoxMesh_cloth")
+
+[node name="TierVisuals" type="Node3D" parent="Visuals"]
+script = ExtResource("4_tier_visuals")
+family_style = "loom"
+visual_tier = 1
+accent_color = Color(0.86, 0.8, 0.66, 1)
+
+[node name="Body" type="StaticBody3D" parent="."]
+collision_layer = 2
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+shape = SubResource("BoxShape3D_body")
+
+[node name="Selectable" type="Area3D" parent="."]
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("2_selectable")
+display_name = "Loom"
+relationship = 2
+neutral_color = Color(1, 0.8, 0.28, 1)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
+shape = SubResource("BoxShape3D_selectable")
+
+[node name="SelectedRing" type="MeshInstance3D" parent="."]
+script = ExtResource("3_selection")
+ring_radius = 2.2
+ring_width = 0.1
+ring_y_offset = 0.055
+ring_color = Color(1, 0.8, 0.28, 1)
+fill_color = Color(1, 0.8, 0.28, 0.13)
+fill_selection_color_mix = 0.2

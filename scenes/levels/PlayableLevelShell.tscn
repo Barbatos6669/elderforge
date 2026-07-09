@@ -10,9 +10,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/PlayerStatusHud.tscn" id="8_player_status_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/DeathMessageHud.tscn" id="9_death_message_hud"]
 [ext_resource type="PackedScene" path="res://scenes/levels/lighting/BasicLevelLighting.tscn" id="10_basic_lighting"]
-[ext_resource type="PackedScene" uid="uid://c05ku23moqgxa" path="res://scenes/gathering/trees/SilverneedlePineT1.tscn" id="11_silverneedle_pine"]
 [ext_resource type="PackedScene" path="res://scenes/levels/atmosphere/AtmosphereField.tscn" id="12_atmosphere"]
-[ext_resource type="PackedScene" path="res://scenes/gathering/rocks/MoonchalkRockT1.tscn" id="14_moonchalk_rock"]
 [ext_resource type="Script" path="res://scripts/visuals/runtime_world_environment.gd" id="15_runtime_environment"]
 [ext_resource type="Script" path="res://scripts/network/multiplayer_test_manager.gd" id="16_multiplayer_test"]
 [ext_resource type="Script" path="res://scripts/auth/play_session_name_applier.gd" id="17_play_session_name_applier"]
@@ -48,12 +46,30 @@ fog_height_density = 0.055
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
 albedo_color = Color(0.13, 0.2, 0.14, 1)
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_boundary_wall"]
+albedo_color = Color(0.16, 0.14, 0.12, 1)
+roughness = 0.86
+
 [sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
 material = SubResource("StandardMaterial3D_ground")
-size = Vector2(80, 80)
+size = Vector2(100, 100)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
-size = Vector3(80, 0.1, 80)
+size = Vector3(100, 0.1, 100)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_boundary_ns"]
+size = Vector3(102, 4, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_boundary_ew"]
+size = Vector3(1, 4, 102)
+
+[sub_resource type="BoxMesh" id="BoxMesh_boundary_ns"]
+material = SubResource("StandardMaterial3D_boundary_wall")
+size = Vector3(102, 1, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_boundary_ew"]
+material = SubResource("StandardMaterial3D_boundary_wall")
+size = Vector3(1, 1, 102)
 
 [node name="PlayableLevelShell" type="Node3D" unique_id=1479522124]
 
@@ -65,7 +81,7 @@ script = ExtResource("15_runtime_environment")
 
 [node name="DebugGrid" parent="World" unique_id=1382919682 instance=ExtResource("2_grid")]
 visible = false
-half_size = 40
+half_size = 50
 
 [node name="Ground" type="StaticBody3D" parent="World" unique_id=265774923]
 
@@ -75,6 +91,41 @@ mesh = SubResource("PlaneMesh_ground")
 [node name="GroundCollision" type="CollisionShape3D" parent="World/Ground" unique_id=2060934923]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.05, 0)
 shape = SubResource("BoxShape3D_ground")
+
+[node name="BoundaryWalls" type="StaticBody3D" parent="World"]
+collision_mask = 0
+
+[node name="NorthWallVisual" type="MeshInstance3D" parent="World/BoundaryWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, -50.5)
+mesh = SubResource("BoxMesh_boundary_ns")
+
+[node name="SouthWallVisual" type="MeshInstance3D" parent="World/BoundaryWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 50.5)
+mesh = SubResource("BoxMesh_boundary_ns")
+
+[node name="WestWallVisual" type="MeshInstance3D" parent="World/BoundaryWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50.5, 0.5, 0)
+mesh = SubResource("BoxMesh_boundary_ew")
+
+[node name="EastWallVisual" type="MeshInstance3D" parent="World/BoundaryWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50.5, 0.5, 0)
+mesh = SubResource("BoxMesh_boundary_ew")
+
+[node name="NorthWall" type="CollisionShape3D" parent="World/BoundaryWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -50.5)
+shape = SubResource("BoxShape3D_boundary_ns")
+
+[node name="SouthWall" type="CollisionShape3D" parent="World/BoundaryWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 50.5)
+shape = SubResource("BoxShape3D_boundary_ns")
+
+[node name="WestWall" type="CollisionShape3D" parent="World/BoundaryWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50.5, 2, 0)
+shape = SubResource("BoxShape3D_boundary_ew")
+
+[node name="EastWall" type="CollisionShape3D" parent="World/BoundaryWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50.5, 2, 0)
+shape = SubResource("BoxShape3D_boundary_ew")
 
 [node name="PlayerSpawn" parent="World" unique_id=601006216 instance=ExtResource("3_spawn_point")]
 spawn_id = "playable_level_spawn"
@@ -98,12 +149,6 @@ spawn_id = "playable_level_spawn"
 [node name="Stations" type="Node3D" parent="World/LevelContent" unique_id=699704035]
 
 [node name="Resources" type="Node3D" parent="World/LevelContent" unique_id=1565661383]
-
-[node name="SilverneedlePineT1" parent="World/LevelContent/Resources" unique_id=1854220337 instance=ExtResource("11_silverneedle_pine")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 0, 3)
-
-[node name="MoonchalkRockT1" parent="World/LevelContent/Resources" instance=ExtResource("14_moonchalk_rock")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 0, 2.5)
 
 [node name="Mobs" type="Node3D" parent="World/LevelContent" unique_id=1514346223]
 

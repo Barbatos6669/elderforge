@@ -10,6 +10,7 @@
 [ext_resource type="Texture2D" uid="uid://cili1xiu4osa1" path="res://assets/ui/cursors/depleted_resource_cursor.png" id="8_depleted_cursor"]
 [ext_resource type="Script" path="res://scripts/visuals/wind_sway_3d.gd" id="10_wind_sway"]
 [ext_resource type="Script" path="res://scripts/visuals/occludable_visual_3d.gd" id="11_occludable_visual"]
+[ext_resource type="Script" path="res://scripts/visuals/foliage_visual_style_3d.gd" id="12_foliage_style"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_trunk_body"]
 height = 1.4
@@ -45,14 +46,13 @@ disabled_mesh_names = PackedStringArray("De_Render")
 script = ExtResource("11_occludable_visual")
 drives_player_silhouette = false
 model_root_path = NodePath("../Visuals/TreeModel")
-target_mesh_names = PackedStringArray("Pine_leaves")
 occluded_visibility = 0.0
 hide_seconds = 0.75
 show_seconds = 0.55
 use_pixel_dither = false
 pixel_scale = 6.5
 alpha_scissor_threshold = 0.3
-hide_while_occluded_mesh_names = PackedStringArray("Full_Tree")
+hide_while_occluded_mesh_names = PackedStringArray("Full_Tree", "Pine_leaves")
 show_while_occluded_mesh_names = PackedStringArray("De_Render")
 occluder_anchor_height = 2.35
 screen_radius_pixels = 145.0
@@ -60,12 +60,18 @@ screen_column_half_width_pixels = 360.0
 world_column_half_width = 8.0
 world_max_behind_distance = 30.0
 
+[node name="FoliageVisualStyle" type="Node" parent="."]
+script = ExtResource("12_foliage_style")
+model_root_path = NodePath("../Visuals/TreeModel")
+mesh_names = PackedStringArray("Pine_leaves")
+
 [node name="Visuals" type="Node3D" parent="." unique_id=608158643]
 
 [node name="TreeModel" parent="Visuals" unique_id=1332962676 instance=ExtResource("3_tree_model")]
 transform = Transform3D(0.57, 0, 0, 0, 0.57, 0, 0, 0, 0.57, 0, 0.4507543, 0)
 
 [node name="Pine_leaves" parent="Visuals/TreeModel" index="1"]
+cast_shadow = 1
 script = ExtResource("10_wind_sway")
 sway_degrees = 1.0
 sway_speed = 0.75

@@ -1,0 +1,59 @@
+[gd_scene format=3 uid="uid://qjki8e5o3muf"]
+
+[ext_resource type="Script" uid="uid://c11s0eq5k2747" path="res://scripts/refining/refining_station_3d.gd" id="1_station"]
+[ext_resource type="Script" uid="uid://br3ubcjkrdw57" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
+[ext_resource type="Script" uid="uid://i4o11j0hk5eg" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="3_selection"]
+[ext_resource type="Script" uid="uid://deovgvj3mxpf5" path="res://scripts/refining/refining_station_tier_visuals.gd" id="4_tier_visuals"]
+[ext_resource type="PackedScene" uid="uid://cn2regb2qbdmr" path="res://assets/Buildings/Refining/ Mud_Saw.glb" id="5_kvt3n"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
+size = Vector3(3.8, 1.2, 3.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_selectable"]
+size = Vector3(4.8, 2.5, 4.8)
+
+[node name="StonecutterT1" type="Node3D" unique_id=1767636505]
+script = ExtResource("1_station")
+display_name = "Stonecutter"
+station_type = "stonecutter"
+input_item_id_prefix = "stone"
+output_item_id_prefix = "blocks"
+input_quantity = 4
+
+[node name="Visuals" type="Node3D" parent="." unique_id=244119675]
+
+[node name="TierVisuals" type="Node3D" parent="Visuals" unique_id=1402246121]
+script = ExtResource("4_tier_visuals")
+family_style = "stonecutter"
+
+[node name="Body" type="StaticBody3D" parent="." unique_id=1172483041]
+collision_layer = 2
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Body" unique_id=1637888625]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+shape = SubResource("BoxShape3D_body")
+
+[node name="Selectable" type="Area3D" parent="." unique_id=1633713311]
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("2_selectable")
+display_name = "Stonecutter"
+relationship = 2
+neutral_color = Color(1, 0.8, 0.28, 1)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable" unique_id=1415445760]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
+shape = SubResource("BoxShape3D_selectable")
+
+[node name="SelectedRing" type="MeshInstance3D" parent="." unique_id=265674197]
+script = ExtResource("3_selection")
+ring_radius = 2.2
+ring_width = 0.1
+ring_y_offset = 0.055
+ring_color = Color(1, 0.8, 0.28, 1)
+fill_color = Color(1, 0.8, 0.28, 0.13)
+fill_selection_color_mix = 0.2
+
+[node name=" Mud_Saw" parent="." unique_id=174956590 instance=ExtResource("5_kvt3n")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.18326569, 0.051869392, -0.18014598)

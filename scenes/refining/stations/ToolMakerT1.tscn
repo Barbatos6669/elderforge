@@ -1,0 +1,102 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/refining/toolmaker_station_3d.gd" id="1_station"]
+[ext_resource type="Script" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
+[ext_resource type="Script" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="3_selection"]
+[ext_resource type="Script" path="res://scripts/refining/refining_station_tier_visuals.gd" id="4_tier_visuals"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_base"]
+albedo_color = Color(0.19, 0.15, 0.12, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wood"]
+albedo_color = Color(0.48, 0.27, 0.13, 1)
+roughness = 0.72
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_metal"]
+albedo_color = Color(0.62, 0.62, 0.58, 1)
+metallic = 0.3
+roughness = 0.45
+
+[sub_resource type="BoxMesh" id="BoxMesh_base"]
+material = SubResource("StandardMaterial3D_base")
+size = Vector3(3.8, 0.35, 3.8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_bench"]
+material = SubResource("StandardMaterial3D_wood")
+size = Vector3(3.0, 0.36, 1.25)
+
+[sub_resource type="BoxMesh" id="BoxMesh_anvil"]
+material = SubResource("StandardMaterial3D_metal")
+size = Vector3(1.0, 0.42, 0.48)
+
+[sub_resource type="BoxMesh" id="BoxMesh_tool"]
+material = SubResource("StandardMaterial3D_metal")
+size = Vector3(0.18, 0.18, 1.45)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
+size = Vector3(3.8, 1.35, 3.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_selectable"]
+size = Vector3(4.8, 2.5, 4.8)
+
+[node name="ToolMakerT1" type="Node3D"]
+script = ExtResource("1_station")
+display_name = "Tool Maker"
+station_type = "toolmaker"
+seconds_per_action = 1.0
+interaction_radius = 1.0
+interaction_half_extents = Vector2(1.9, 1.9)
+
+[node name="Visuals" type="Node3D" parent="."]
+
+[node name="Base" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.175, 0)
+mesh = SubResource("BoxMesh_base")
+
+[node name="Bench" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+mesh = SubResource("BoxMesh_bench")
+
+[node name="Anvil" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(0.965926, 0, -0.258819, 0, 1, 0, 0.258819, 0, 0.965926, -0.6, 1.0, 0.1)
+mesh = SubResource("BoxMesh_anvil")
+
+[node name="ToolRack" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(0.34202, 0, -0.939693, 0, 1, 0, 0.939693, 0, 0.34202, 0.72, 1.02, -0.18)
+mesh = SubResource("BoxMesh_tool")
+
+[node name="TierVisuals" type="Node3D" parent="Visuals"]
+script = ExtResource("4_tier_visuals")
+family_style = "toolmaker"
+visual_tier = 1
+accent_color = Color(0.62, 0.62, 0.58, 1)
+
+[node name="Body" type="StaticBody3D" parent="."]
+collision_layer = 2
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.675, 0)
+shape = SubResource("BoxShape3D_body")
+
+[node name="Selectable" type="Area3D" parent="."]
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("2_selectable")
+display_name = "Tool Maker"
+relationship = 2
+neutral_color = Color(1, 0.8, 0.28, 1)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
+shape = SubResource("BoxShape3D_selectable")
+
+[node name="SelectedRing" type="MeshInstance3D" parent="."]
+script = ExtResource("3_selection")
+ring_radius = 2.2
+ring_width = 0.1
+ring_y_offset = 0.055
+ring_color = Color(1, 0.8, 0.28, 1)
+fill_color = Color(1, 0.8, 0.28, 0.13)
+fill_selection_color_mix = 0.2

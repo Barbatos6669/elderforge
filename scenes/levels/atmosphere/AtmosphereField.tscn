@@ -38,10 +38,10 @@ rotation_wobble_degrees = 0.9
 
 [node name="AmbientParticles" type="Node3D" parent="."]
 script = ExtResource("3_particles_script")
-emission_extents = Vector3(26, 3.6, 26)
+emission_extents = Vector3(52, 3.8, 52)
 emission_center_height = 1.65
-moon_mote_amount = 120
-leaf_fleck_amount = 42
+moon_mote_amount = 260
+leaf_fleck_amount = 96
 
 [node name="MistPatchNorth" type="MeshInstance3D" parent="."]
 position = Vector3(4, 0.045, -8)
