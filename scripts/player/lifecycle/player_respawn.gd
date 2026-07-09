@@ -20,6 +20,9 @@ signal respawned
 @export var combat_state_path: NodePath = NodePath("../CombatState")
 ## Optional Marker3D. Empty means "use the player's starting transform."
 @export var spawn_marker_path: NodePath
+## Remote network copies disable this so replicated zero-health state does not
+## start a local respawn timer on every client.
+@export var enabled := true
 
 @export_group("Timing")
 ## Total seconds between death and respawn. The death animation is included.
@@ -79,6 +82,8 @@ func is_respawning() -> bool:
 
 
 func _on_health_defeated() -> void:
+	if not enabled:
+		return
 	if _is_respawning:
 		return
 

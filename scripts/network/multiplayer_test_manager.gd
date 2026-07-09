@@ -9,6 +9,9 @@ const PLAYER_SCENE := preload("res://scenes/player/Player.tscn")
 const DEFAULT_PORT := 24565
 const PLAYTEST_CONFIG_FILE := "playtest_server.cfg"
 const PLAYTEST_VERSION_FILE := "playtest_version.json"
+const MAX_NETWORK_INVENTORY_SLOTS := 42
+const MAX_NETWORK_STACK_QUANTITY := 999
+const MAX_NETWORK_CURRENCY := 999999999
 
 ## Existing local player in the level shell.
 @export var local_player_path: NodePath = NodePath("../World/Player")
@@ -51,6 +54,7 @@ const PLAYTEST_VERSION_FILE := "playtest_version.json"
 
 var _peer: ENetMultiplayerPeer
 var _remote_players := {}
+var _player_inventory_snapshots := {}
 var _authorized_peers := {}
 var _send_elapsed := 0.0
 var _is_command_line_server := false
@@ -121,9 +125,11 @@ func host(port: int = default_port) -> bool:
 
 	multiplayer.multiplayer_peer = _peer
 	_authorized_peers.clear()
+	_player_inventory_snapshots.clear()
 	_client_playtest_code_accepted = true
 	_send_elapsed = 0.0
 	_apply_local_player_name()
+	call_deferred("_send_local_inventory_snapshot")
 	if _is_command_line_server:
 		_set_status("%s hosting on UDP %d" % [command_line_server_name, port])
 	else:
@@ -158,6 +164,7 @@ func disconnect_from_session() -> void:
 		multiplayer.multiplayer_peer = null
 	_peer = null
 	_authorized_peers.clear()
+	_player_inventory_snapshots.clear()
 	_client_playtest_code_accepted = false
 	_send_elapsed = 0.0
 	_clear_remote_players()
@@ -183,7 +190,8 @@ func _server_receive_player_state(
 	is_moving: bool,
 	player_name: String,
 	action_state: String = "",
-	action_context: Dictionary = {}
+	action_context: Dictionary = {},
+	vitals: Dictionary = {}
 ) -> void:
 	if not multiplayer.is_server():
 		return
@@ -194,8 +202,8 @@ func _server_receive_player_state(
 	if not _is_peer_authorized(sender_id):
 		return
 
-	_apply_remote_player_state(sender_id, position, visual_yaw, is_moving, player_name, action_state, action_context)
-	rpc("_client_receive_player_state", sender_id, position, visual_yaw, is_moving, player_name, action_state, action_context)
+	_apply_remote_player_state(sender_id, position, visual_yaw, is_moving, player_name, action_state, action_context, vitals)
+	rpc("_client_receive_player_state", sender_id, position, visual_yaw, is_moving, player_name, action_state, action_context, vitals)
 
 
 @rpc("authority", "unreliable")
@@ -206,12 +214,25 @@ func _client_receive_player_state(
 	is_moving: bool,
 	player_name: String,
 	action_state: String = "",
-	action_context: Dictionary = {}
+	action_context: Dictionary = {},
+	vitals: Dictionary = {}
 ) -> void:
 	if peer_id == multiplayer.get_unique_id():
 		return
 
-	_apply_remote_player_state(peer_id, position, visual_yaw, is_moving, player_name, action_state, action_context)
+	_apply_remote_player_state(peer_id, position, visual_yaw, is_moving, player_name, action_state, action_context, vitals)
+
+
+@rpc("any_peer", "reliable")
+func _server_receive_inventory_snapshot(snapshot: Dictionary) -> void:
+	if not multiplayer.is_server():
+		return
+
+	var sender_id := multiplayer.get_remote_sender_id()
+	if sender_id <= 0 or not _is_peer_authorized(sender_id):
+		return
+
+	_player_inventory_snapshots[sender_id] = _sanitize_inventory_snapshot(snapshot)
 
 
 @rpc("authority", "reliable")
@@ -265,6 +286,7 @@ func _client_receive_playtest_code_result(accepted: bool, message: String) -> vo
 		return
 
 	_set_status(message if not message.is_empty() else "Connected")
+	call_deferred("_send_local_inventory_snapshot")
 
 
 @rpc("any_peer", "reliable")
@@ -423,6 +445,10 @@ func _send_local_state() -> void:
 	var action_context_value: Variant = state.get("action_context", {})
 	if action_context_value is Dictionary:
 		action_context = action_context_value.duplicate(true)
+	var vitals := {}
+	var vitals_value: Variant = state.get("vitals", {})
+	if vitals_value is Dictionary:
+		vitals = vitals_value.duplicate(true)
 
 	if multiplayer.is_server():
 		rpc(
@@ -433,10 +459,11 @@ func _send_local_state() -> void:
 			is_moving,
 			player_name,
 			action_state,
-			action_context
+			action_context,
+			vitals
 		)
 	else:
-		rpc_id(1, "_server_receive_player_state", position, visual_yaw, is_moving, player_name, action_state, action_context)
+		rpc_id(1, "_server_receive_player_state", position, visual_yaw, is_moving, player_name, action_state, action_context, vitals)
 
 
 func _send_local_mob_states() -> void:
@@ -488,6 +515,8 @@ func _connect_local_world_action_sources() -> void:
 		var attack_callback := Callable(self, "_on_local_attack_landed")
 		if not auto_attack.is_connected("attack_landed", attack_callback):
 			auto_attack.connect("attack_landed", attack_callback)
+
+	_connect_local_inventory_source()
 
 
 func _connect_resource_state_sources() -> void:
@@ -577,6 +606,60 @@ func _on_local_mob_attack_landed(_target: Node, _damage: float, mob: Node) -> vo
 		return
 
 	rpc_id(1, "_server_receive_mob_attack_event", mob_path, speed_scale)
+
+
+func _connect_local_inventory_source() -> void:
+	var inventory := _get_local_inventory()
+	if inventory == null:
+		return
+
+	if inventory.has_signal("slots_changed"):
+		var slots_callback := Callable(self, "_on_local_inventory_slots_changed")
+		if not inventory.is_connected("slots_changed", slots_callback):
+			inventory.connect("slots_changed", slots_callback)
+
+	if inventory.has_signal("equipped_slots_changed"):
+		var equipped_callback := Callable(self, "_on_local_inventory_equipped_slots_changed")
+		if not inventory.is_connected("equipped_slots_changed", equipped_callback):
+			inventory.connect("equipped_slots_changed", equipped_callback)
+
+	if inventory.has_signal("currency_changed"):
+		var currency_callback := Callable(self, "_on_local_inventory_currency_changed")
+		if not inventory.is_connected("currency_changed", currency_callback):
+			inventory.connect("currency_changed", currency_callback)
+
+	call_deferred("_send_local_inventory_snapshot")
+
+
+func _on_local_inventory_slots_changed() -> void:
+	_send_local_inventory_snapshot()
+
+
+func _on_local_inventory_equipped_slots_changed() -> void:
+	_send_local_inventory_snapshot()
+
+
+func _on_local_inventory_currency_changed(_silver: int, _gold: int) -> void:
+	_send_local_inventory_snapshot()
+
+
+func _send_local_inventory_snapshot() -> void:
+	if _is_command_line_server:
+		return
+	if not _is_network_active():
+		return
+	if not multiplayer.is_server() and not _client_playtest_code_accepted:
+		return
+
+	var inventory := _get_local_inventory()
+	if inventory == null or not inventory.has_method("get_network_snapshot"):
+		return
+
+	var snapshot := _sanitize_inventory_snapshot(inventory.call("get_network_snapshot"))
+	if multiplayer.is_server():
+		_player_inventory_snapshots[multiplayer.get_unique_id()] = snapshot
+	else:
+		rpc_id(1, "_server_receive_inventory_snapshot", snapshot)
 
 
 func _on_resource_state_changed(_remaining_ticks: int, _max_ticks: int, resource: Node) -> void:
@@ -781,6 +864,70 @@ func _play_remote_attack_for_peer(peer_id: int) -> void:
 		remote_player.call("play_remote_attack")
 
 
+func _sanitize_inventory_snapshot(snapshot: Variant) -> Dictionary:
+	if not (snapshot is Dictionary):
+		return {
+			"slot_count": MAX_NETWORK_INVENTORY_SLOTS,
+			"silver": 0,
+			"gold": 0,
+			"slots": [],
+			"equipped_slots": {},
+		}
+
+	var data := snapshot as Dictionary
+	var slot_count := clampi(
+		int(data.get("slot_count", MAX_NETWORK_INVENTORY_SLOTS)),
+		1,
+		MAX_NETWORK_INVENTORY_SLOTS
+	)
+	var slots := []
+	var raw_slots: Variant = data.get("slots", [])
+	if raw_slots is Array:
+		var raw_slots_array := raw_slots as Array
+		for index in range(mini(raw_slots_array.size(), slot_count)):
+			slots.append(_sanitize_inventory_stack(raw_slots_array[index]))
+
+	while slots.size() < slot_count:
+		slots.append({})
+
+	var equipped_slots := {}
+	var raw_equipped_slots: Variant = data.get("equipped_slots", {})
+	if raw_equipped_slots is Dictionary:
+		var equipped_data := raw_equipped_slots as Dictionary
+		for raw_slot_id in equipped_data.keys():
+			var slot_id := String(raw_slot_id).strip_edges()
+			if slot_id.is_empty() or slot_id.length() > 48:
+				continue
+
+			var clean_stack := _sanitize_inventory_stack(equipped_data[raw_slot_id])
+			if not clean_stack.is_empty():
+				equipped_slots[slot_id] = clean_stack
+
+	return {
+		"slot_count": slot_count,
+		"silver": clampi(int(data.get("silver", 0)), 0, MAX_NETWORK_CURRENCY),
+		"gold": clampi(int(data.get("gold", 0)), 0, MAX_NETWORK_CURRENCY),
+		"slots": slots,
+		"equipped_slots": equipped_slots,
+	}
+
+
+func _sanitize_inventory_stack(raw_stack: Variant) -> Dictionary:
+	if not (raw_stack is Dictionary):
+		return {}
+
+	var stack := raw_stack as Dictionary
+	var item_id := String(stack.get("item_id", "")).strip_edges()
+	var quantity := clampi(int(stack.get("quantity", 0)), 0, MAX_NETWORK_STACK_QUANTITY)
+	if item_id.is_empty() or item_id.length() > 96 or quantity <= 0:
+		return {}
+
+	return {
+		"item_id": item_id,
+		"quantity": quantity,
+	}
+
+
 func _state_path_for_node(node: Node) -> String:
 	var scene := get_tree().current_scene
 	if scene == null or node == null:
@@ -847,14 +994,15 @@ func _apply_remote_player_state(
 	is_moving: bool,
 	player_name: String,
 	action_state: String = "",
-	action_context: Dictionary = {}
+	action_context: Dictionary = {},
+	vitals: Dictionary = {}
 ) -> void:
 	var remote_player := _get_or_create_remote_player(peer_id, player_name)
 	if remote_player == null:
 		return
 
 	if remote_player.has_method("apply_remote_network_state"):
-		remote_player.call("apply_remote_network_state", position, visual_yaw, is_moving, action_state, action_context)
+		remote_player.call("apply_remote_network_state", position, visual_yaw, is_moving, action_state, action_context, vitals)
 
 
 func _get_or_create_remote_player(peer_id: int, player_name: String) -> Node3D:
@@ -929,6 +1077,7 @@ func _on_peer_connected(peer_id: int) -> void:
 func _on_peer_disconnected(peer_id: int) -> void:
 	_remove_remote_player(peer_id)
 	_authorized_peers.erase(peer_id)
+	_player_inventory_snapshots.erase(peer_id)
 	if multiplayer.is_server():
 		rpc("_client_remove_remote_player", peer_id)
 		if _is_command_line_server:
@@ -975,6 +1124,13 @@ func _is_network_connecting_or_active() -> bool:
 
 func _get_local_player() -> Node3D:
 	return get_node_or_null(local_player_path) as Node3D
+
+
+func _get_local_inventory() -> Node:
+	if not is_inside_tree():
+		return null
+
+	return get_tree().get_first_node_in_group("player_inventory")
 
 
 func _ensure_remote_players_root() -> void:

@@ -11,9 +11,12 @@ This is still a prototype harness, but it now shares the most visible world
 state for friend playtests:
 
 - player presence, movement, facing, and gathering animation state
+- remote player health, mana, and death animation state
 - gatherable resource tick counts, including depletion and replenishment
 - hostile mob health, movement/facing animation, attack events, death, hit
   feedback, and respawn visibility
+- bounded inventory/equipment/currency snapshots sent to the server for the
+  next inventory-authority pass
 
 Inventory rewards, loot ownership, crafting costs, and anti-cheat validation are
 still local/prototype systems until we move to server-authoritative gameplay.
@@ -21,6 +24,9 @@ For now the server relays and lightly clamps client action reports so everyone
 sees the same world during playtests. Hostile mob animation is still client
 reported: the peer currently fighting a mob drives the temporary movement and
 attack animation sync until we replace this with server-owned AI.
+
+See `docs/MULTIPLAYER_READINESS.md` for the current readiness matrix and the
+order we should convert systems to server authority.
 
 Press `F9` during play to show or hide the multiplayer test panel. It is hidden
 by default now, because normal client flow is sign in -> auto-join.

@@ -36,6 +36,7 @@ const NETWORK_ACTION_GATHERING := "gathering"
 @onready var camera_target: Node3D = $CameraTarget
 @onready var camera_rig = $CameraRig
 @onready var health = get_node_or_null("Health")
+@onready var mana = get_node_or_null("Mana")
 @onready var combat_state = get_node_or_null("CombatState")
 @onready var respawn = get_node_or_null("Respawn")
 @onready var visuals: Node3D = $Visuals
@@ -49,6 +50,8 @@ var _remote_target_visual_yaw := 0.0
 var _remote_target_is_moving := false
 var _remote_target_action_state := NETWORK_ACTION_NONE
 var _remote_target_action_context := {}
+var _remote_target_vitals := {}
+var _remote_is_defeated := false
 
 
 func _ready() -> void:
@@ -532,6 +535,7 @@ func get_network_state() -> Dictionary:
 		"is_moving": Vector3(velocity.x, 0.0, velocity.z).length_squared() > 0.01,
 		"action_state": action_state,
 		"action_context": action_context,
+		"vitals": _network_vitals(),
 	}
 
 
@@ -541,7 +545,8 @@ func apply_remote_network_state(
 	visual_yaw: float,
 	is_moving: bool,
 	action_state: String = NETWORK_ACTION_NONE,
-	action_context: Dictionary = {}
+	action_context: Dictionary = {},
+	vitals: Dictionary = {}
 ) -> void:
 	if is_local_player:
 		return
@@ -551,13 +556,19 @@ func apply_remote_network_state(
 	_remote_target_is_moving = is_moving
 	_remote_target_action_state = action_state
 	_remote_target_action_context = action_context.duplicate(true)
+	_remote_target_vitals = vitals.duplicate(true)
+	_apply_remote_vitals(_remote_target_vitals)
 
 	if not _has_remote_network_state:
 		_has_remote_network_state = true
 		global_position = _remote_target_position
 		_apply_remote_visual_yaw(_remote_target_visual_yaw)
-		_set_remote_moving(false)
-		_set_remote_action_state(_remote_target_action_state, _remote_target_action_context)
+		if _remote_is_defeated:
+			_set_remote_moving(false)
+			_set_remote_action_state(NETWORK_ACTION_NONE, {})
+		else:
+			_set_remote_moving(false)
+			_set_remote_action_state(_remote_target_action_state, _remote_target_action_context)
 
 
 func _configure_remote_runtime() -> void:
@@ -573,6 +584,11 @@ func _configure_remote_runtime() -> void:
 	_disable_remote_node(gathering)
 	_disable_remote_node(movement_motor)
 	_disable_remote_node(click_feedback)
+	_disable_remote_node(respawn)
+	_disable_remote_regeneration(health)
+	_disable_remote_regeneration(mana)
+	if respawn != null:
+		respawn.set("enabled", false)
 	if camera_rig != null:
 		camera_rig.process_mode = Node.PROCESS_MODE_DISABLED
 		var camera := camera_rig.get_node_or_null("Camera3D") as Camera3D
@@ -604,8 +620,12 @@ func _update_remote_network_interpolation(delta: float) -> void:
 		)
 
 	var is_action_locked := _remote_target_action_state == NETWORK_ACTION_GATHERING
-	_set_remote_moving(not is_action_locked and (_remote_target_is_moving or distance_to_target > 0.04))
-	_set_remote_action_state(_remote_target_action_state, _remote_target_action_context)
+	if _remote_is_defeated:
+		_set_remote_moving(false)
+		_set_remote_action_state(NETWORK_ACTION_NONE, {})
+	else:
+		_set_remote_moving(not is_action_locked and (_remote_target_is_moving or distance_to_target > 0.04))
+		_set_remote_action_state(_remote_target_action_state, _remote_target_action_context)
 
 
 func _apply_remote_visual_yaw(visual_yaw: float) -> void:
@@ -644,6 +664,58 @@ func _network_action_context_from_channel(context: Dictionary) -> Dictionary:
 	}
 
 
+func _network_vitals() -> Dictionary:
+	var vitals := {}
+	if health != null:
+		vitals["health_current"] = float(health.get("current_health"))
+		vitals["health_max"] = float(health.get("max_health"))
+		vitals["health_defeated"] = bool(health.call("is_defeated")) if health.has_method("is_defeated") else false
+	if mana != null:
+		vitals["mana_current"] = float(mana.get("current_resource"))
+		vitals["mana_max"] = float(mana.get("max_resource"))
+
+	return vitals
+
+
+func _apply_remote_vitals(vitals: Dictionary) -> void:
+	if vitals.is_empty():
+		return
+
+	var is_defeated := _remote_is_defeated
+	if health != null:
+		var max_health := maxf(float(vitals.get("health_max", health.get("max_health"))), 1.0)
+		var current_health := clampf(float(vitals.get("health_current", max_health)), 0.0, max_health)
+		health.set("max_health", max_health)
+		if health.has_method("set_current_health"):
+			health.call("set_current_health", current_health, false)
+		else:
+			health.set("current_health", current_health)
+		is_defeated = bool(vitals.get("health_defeated", current_health <= 0.0))
+
+	if mana != null:
+		var max_mana := maxf(float(vitals.get("mana_max", mana.get("max_resource"))), 0.0)
+		var current_mana := clampf(float(vitals.get("mana_current", max_mana)), 0.0, max_mana)
+		if mana.has_method("set_max_resource"):
+			mana.call("set_max_resource", max_mana, false)
+		else:
+			mana.set("max_resource", max_mana)
+		if mana.has_method("set_current_resource"):
+			mana.call("set_current_resource", current_mana)
+		else:
+			mana.set("current_resource", current_mana)
+
+	if is_defeated and not _remote_is_defeated:
+		_remote_is_defeated = true
+		_set_remote_moving(false)
+		_set_remote_action_state(NETWORK_ACTION_NONE, {})
+		if animation != null and animation.has_method("play_death"):
+			animation.call("play_death")
+	elif not is_defeated and _remote_is_defeated:
+		_remote_is_defeated = false
+		if animation != null and animation.has_method("reset_animation_state"):
+			animation.call("reset_animation_state")
+
+
 func _exponential_blend(rate_hz: float, delta: float) -> float:
 	return 1.0 - exp(-maxf(rate_hz, 0.01) * maxf(delta, 0.0))
 
@@ -651,6 +723,15 @@ func _exponential_blend(rate_hz: float, delta: float) -> float:
 func _disable_remote_node(node: Node) -> void:
 	if node != null:
 		node.process_mode = Node.PROCESS_MODE_DISABLED
+
+
+func _disable_remote_regeneration(pool: Node) -> void:
+	if pool == null:
+		return
+
+	pool.process_mode = Node.PROCESS_MODE_DISABLED
+	if pool.has_method("set_regeneration_enabled"):
+		pool.call("set_regeneration_enabled", false)
 
 
 func _set_nameplate_player_name(player_name: String) -> void:

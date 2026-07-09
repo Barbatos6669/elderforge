@@ -13,6 +13,7 @@ Use `CODEBASE_GUIDE.md` for the longer learning walkthrough.
 | `scenes/player/Player.tscn` | Reusable player prefab. |
 | `scripts/README.md` | GDScript primer and guide to script folder READMEs. |
 | `docs/ROADMAP.md` | Phase plan and milestone direction. |
+| `docs/MULTIPLAYER_READINESS.md` | Current multiplayer-safe systems, prototype-local systems, and next authority pass. |
 
 ## Current 3D Assets
 

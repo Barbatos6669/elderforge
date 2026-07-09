@@ -112,6 +112,63 @@ func get_display_slots() -> Array:
 	return display_slots
 
 
+## Returns a small, network-safe snapshot of bag slots, equipped slots, and
+## wallet values. The prototype server stores this today; later it can become
+## the shape used by server-owned inventory persistence.
+func get_network_snapshot() -> Dictionary:
+	var network_slots := []
+	for slot in _slots:
+		network_slots.append(_stack_to_network_dict(slot as Resource))
+
+	var network_equipped_slots := {}
+	for slot_id in _equipped_slots.keys():
+		var stack := _equipped_slots[slot_id] as Resource
+		var stack_data := _stack_to_network_dict(stack)
+		if not stack_data.is_empty():
+			network_equipped_slots[String(slot_id)] = stack_data
+
+	return {
+		"slot_count": slot_count,
+		"silver": _silver,
+		"gold": _gold,
+		"slots": network_slots,
+		"equipped_slots": network_equipped_slots,
+	}
+
+
+## Applies the same compact data shape returned by `get_network_snapshot()`.
+## This is mainly for future server restores and test fixtures; normal gameplay
+## should still use commands like `add_item()` and `move_or_swap_slots()`.
+func apply_network_snapshot(snapshot: Dictionary) -> void:
+	slot_count = clampi(int(snapshot.get("slot_count", slot_count)), 1, MAX_SLOT_COUNT)
+	_silver = maxi(int(snapshot.get("silver", 0)), 0)
+	_gold = maxi(int(snapshot.get("gold", 0)), 0)
+	_slots = []
+
+	var raw_slots: Variant = snapshot.get("slots", [])
+	if raw_slots is Array:
+		var raw_slot_array := raw_slots as Array
+		for raw_slot in raw_slot_array:
+			if _slots.size() >= slot_count:
+				break
+			_slots.append(_stack_from_network_dict(raw_slot))
+
+	_normalize_slot_count()
+
+	_equipped_slots = {}
+	var raw_equipped_slots: Variant = snapshot.get("equipped_slots", {})
+	if raw_equipped_slots is Dictionary:
+		var equipped_data := raw_equipped_slots as Dictionary
+		for slot_id in equipped_data.keys():
+			var stack := _stack_from_network_dict(equipped_data[slot_id])
+			if stack != null:
+				_equipped_slots[String(slot_id)] = stack
+
+	slots_changed.emit()
+	currency_changed.emit(_silver, _gold)
+	equipped_slots_changed.emit()
+
+
 func get_display_slot(slot_index: int) -> Dictionary:
 	var stack := get_slot(slot_index)
 	return stack.to_display_dict() if stack != null and not stack.is_empty() else {}
@@ -440,6 +497,42 @@ func _create_stack(definition: Resource, quantity: int) -> Resource:
 	var stack: Resource = ItemStackScript.new() as Resource
 	stack.call("configure", definition, quantity)
 	return stack
+
+
+func _stack_to_network_dict(stack: Resource) -> Dictionary:
+	if stack == null or stack.is_empty():
+		return {}
+
+	var definition := stack.get("definition") as Resource
+	if definition == null:
+		return {}
+
+	var item_id := String(definition.get("id")).strip_edges()
+	var quantity := clampi(int(stack.get("quantity")), 0, int(definition.get("max_stack")))
+	if item_id.is_empty() or quantity <= 0:
+		return {}
+
+	return {
+		"item_id": item_id,
+		"quantity": quantity,
+	}
+
+
+func _stack_from_network_dict(raw_stack: Variant) -> Resource:
+	if not (raw_stack is Dictionary):
+		return null
+
+	var stack_data := raw_stack as Dictionary
+	var item_id := String(stack_data.get("item_id", "")).strip_edges()
+	var quantity := maxi(int(stack_data.get("quantity", 0)), 0)
+	if item_id.is_empty() or quantity <= 0:
+		return null
+
+	var definition := get_definition(item_id)
+	if definition == null:
+		return null
+
+	return _create_stack(definition, quantity)
 
 
 func _is_same_definition(left_definition: Resource, right_definition: Resource) -> bool:
