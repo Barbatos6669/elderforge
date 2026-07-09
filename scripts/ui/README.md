@@ -9,6 +9,7 @@ Folders:
 - `inventory/`: inventory and equipment UI.
 - `nameplates/`: world-space nameplates above characters and targets.
 - `auth/`: first-pass sign-in and account creation screens.
+- `chat/`: in-game chat display and text entry.
 
 GDScript notes:
 

@@ -9,6 +9,11 @@ Files:
   leashing back to its spawn point. It emits `attack_started` for multiplayer
   animation sync and `attack_landed` when damage is actually applied. It can
   also call an optional `LootDropper3D` child when the mob is defeated.
+- `animals/animal_animation_controller.gd`: small animation bridge for imported
+  animal GLBs that already contain idle, walk, attack, and death clips.
+- `animals/skinnable_animal_3d.gd`: killable animal behavior. While alive it can
+  wander and be attacked; after death it exposes the same gatherable resource
+  interface as trees and rocks so the player can skin the corpse for hide.
 
 GDScript notes:
 
@@ -23,6 +28,9 @@ GDScript notes:
   to know loot-table or loot-bag details.
 - `get_tree().get_nodes_in_group("player")` finds player characters that can
   draw aggro. The player controller adds the local player to that group.
+- Skinnable animals join both `network_mobs` and `gatherable_resources`, because
+  their health/death state uses mob sync and their corpse skinning state uses
+  resource sync.
 
 Use this folder when adding behavior for hostile mobs, NPCs, pets, summons, or
 other world actors.

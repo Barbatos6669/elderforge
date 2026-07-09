@@ -17,6 +17,7 @@ state for friend playtests:
   feedback, and respawn visibility
 - bounded inventory/equipment/currency snapshots sent to the server for the
   next inventory-authority pass
+- local chat messages relayed through the server after playtest-code approval
 
 Inventory rewards, loot ownership, crafting costs, and anti-cheat validation are
 still local/prototype systems until we move to server-authoritative gameplay.

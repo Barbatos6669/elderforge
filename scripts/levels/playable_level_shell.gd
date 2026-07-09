@@ -14,6 +14,7 @@ extends Node3D
 	NodePath("DeathMessageHud"),
 	NodePath("RefiningPanel"),
 	NodePath("LootPanel"),
+	NodePath("ChatPanel"),
 ]
 
 

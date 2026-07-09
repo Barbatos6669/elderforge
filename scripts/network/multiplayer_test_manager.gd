@@ -5,6 +5,9 @@
 class_name MultiplayerTestManager
 extends Node
 
+signal chat_message_received(sender_peer_id: int, sender_name: String, channel: String, message: String)
+signal chat_system_message_received(message: String)
+
 const PLAYER_SCENE := preload("res://scenes/player/Player.tscn")
 const DEFAULT_PORT := 24565
 const PLAYTEST_CONFIG_FILE := "playtest_server.cfg"
@@ -12,6 +15,9 @@ const PLAYTEST_VERSION_FILE := "playtest_version.json"
 const MAX_NETWORK_INVENTORY_SLOTS := 42
 const MAX_NETWORK_STACK_QUANTITY := 999
 const MAX_NETWORK_CURRENCY := 999999999
+const MAX_CHAT_MESSAGE_LENGTH := 180
+const MAX_CHAT_NAME_LENGTH := 32
+const CHAT_RATE_LIMIT_SECONDS := 0.7
 
 ## Existing local player in the level shell.
 @export var local_player_path: NodePath = NodePath("../World/Player")
@@ -55,6 +61,8 @@ const MAX_NETWORK_CURRENCY := 999999999
 var _peer: ENetMultiplayerPeer
 var _remote_players := {}
 var _player_inventory_snapshots := {}
+var _peer_display_names := {}
+var _peer_last_chat_seconds := {}
 var _authorized_peers := {}
 var _send_elapsed := 0.0
 var _is_command_line_server := false
@@ -126,9 +134,12 @@ func host(port: int = default_port) -> bool:
 	multiplayer.multiplayer_peer = _peer
 	_authorized_peers.clear()
 	_player_inventory_snapshots.clear()
+	_peer_display_names.clear()
+	_peer_last_chat_seconds.clear()
 	_client_playtest_code_accepted = true
 	_send_elapsed = 0.0
 	_apply_local_player_name()
+	_peer_display_names[multiplayer.get_unique_id()] = _sanitize_display_name(_local_player_name())
 	call_deferred("_send_local_inventory_snapshot")
 	if _is_command_line_server:
 		_set_status("%s hosting on UDP %d" % [command_line_server_name, port])
@@ -165,6 +176,8 @@ func disconnect_from_session() -> void:
 	_peer = null
 	_authorized_peers.clear()
 	_player_inventory_snapshots.clear()
+	_peer_display_names.clear()
+	_peer_last_chat_seconds.clear()
 	_client_playtest_code_accepted = false
 	_send_elapsed = 0.0
 	_clear_remote_players()
@@ -181,6 +194,32 @@ func set_local_player_name(player_name: String) -> void:
 	if _name_field != null:
 		_name_field.text = clean_name
 	_apply_local_player_name()
+
+
+## Sends one player-authored chat line through the current multiplayer session.
+func submit_chat_message(message: String, channel: String = "local") -> bool:
+	var clean_message := _sanitize_chat_message(message)
+	if clean_message.is_empty():
+		return false
+
+	if not _is_network_active():
+		chat_system_message_received.emit("Chat requires a server connection.")
+		return false
+
+	var clean_channel := _sanitize_chat_channel(channel)
+	if multiplayer.is_server():
+		var peer_id := multiplayer.get_unique_id()
+		var sender_name := _sanitize_display_name(_local_player_name())
+		_peer_display_names[peer_id] = sender_name
+		_broadcast_chat_message(peer_id, sender_name, clean_channel, clean_message)
+		return true
+
+	if not _client_playtest_code_accepted:
+		chat_system_message_received.emit("Connecting to chat...")
+		return false
+
+	rpc_id(1, "_server_receive_chat_message", clean_channel, clean_message)
+	return true
 
 
 @rpc("any_peer", "unreliable")
@@ -202,6 +241,7 @@ func _server_receive_player_state(
 	if not _is_peer_authorized(sender_id):
 		return
 
+	_peer_display_names[sender_id] = _sanitize_display_name(player_name)
 	_apply_remote_player_state(sender_id, position, visual_yaw, is_moving, player_name, action_state, action_context, vitals)
 	rpc("_client_receive_player_state", sender_id, position, visual_yaw, is_moving, player_name, action_state, action_context, vitals)
 
@@ -235,6 +275,38 @@ func _server_receive_inventory_snapshot(snapshot: Dictionary) -> void:
 	_player_inventory_snapshots[sender_id] = _sanitize_inventory_snapshot(snapshot)
 
 
+@rpc("any_peer", "reliable")
+func _server_receive_chat_message(channel: String, message: String) -> void:
+	if not multiplayer.is_server() or not _is_network_active():
+		return
+
+	var sender_id := multiplayer.get_remote_sender_id()
+	if sender_id <= 0 or not _is_peer_authorized(sender_id):
+		return
+
+	var clean_channel := _sanitize_chat_channel(channel)
+	var clean_message := _sanitize_chat_message(message)
+	if clean_message.is_empty() or _is_chat_rate_limited(sender_id):
+		return
+
+	_broadcast_chat_message(sender_id, _display_name_for_peer(sender_id), clean_channel, clean_message)
+
+
+@rpc("authority", "reliable")
+func _client_receive_chat_message(
+	sender_peer_id: int,
+	sender_name: String,
+	channel: String,
+	message: String
+) -> void:
+	chat_message_received.emit(
+		sender_peer_id,
+		_sanitize_display_name(sender_name),
+		_sanitize_chat_channel(channel),
+		_sanitize_chat_message(message)
+	)
+
+
 @rpc("authority", "reliable")
 func _client_remove_remote_player(peer_id: int) -> void:
 	_remove_remote_player(peer_id)
@@ -266,6 +338,7 @@ func _server_submit_playtest_code(
 	var clean_hash := playtest_code_hash.strip_edges().to_lower()
 	if _is_playtest_code_accepted(clean_hash):
 		_authorized_peers[sender_id] = true
+		_peer_display_names[sender_id] = _sanitize_display_name(player_name)
 		rpc_id(sender_id, "_client_receive_playtest_code_result", true, "Playtest code accepted.")
 		call_deferred("_send_world_state_to_peer", sender_id)
 		_set_status("Peer %d authorized as %s." % [sender_id, player_name.strip_edges()])
@@ -745,6 +818,36 @@ func _broadcast_mob_attack_event(controller_peer_id: int, mob: Node, speed_scale
 	rpc("_client_receive_mob_attack_event", controller_peer_id, mob_path, maxf(speed_scale, 0.01))
 
 
+func _broadcast_chat_message(
+	sender_peer_id: int,
+	sender_name: String,
+	channel: String,
+	message: String
+) -> void:
+	var clean_message := _sanitize_chat_message(message)
+	if clean_message.is_empty():
+		return
+
+	var clean_name := _sanitize_display_name(sender_name)
+	var clean_channel := _sanitize_chat_channel(channel)
+	if multiplayer.is_server():
+		for target_peer_id in multiplayer.get_peers():
+			if _is_peer_authorized(target_peer_id):
+				rpc_id(
+					target_peer_id,
+					"_client_receive_chat_message",
+					sender_peer_id,
+					clean_name,
+					clean_channel,
+					clean_message
+				)
+
+	if not _is_command_line_server:
+		chat_message_received.emit(sender_peer_id, clean_name, clean_channel, clean_message)
+	else:
+		print("[Chat][%s] %s: %s" % [clean_channel, clean_name, clean_message])
+
+
 func _send_world_state_to_peer(peer_id: int) -> void:
 	if not multiplayer.is_server() or not _is_network_active() or peer_id <= 0:
 		return
@@ -940,6 +1043,54 @@ func _sanitize_inventory_stack(raw_stack: Variant) -> Dictionary:
 	}
 
 
+func _sanitize_chat_message(message: String) -> String:
+	var clean_message := message.strip_edges()
+	clean_message = clean_message.replace("\r", " ").replace("\n", " ").replace("\t", " ")
+	while clean_message.contains("  "):
+		clean_message = clean_message.replace("  ", " ")
+
+	if clean_message.length() > MAX_CHAT_MESSAGE_LENGTH:
+		clean_message = clean_message.left(MAX_CHAT_MESSAGE_LENGTH)
+
+	return clean_message
+
+
+func _sanitize_chat_channel(channel: String) -> String:
+	var clean_channel := channel.strip_edges().to_lower()
+	if clean_channel != "local":
+		return "local"
+
+	return clean_channel
+
+
+func _sanitize_display_name(display_name: String) -> String:
+	var clean_name := display_name.strip_edges()
+	clean_name = clean_name.replace("\r", " ").replace("\n", " ").replace("\t", " ")
+	while clean_name.contains("  "):
+		clean_name = clean_name.replace("  ", " ")
+
+	if clean_name.length() > MAX_CHAT_NAME_LENGTH:
+		clean_name = clean_name.left(MAX_CHAT_NAME_LENGTH)
+	if clean_name.is_empty():
+		return fallback_player_name
+
+	return clean_name
+
+
+func _display_name_for_peer(peer_id: int) -> String:
+	return _sanitize_display_name(String(_peer_display_names.get(peer_id, fallback_player_name)))
+
+
+func _is_chat_rate_limited(peer_id: int) -> bool:
+	var now_seconds := Time.get_ticks_msec() / 1000.0
+	var previous_seconds := float(_peer_last_chat_seconds.get(peer_id, -9999.0))
+	if now_seconds - previous_seconds < CHAT_RATE_LIMIT_SECONDS:
+		return true
+
+	_peer_last_chat_seconds[peer_id] = now_seconds
+	return false
+
+
 func _state_path_for_node(node: Node) -> String:
 	var scene := get_tree().current_scene
 	if scene == null or node == null:
@@ -1090,6 +1241,8 @@ func _on_peer_disconnected(peer_id: int) -> void:
 	_remove_remote_player(peer_id)
 	_authorized_peers.erase(peer_id)
 	_player_inventory_snapshots.erase(peer_id)
+	_peer_display_names.erase(peer_id)
+	_peer_last_chat_seconds.erase(peer_id)
 	if multiplayer.is_server():
 		rpc("_client_remove_remote_player", peer_id)
 		if _is_command_line_server:

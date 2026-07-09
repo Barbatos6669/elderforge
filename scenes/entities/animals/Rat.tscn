@@ -1,0 +1,107 @@
+[gd_scene load_steps=15 format=3]
+
+[ext_resource type="PackedScene" uid="uid://ce5rlviapqld2" path="res://assets/animals/rat/Rat.glb" id="1_rat_model"]
+[ext_resource type="Script" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
+[ext_resource type="Script" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="3_hover_feedback"]
+[ext_resource type="Script" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="4_selection_feedback"]
+[ext_resource type="Material" path="res://assets/materials/hover/hover_outline_green.tres" id="5_hover_material"]
+[ext_resource type="Script" path="res://scripts/visuals/toon_texture_style_3d.gd" id="6_toon_style"]
+[ext_resource type="Texture2D" uid="uid://2vh0wvyvyydq" path="res://assets/ui/cursors/attack_cursor.png" id="7_attack_cursor"]
+[ext_resource type="Texture2D" uid="uid://e6dikk8cx8dp" path="res://assets/ui/cursors/gather_tool_cursor.png" id="8_gather_cursor"]
+[ext_resource type="Script" path="res://scripts/combat/combat_health.gd" id="9_health"]
+[ext_resource type="Script" path="res://scripts/combat/damage_number_emitter_3d.gd" id="10_damage_numbers"]
+[ext_resource type="Script" path="res://scripts/entities/animals/animal_animation_controller.gd" id="11_animal_animation"]
+[ext_resource type="Script" path="res://scripts/entities/animals/skinnable_animal_3d.gd" id="12_skinnable_animal"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.18
+height = 0.45
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_selectable"]
+radius = 0.35
+height = 0.65
+
+[node name="Rat" type="CharacterBody3D"]
+collision_layer = 2
+collision_mask = 3
+
+[node name="BodyCollision" type="CollisionShape3D" parent="."]
+position = Vector3(0, 0.225, 0)
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="Selectable" type="Area3D" parent="."]
+input_ray_pickable = true
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("2_selectable")
+display_name = "Rat"
+relationship = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable"]
+position = Vector3(0, 0.325, 0)
+shape = SubResource("CapsuleShape3D_selectable")
+
+[node name="HoverFeedback" type="MeshInstance3D" parent="." node_paths=PackedStringArray("visuals_path", "hover_target_path")]
+script = ExtResource("3_hover_feedback")
+visuals_path = NodePath("../Visuals")
+hover_target_path = NodePath("../Selectable")
+screen_hover_padding_pixels = 6.0
+screen_body_line_radius_pixels = 18.0
+screen_body_line_height = 0.65
+hover_collision_mask = 8
+ring_radius = 0.36
+ring_y_offset = 0.055
+ring_color = Color(1, 0.82, 0.18, 1)
+highlight_material = ExtResource("5_hover_material")
+hover_cursor_texture = ExtResource("8_gather_cursor")
+hover_cursor_hotspot = Vector2(12, 12)
+hostile_hover_cursor_texture = ExtResource("7_attack_cursor")
+hostile_hover_cursor_hotspot = Vector2(6, 2)
+
+[node name="SelectedRing" type="MeshInstance3D" parent="." node_paths=PackedStringArray("selectable_path")]
+script = ExtResource("4_selection_feedback")
+selectable_path = NodePath("../Selectable")
+ring_radius = 0.38
+ring_width = 0.055
+ring_y_offset = 0.055
+ring_color = Color(1, 0.82, 0.18, 1)
+fill_color = Color(1, 0.82, 0.18, 0.16)
+fill_selection_color_mix = 0.2
+
+[node name="Visuals" type="Node3D" parent="."]
+
+[node name="RatModel" parent="Visuals" instance=ExtResource("1_rat_model")]
+scale = Vector3(0.18, 0.18, 0.18)
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("9_health")
+max_health = 40.0
+current_health = 40.0
+
+[node name="DamageNumbers" type="Node" parent="."]
+script = ExtResource("10_damage_numbers")
+spawn_offset = Vector3(0, 0.65, 0)
+jitter_radius = Vector2(0.1, 0.05)
+
+[node name="Animation" type="Node" parent="." node_paths=PackedStringArray("model_root_path")]
+script = ExtResource("11_animal_animation")
+model_root_path = NodePath("../Visuals/RatModel")
+idle_animation_name = &"RatArmature|Rat_Idle"
+walk_animation_name = &"RatArmature|Rat_Walk"
+attack_animation_name = &"RatArmature|Rat_Attack"
+death_animation_name = &"RatArmature|Rat_Death"
+walk_speed_scale = 0.9
+
+[node name="AI" type="Node" parent="."]
+script = ExtResource("12_skinnable_animal")
+display_name = "Rat"
+yield_item_id = "hide_t1"
+skin_duration = 2.0
+wander_radius = 3.0
+movement_speed = 0.85
+respawn_delay = 30.0
+unskinned_corpse_lifetime = 45.0
+
+[node name="VisualStyle" type="Node3D" parent="." node_paths=PackedStringArray("model_root_path")]
+script = ExtResource("6_toon_style")
+model_root_path = NodePath("../Visuals/RatModel")

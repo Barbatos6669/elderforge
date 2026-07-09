@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/loot/LootPanel.tscn" id="7_loot_panel"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/PlayerStatusHud.tscn" id="8_player_status_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/DeathMessageHud.tscn" id="9_death_message_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/chat/ChatPanel.tscn" id="9_chat_panel"]
 [ext_resource type="PackedScene" path="res://scenes/levels/lighting/BasicLevelLighting.tscn" id="10_basic_lighting"]
 [ext_resource type="PackedScene" path="res://scenes/levels/atmosphere/AtmosphereField.tscn" id="12_atmosphere"]
 [ext_resource type="Script" path="res://scripts/visuals/runtime_world_environment.gd" id="15_runtime_environment"]
@@ -188,6 +189,9 @@ inventory_path = NodePath("../PlayerInventory")
 [node name="LootPanel" parent="." unique_id=200748585 instance=ExtResource("7_loot_panel")]
 inventory_path = NodePath("../PlayerInventory")
 inventory_panel_path = NodePath("../InventoryPanel")
+
+[node name="ChatPanel" parent="." instance=ExtResource("9_chat_panel")]
+network_manager_path = NodePath("../Network")
 
 [node name="PlaySessionNameApplier" type="Node" parent="."]
 script = ExtResource("17_play_session_name_applier")

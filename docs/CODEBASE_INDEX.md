@@ -11,6 +11,7 @@ Use `CODEBASE_GUIDE.md` for the longer learning walkthrough.
 | `scenes/world/starting_city/StartingCity.tscn` | Current playable prototype entry scene. |
 | `scenes/levels/PlayableLevelShell.tscn` | Shared level shell inherited by playable scenes. |
 | `scenes/player/Player.tscn` | Reusable player prefab. |
+| `scenes/entities/animals/Rat.tscn` | Killable/skinnable rat animal prefab. |
 | `scripts/README.md` | GDScript primer and guide to script folder READMEs. |
 | `docs/ROADMAP.md` | Phase plan and milestone direction. |
 | `docs/MULTIPLAYER_READINESS.md` | Current multiplayer-safe systems, prototype-local systems, and next authority pass. |
@@ -20,6 +21,7 @@ Use `CODEBASE_GUIDE.md` for the longer learning walkthrough.
 | Path | Purpose |
 | --- | --- |
 | `assets/characters/base/` | Current base character mesh, textures, and license notes. |
+| `assets/animals/rat/` | Imported rat animal placeholder and import metadata. |
 | `assets/animations/universal_animation_library_1/` | Shared animation pack 1. |
 | `assets/animations/universal_animation_library_2/` | Shared animation pack 2. |
 | `assets/animations/source/` | Editable Blender source files for the animation packs. |
@@ -61,13 +63,16 @@ Godot-native prototypes.
 | `scripts/inventory/` | Inventory data, item families, item stacks, and the prototype catalog. |
 | `scripts/gathering/` | World resource metadata and visual state helpers. |
 | `scripts/levels/` | Shared playable-level shell startup behavior, including dedicated server cleanup. |
+| `scripts/entities/animals/` | Reusable animal animation and skinnable corpse behavior. |
 | `scripts/ui/inventory/` | Inventory and equipment UI behavior. |
+| `scripts/ui/chat/` | In-game chat panel and text-entry behavior. |
 | `scripts/combat/` | Shared health, combat state, resource pools, and damage numbers. |
 | `scripts/interaction/` | Hover, cursor, selection, and target feedback helpers. |
 | `scripts/camera/isometric_camera_rig.gd` | Perspective-isometric follow camera with scroll zoom. |
 | `scenes/levels/lighting/BasicLevelLighting.tscn` | Shared directional/fill/spawn lighting rig. |
 | `scenes/levels/atmosphere/AtmosphereField.tscn` | Reusable ground mist atmosphere pass. |
 | `scenes/ui/hud/ChannelBar.tscn` | HUD channel progress bar for gathering and future casts. |
+| `scenes/ui/chat/ChatPanel.tscn` | Bottom-left multiplayer chat panel. |
 | `scenes/ui/nameplates/PlayerNameplate.tscn` | World-space player or target nameplate. |
 
 ## UI And 2D Assets

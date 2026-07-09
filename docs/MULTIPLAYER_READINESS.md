@@ -26,6 +26,7 @@ a public economy or PvP environment.
 | Resource nodes | Remaining ticks, depletion, and replenishment are synced by scene path. |
 | Hostile mobs | Health, hit feedback, death, respawn, motion/facing, and attack-start animations are synced. |
 | Inventory snapshots | The local bag, equipped slots, silver, and gold have a bounded network snapshot that the server can store. |
+| Chat | Local chat is server-relayed, length-limited, rate-limited, and hidden from unauthorized peers. |
 | Build updates | GitHub release assets and the launcher manifest point testers to the current build. |
 
 ## Prototype-Local Today
@@ -38,6 +39,7 @@ a public economy or PvP environment.
 | Equipment stats | Equipment visuals and inventory slots exist, but stat changes are not server-authoritative. |
 | Mob AI ownership | The peer fighting a mob can temporarily drive mob motion/attack animation sync. |
 | Anti-cheat | The server clamps obvious bad values, but it still trusts several client action reports. |
+| Chat moderation | Chat has basic length/rate limits, but no mute list, profanity filter, GM tools, or persistence yet. |
 | Persistence | Accounts, characters, inventory, and world state are not saved to a database yet. |
 
 ## Code Rules From Here On
