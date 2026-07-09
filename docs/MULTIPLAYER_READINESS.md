@@ -24,7 +24,7 @@ a public economy or PvP environment.
 | Player motion | Position, facing, movement animation, and gathering animation are replicated. |
 | Player vitals | Health, mana, and death animation state are replicated to remote player copies. |
 | Resource nodes | Remaining ticks, depletion, and replenishment are synced by scene path. |
-| Hostile mobs | Health, hit feedback, death, respawn, motion/facing, and attack animations are synced. |
+| Hostile mobs | Health, hit feedback, death, respawn, motion/facing, and attack-start animations are synced. |
 | Inventory snapshots | The local bag, equipped slots, silver, and gold have a bounded network snapshot that the server can store. |
 | Build updates | GitHub release assets and the launcher manifest point testers to the current build. |
 
@@ -47,7 +47,8 @@ a public economy or PvP environment.
 - Any world object that must sync should have a stable scene path or future
   network id. Do not spawn important shared state with random unnamed nodes.
 - Any new player-visible action should expose a compact network state or event:
-  start, update if needed, complete, cancel.
+  start, update if needed, complete, cancel. Visual wind-ups should replicate at
+  action start; damage/rewards should replicate as separate results.
 - UI should never be the authority. UI can ask for an action, but gameplay code
   should validate and apply it.
 - Server-only secrets, playtest code hashes, private keys, and tunnel details do

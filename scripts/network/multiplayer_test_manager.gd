@@ -550,7 +550,11 @@ func _connect_mob_state_sources() -> void:
 				health.connect("health_changed", health_callback)
 
 		var ai := _mob_ai(mob)
-		if ai != null and ai.has_signal("attack_landed"):
+		if ai != null and ai.has_signal("attack_started"):
+			var attack_started_callback := Callable(self, "_on_local_mob_attack_started").bind(mob)
+			if not ai.is_connected("attack_started", attack_started_callback):
+				ai.connect("attack_started", attack_started_callback)
+		elif ai != null and ai.has_signal("attack_landed"):
 			var attack_callback := Callable(self, "_on_local_mob_attack_landed").bind(mob)
 			if not ai.is_connected("attack_landed", attack_callback):
 				ai.connect("attack_landed", attack_callback)
@@ -590,6 +594,16 @@ func _on_local_attack_landed(target: Node, damage: float) -> void:
 
 
 func _on_local_mob_attack_landed(_target: Node, _damage: float, mob: Node) -> void:
+	var ai := _mob_ai(mob)
+	var speed_scale := float(ai.get("attack_speed")) if ai != null else 1.0
+	_send_mob_attack_event(mob, speed_scale)
+
+
+func _on_local_mob_attack_started(_target: Node, speed_scale: float, mob: Node) -> void:
+	_send_mob_attack_event(mob, speed_scale)
+
+
+func _send_mob_attack_event(mob: Node, speed_scale: float) -> void:
 	if mob == null:
 		return
 
@@ -597,8 +611,6 @@ func _on_local_mob_attack_landed(_target: Node, _damage: float, mob: Node) -> vo
 	if mob_path.is_empty():
 		return
 
-	var ai := _mob_ai(mob)
-	var speed_scale := float(ai.get("attack_speed")) if ai != null else 1.0
 	if multiplayer.is_server():
 		_broadcast_mob_attack_event(multiplayer.get_unique_id(), mob, speed_scale)
 		return

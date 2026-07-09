@@ -6,8 +6,9 @@ Files:
 
 - `enemy_mob_ai.gd`: first-pass hostile AI for aggro, chase, melee attacks,
   smoothed chase movement, defeat cleanup, death playback, respawn timing, and
-  leashing back to its spawn point. It can also call an optional `LootDropper3D`
-  child when the mob is defeated.
+  leashing back to its spawn point. It emits `attack_started` for multiplayer
+  animation sync and `attack_landed` when damage is actually applied. It can
+  also call an optional `LootDropper3D` child when the mob is defeated.
 
 GDScript notes:
 

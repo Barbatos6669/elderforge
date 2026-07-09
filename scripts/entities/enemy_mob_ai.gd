@@ -8,6 +8,7 @@ extends Node
 
 signal aggro_started(target: Node)
 signal aggro_dropped
+signal attack_started(target: Node, speed_scale: float)
 signal attack_landed(target: Node, damage: float)
 signal respawned
 
@@ -151,13 +152,14 @@ func _update_attack(delta: float) -> void:
 		_drop_aggro()
 		return
 
+	if _animation != null and _animation.has_method("play_attack"):
+		_animation.call("play_attack", attack_speed)
+	attack_started.emit(_target, attack_speed)
+
 	var applied_damage := float(target_health.call("apply_damage", attack_damage))
 	if applied_damage <= 0.0:
 		_drop_aggro()
 		return
-
-	if _animation != null and _animation.has_method("play_attack"):
-		_animation.call("play_attack", attack_speed)
 
 	_cooldown_remaining = _attack_interval()
 	attack_landed.emit(_target, applied_damage)

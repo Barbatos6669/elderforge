@@ -13,7 +13,7 @@ state for friend playtests:
 - player presence, movement, facing, and gathering animation state
 - remote player health, mana, and death animation state
 - gatherable resource tick counts, including depletion and replenishment
-- hostile mob health, movement/facing animation, attack events, death, hit
+- hostile mob health, movement/facing animation, attack-start events, death, hit
   feedback, and respawn visibility
 - bounded inventory/equipment/currency snapshots sent to the server for the
   next inventory-authority pass
