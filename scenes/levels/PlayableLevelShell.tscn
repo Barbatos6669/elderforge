@@ -14,6 +14,7 @@
 [ext_resource type="Script" path="res://scripts/visuals/runtime_world_environment.gd" id="15_runtime_environment"]
 [ext_resource type="Script" path="res://scripts/network/multiplayer_test_manager.gd" id="16_multiplayer_test"]
 [ext_resource type="Script" path="res://scripts/auth/play_session_name_applier.gd" id="17_play_session_name_applier"]
+[ext_resource type="Script" path="res://scripts/levels/playable_level_shell.gd" id="18_level_shell"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_level"]
 sky_top_color = Color(0.035, 0.058, 0.078, 1)
@@ -72,6 +73,7 @@ material = SubResource("StandardMaterial3D_boundary_wall")
 size = Vector3(1, 1, 102)
 
 [node name="PlayableLevelShell" type="Node3D" unique_id=1479522124]
+script = ExtResource("18_level_shell")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=180484009]
 environment = SubResource("Environment_level")

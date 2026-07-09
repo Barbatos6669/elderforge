@@ -19,6 +19,7 @@ a public economy or PvP environment.
 | System | Multiplayer State |
 | --- | --- |
 | Sign in and join | Client reads `playtest_server.cfg`, signs in, submits access code, and auto-joins. |
+| Dedicated server boot | The playable level shell removes client-only UI before headless server panels initialize. |
 | Player presence | Remote players spawn with nameplates. |
 | Player motion | Position, facing, movement animation, and gathering animation are replicated. |
 | Player vitals | Health, mana, and death animation state are replicated to remote player copies. |

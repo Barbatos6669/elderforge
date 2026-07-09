@@ -60,6 +60,7 @@ Godot-native prototypes.
 | --- | --- |
 | `scripts/inventory/` | Inventory data, item families, item stacks, and the prototype catalog. |
 | `scripts/gathering/` | World resource metadata and visual state helpers. |
+| `scripts/levels/` | Shared playable-level shell startup behavior, including dedicated server cleanup. |
 | `scripts/ui/inventory/` | Inventory and equipment UI behavior. |
 | `scripts/combat/` | Shared health, combat state, resource pools, and damage numbers. |
 | `scripts/interaction/` | Hover, cursor, selection, and target feedback helpers. |
