@@ -7,9 +7,17 @@ Early multiplayer lives here.
   playtest address. Auto-join retries briefly after the world loads so the
   sign-in-to-world handoff does not miss the connection window.
 
-This is presence sync only: it lets players see each other moving in the same
-scene. Combat, gathering, inventory, loot, and crafting are still local
-prototype systems until we move to server-authoritative gameplay.
+This is still a prototype harness, but it now shares the most visible world
+state for friend playtests:
+
+- player presence, movement, facing, and gathering animation state
+- gatherable resource tick counts, including depletion and replenishment
+- hostile mob health, death, hit feedback, and respawn visibility
+
+Inventory rewards, loot ownership, crafting costs, and anti-cheat validation are
+still local/prototype systems until we move to server-authoritative gameplay.
+For now the server relays and lightly clamps client action reports so everyone
+sees the same world during playtests.
 
 Press `F9` during play to show or hide the multiplayer test panel. It is hidden
 by default now, because normal client flow is sign in -> auto-join.

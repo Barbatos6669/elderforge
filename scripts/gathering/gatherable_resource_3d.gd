@@ -135,6 +135,24 @@ func replenish_gather_tick() -> bool:
 	return true
 
 
+## Applies an externally replicated tick count while preserving local visuals.
+func set_remaining_ticks(remaining_ticks: int) -> void:
+	var previous_ticks := _remaining_gather_ticks
+	_remaining_gather_ticks = clampi(remaining_ticks, 0, max_gather_ticks)
+	_replenish_elapsed = 0.0
+
+	if _remaining_gather_ticks < previous_ticks:
+		gather_tick_consumed.emit(_remaining_gather_ticks, max_gather_ticks)
+	elif _remaining_gather_ticks > previous_ticks:
+		gather_tick_replenished.emit(_remaining_gather_ticks, max_gather_ticks)
+
+	_sync_depleted_state()
+	if previous_ticks > 0 and is_depleted():
+		depleted.emit()
+	elif _remaining_gather_ticks >= max_gather_ticks:
+		fully_replenished.emit()
+
+
 func get_remaining_ticks() -> int:
 	return _remaining_gather_ticks
 

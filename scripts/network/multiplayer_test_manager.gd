@@ -68,6 +68,7 @@ var _auto_join_interval_elapsed := 0.0
 func _ready() -> void:
 	_connect_multiplayer_signals()
 	_ensure_remote_players_root()
+	call_deferred("_connect_world_state_sources")
 	_apply_sidecar_playtest_security()
 	_apply_command_line_playtest_security()
 	_is_command_line_server = allow_command_line_server and _has_command_line_server_flag()
@@ -244,6 +245,7 @@ func _server_submit_playtest_code(
 	if _is_playtest_code_accepted(clean_hash):
 		_authorized_peers[sender_id] = true
 		rpc_id(sender_id, "_client_receive_playtest_code_result", true, "Playtest code accepted.")
+		call_deferred("_send_world_state_to_peer", sender_id)
 		_set_status("Peer %d authorized as %s." % [sender_id, player_name.strip_edges()])
 		return
 
@@ -262,6 +264,82 @@ func _client_receive_playtest_code_result(accepted: bool, message: String) -> vo
 		return
 
 	_set_status(message if not message.is_empty() else "Connected")
+
+
+@rpc("any_peer", "reliable")
+func _server_receive_resource_state(resource_path: String, remaining_ticks: int, _max_ticks: int) -> void:
+	if not multiplayer.is_server() or not _is_network_active():
+		return
+
+	var sender_id := multiplayer.get_remote_sender_id()
+	if sender_id <= 0 or not _is_peer_authorized(sender_id):
+		return
+
+	var resource := _node_from_state_path(resource_path)
+	if resource == null or not resource.has_method("set_remaining_ticks"):
+		return
+	if not resource.has_method("get_remaining_ticks") or not resource.has_method("get_max_ticks"):
+		return
+
+	var server_remaining := int(resource.call("get_remaining_ticks"))
+	var max_ticks := int(resource.call("get_max_ticks"))
+	var clean_remaining := clampi(remaining_ticks, 0, max_ticks)
+	if clean_remaining > server_remaining:
+		return
+
+	resource.call("set_remaining_ticks", clean_remaining)
+
+
+@rpc("authority", "reliable")
+func _client_receive_resource_state(resource_path: String, remaining_ticks: int, _max_ticks: int) -> void:
+	var resource := _node_from_state_path(resource_path)
+	if resource == null or not resource.has_method("set_remaining_ticks"):
+		return
+
+	resource.call("set_remaining_ticks", remaining_ticks)
+
+
+@rpc("any_peer", "reliable")
+func _server_receive_mob_damage(mob_path: String, damage: float) -> void:
+	if not multiplayer.is_server() or not _is_network_active():
+		return
+
+	var sender_id := multiplayer.get_remote_sender_id()
+	if sender_id <= 0 or not _is_peer_authorized(sender_id):
+		return
+
+	var mob := _node_from_state_path(mob_path)
+	var health := _mob_health(mob)
+	if health == null or not health.has_method("apply_damage"):
+		return
+
+	var clean_damage := clampf(damage, 0.0, 500.0)
+	var applied_damage := float(health.call("apply_damage", clean_damage))
+	if applied_damage <= 0.0:
+		return
+
+	_broadcast_mob_combat_event(sender_id, mob, applied_damage)
+
+
+@rpc("authority", "reliable")
+func _client_receive_mob_state(mob_path: String, current_health: float, max_health: float) -> void:
+	_apply_mob_health_state(mob_path, current_health, max_health, false)
+
+
+@rpc("authority", "reliable")
+func _client_receive_mob_combat_event(
+	attacker_peer_id: int,
+	mob_path: String,
+	damage: float,
+	current_health: float,
+	max_health: float
+) -> void:
+	var is_local_attacker := attacker_peer_id == multiplayer.get_unique_id()
+	if not is_local_attacker:
+		_play_remote_attack_for_peer(attacker_peer_id)
+		_emit_mob_damage_feedback(mob_path, damage)
+
+	_apply_mob_health_state(mob_path, current_health, max_health, false)
 
 
 func _send_local_state() -> void:
@@ -298,6 +376,291 @@ func _send_local_state() -> void:
 		)
 	else:
 		rpc_id(1, "_server_receive_player_state", position, visual_yaw, is_moving, player_name, action_state, action_context)
+
+
+func _connect_world_state_sources() -> void:
+	_connect_local_world_action_sources()
+	_connect_resource_state_sources()
+	_connect_mob_state_sources()
+
+
+func _connect_local_world_action_sources() -> void:
+	var local_player := _get_local_player()
+	if local_player == null:
+		return
+
+	var gathering := local_player.get_node_or_null("Gathering")
+	if gathering != null and gathering.has_signal("gathering_completed"):
+		var gathering_callback := Callable(self, "_on_local_gathering_completed")
+		if not gathering.is_connected("gathering_completed", gathering_callback):
+			gathering.connect("gathering_completed", gathering_callback)
+
+	var auto_attack := local_player.get_node_or_null("AutoAttack")
+	if auto_attack != null and auto_attack.has_signal("attack_landed"):
+		var attack_callback := Callable(self, "_on_local_attack_landed")
+		if not auto_attack.is_connected("attack_landed", attack_callback):
+			auto_attack.connect("attack_landed", attack_callback)
+
+
+func _connect_resource_state_sources() -> void:
+	if not is_inside_tree():
+		return
+
+	for resource in get_tree().get_nodes_in_group("gatherable_resources"):
+		if resource == null:
+			continue
+
+		if resource.has_signal("gather_tick_consumed"):
+			var consumed_callback := Callable(self, "_on_resource_state_changed").bind(resource)
+			if not resource.is_connected("gather_tick_consumed", consumed_callback):
+				resource.connect("gather_tick_consumed", consumed_callback)
+
+		if resource.has_signal("gather_tick_replenished"):
+			var replenished_callback := Callable(self, "_on_resource_state_changed").bind(resource)
+			if not resource.is_connected("gather_tick_replenished", replenished_callback):
+				resource.connect("gather_tick_replenished", replenished_callback)
+
+
+func _connect_mob_state_sources() -> void:
+	if not is_inside_tree():
+		return
+
+	for mob in get_tree().get_nodes_in_group("network_mobs"):
+		var health := _mob_health(mob)
+		if health == null or not health.has_signal("health_changed"):
+			continue
+
+		var health_callback := Callable(self, "_on_mob_health_changed").bind(mob)
+		if not health.is_connected("health_changed", health_callback):
+			health.connect("health_changed", health_callback)
+
+
+func _on_local_gathering_completed(resource: Node, _item_id: String, _quantity_added: int) -> void:
+	if resource == null or not resource.has_method("get_remaining_ticks"):
+		return
+	if multiplayer.is_server() or not _client_playtest_code_accepted:
+		return
+
+	var resource_path := _state_path_for_node(resource)
+	if resource_path.is_empty():
+		return
+
+	var remaining_ticks := int(resource.call("get_remaining_ticks"))
+	var max_ticks := int(resource.call("get_max_ticks")) if resource.has_method("get_max_ticks") else remaining_ticks
+	rpc_id(1, "_server_receive_resource_state", resource_path, remaining_ticks, max_ticks)
+
+
+func _on_local_attack_landed(target: Node, damage: float) -> void:
+	var mob := _networked_mob_from_target(target)
+	if mob == null:
+		return
+
+	var mob_path := _state_path_for_node(mob)
+	if mob_path.is_empty():
+		return
+
+	if multiplayer.is_server():
+		_broadcast_mob_combat_event(multiplayer.get_unique_id(), mob, maxf(damage, 0.0))
+		return
+	if not _client_playtest_code_accepted:
+		return
+
+	rpc_id(1, "_server_receive_mob_damage", mob_path, maxf(damage, 0.0))
+
+
+func _on_resource_state_changed(_remaining_ticks: int, _max_ticks: int, resource: Node) -> void:
+	if not multiplayer.is_server() or not _is_network_active():
+		return
+
+	_broadcast_resource_state(resource)
+
+
+func _on_mob_health_changed(current_health: float, max_health: float, _health_ratio: float, mob: Node) -> void:
+	if not multiplayer.is_server() or not _is_network_active():
+		return
+
+	_broadcast_mob_state(mob, current_health, max_health)
+
+
+func _broadcast_resource_state(resource: Node) -> void:
+	if resource == null or not resource.has_method("get_remaining_ticks"):
+		return
+
+	var resource_path := _state_path_for_node(resource)
+	if resource_path.is_empty():
+		return
+
+	var remaining_ticks := int(resource.call("get_remaining_ticks"))
+	var max_ticks := int(resource.call("get_max_ticks")) if resource.has_method("get_max_ticks") else remaining_ticks
+	rpc("_client_receive_resource_state", resource_path, remaining_ticks, max_ticks)
+
+
+func _broadcast_mob_state(mob: Node, current_health: float, max_health: float) -> void:
+	var mob_path := _state_path_for_node(mob)
+	if mob_path.is_empty():
+		return
+
+	rpc("_client_receive_mob_state", mob_path, current_health, max_health)
+
+
+func _broadcast_mob_combat_event(attacker_peer_id: int, mob: Node, damage: float) -> void:
+	var health := _mob_health(mob)
+	if health == null:
+		return
+
+	var mob_path := _state_path_for_node(mob)
+	if mob_path.is_empty():
+		return
+
+	var current_health := float(health.get("current_health"))
+	var max_health := float(health.get("max_health"))
+	rpc("_client_receive_mob_combat_event", attacker_peer_id, mob_path, damage, current_health, max_health)
+
+
+func _send_world_state_to_peer(peer_id: int) -> void:
+	if not multiplayer.is_server() or not _is_network_active() or peer_id <= 0:
+		return
+	if not _is_peer_authorized(peer_id):
+		return
+
+	for resource in get_tree().get_nodes_in_group("gatherable_resources"):
+		if resource == null or not resource.has_method("get_remaining_ticks"):
+			continue
+
+		var resource_path := _state_path_for_node(resource)
+		if resource_path.is_empty():
+			continue
+
+		var remaining_ticks := int(resource.call("get_remaining_ticks"))
+		var max_ticks := int(resource.call("get_max_ticks")) if resource.has_method("get_max_ticks") else remaining_ticks
+		rpc_id(peer_id, "_client_receive_resource_state", resource_path, remaining_ticks, max_ticks)
+
+	for mob in get_tree().get_nodes_in_group("network_mobs"):
+		var health := _mob_health(mob)
+		if health == null:
+			continue
+
+		var mob_path := _state_path_for_node(mob)
+		if mob_path.is_empty():
+			continue
+
+		rpc_id(
+			peer_id,
+			"_client_receive_mob_state",
+			mob_path,
+			float(health.get("current_health")),
+			float(health.get("max_health"))
+		)
+
+
+func _apply_mob_health_state(
+	mob_path: String,
+	current_health: float,
+	max_health: float,
+	emit_damage: bool
+) -> void:
+	var mob := _node_from_state_path(mob_path)
+	var health := _mob_health(mob)
+	if health == null or not health.has_method("set_current_health"):
+		return
+
+	var clean_max_health := maxf(max_health, 1.0)
+	var clean_current_health := clampf(current_health, 0.0, clean_max_health)
+	var was_defeated := (
+		health.has_method("is_defeated")
+		and bool(health.call("is_defeated"))
+	)
+	health.set("max_health", clean_max_health)
+
+	var ai := _mob_ai(mob)
+	if clean_current_health <= 0.0 and not was_defeated and ai != null and ai.has_method("suppress_next_network_loot_drop"):
+		ai.call("suppress_next_network_loot_drop")
+
+	health.call("set_current_health", clean_current_health, emit_damage)
+	if clean_current_health > 0.0 and ai != null and ai.has_method("apply_network_alive_state"):
+		ai.call("apply_network_alive_state")
+
+
+func _emit_mob_damage_feedback(mob_path: String, damage: float) -> void:
+	if damage <= 0.0:
+		return
+
+	var mob := _node_from_state_path(mob_path)
+	var health := _mob_health(mob)
+	if health == null or not health.has_signal("damage_taken"):
+		return
+
+	health.emit_signal("damage_taken", damage)
+
+
+func _play_remote_attack_for_peer(peer_id: int) -> void:
+	if peer_id == multiplayer.get_unique_id():
+		return
+	if not _remote_players.has(peer_id):
+		return
+
+	var remote_player := _remote_players[peer_id] as Node
+	if remote_player != null and is_instance_valid(remote_player) and remote_player.has_method("play_remote_attack"):
+		remote_player.call("play_remote_attack")
+
+
+func _state_path_for_node(node: Node) -> String:
+	var scene := get_tree().current_scene
+	if scene == null or node == null:
+		return ""
+	if node == scene:
+		return "."
+	if not _is_node_in_subtree(scene, node):
+		return ""
+
+	return String(scene.get_path_to(node))
+
+
+func _node_from_state_path(path: String) -> Node:
+	var scene := get_tree().current_scene
+	var clean_path := path.strip_edges()
+	if scene == null or clean_path.is_empty():
+		return null
+	if clean_path == ".":
+		return scene
+
+	return scene.get_node_or_null(NodePath(clean_path))
+
+
+func _is_node_in_subtree(root: Node, node: Node) -> bool:
+	var current := node
+	while current != null:
+		if current == root:
+			return true
+		current = current.get_parent()
+
+	return false
+
+
+func _networked_mob_from_target(target: Node) -> Node:
+	var current := target
+	while current != null:
+		if current.is_in_group("network_mobs"):
+			return current
+		current = current.get_parent()
+
+	return null
+
+
+func _mob_health(mob: Node) -> Node:
+	if mob == null:
+		return null
+	if mob.has_method("apply_damage"):
+		return mob
+
+	return mob.get_node_or_null("Health")
+
+
+func _mob_ai(mob: Node) -> Node:
+	if mob == null:
+		return null
+
+	return mob.get_node_or_null("AI")
 
 
 func _apply_remote_player_state(
@@ -379,6 +742,7 @@ func _on_peer_connected(peer_id: int) -> void:
 	if multiplayer.is_server():
 		if not _server_requires_client_handshake():
 			_authorized_peers[peer_id] = true
+			call_deferred("_send_world_state_to_peer", peer_id)
 		if _is_command_line_server:
 			_set_status("Peer %d joined%s." % [peer_id, "" if not _server_requires_client_handshake() else " and is awaiting access check"])
 		else:

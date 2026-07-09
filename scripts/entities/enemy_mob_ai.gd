@@ -72,6 +72,7 @@ var _cooldown_remaining := 0.0
 var _original_collision_layer := 0
 var _original_collision_mask := 0
 var _is_respawning := false
+var _suppress_next_loot_drop := false
 
 
 func _ready() -> void:
@@ -80,6 +81,7 @@ func _ready() -> void:
 		push_warning("EnemyMobAI must be a child of a CharacterBody3D.")
 		return
 
+	_body.add_to_group("network_mobs")
 	_home_position = _body.global_position
 	_original_collision_layer = _body.collision_layer
 	_original_collision_mask = _body.collision_mask
@@ -286,6 +288,29 @@ func _respawn() -> void:
 	respawned.emit()
 
 
+## Restores visible/collidable state when the server replicates a mob respawn.
+func apply_network_alive_state() -> void:
+	if _body == null:
+		return
+	if not _is_respawning and _body.visible:
+		return
+
+	_drop_aggro()
+	_is_respawning = false
+	_body.global_position = _home_position
+	_body.velocity = Vector3.ZERO
+	_set_defeated_state(false)
+	if _animation != null and _animation.has_method("reset_animation_state"):
+		_animation.call("reset_animation_state")
+	_cooldown_remaining = 0.0
+	respawned.emit()
+
+
+## Prevents replicated death visuals from spawning local-only loot copies.
+func suppress_next_network_loot_drop() -> void:
+	_suppress_next_loot_drop = true
+
+
 func _set_defeated_state(is_defeated: bool, should_hide_body: bool = true) -> void:
 	if _body != null:
 		_body.collision_layer = 0 if is_defeated else _original_collision_layer
@@ -308,6 +333,9 @@ func _play_death_animation() -> float:
 
 
 func _drop_loot() -> void:
+	if _suppress_next_loot_drop:
+		_suppress_next_loot_drop = false
+		return
 	if _loot_dropper == null or not _loot_dropper.has_method("drop_loot"):
 		return
 

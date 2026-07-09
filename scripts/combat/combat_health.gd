@@ -73,10 +73,23 @@ func heal(amount: float) -> float:
 
 
 ## Restores this health pool to a specific value, clamped against max health.
-func set_current_health(value: float) -> void:
+##
+## Replicated combat state can request damage/defeat signals so remote clients
+## still show hit numbers and death visuals even when the attack happened
+## somewhere else.
+func set_current_health(value: float, emit_damage: bool = false) -> void:
+	var previous_health := current_health
+	var was_defeated := _is_defeated
 	current_health = clampf(value, 0.0, max_health)
 	_is_defeated = current_health <= 0.0
+
+	var applied_damage := previous_health - current_health
+	if emit_damage and applied_damage > 0.0:
+		damage_taken.emit(applied_damage)
+
 	_emit_health_changed()
+	if _is_defeated and not was_defeated:
+		defeated.emit()
 
 
 ## Restores this health pool to full health.

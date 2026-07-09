@@ -435,6 +435,14 @@ func _on_auto_attack_landed(_target: Node, _damage: float) -> void:
 	animation.play_attack(_auto_attack_animation_speed_scale())
 
 
+## Plays an attack on a visual-only remote player after another peer lands a hit.
+func play_remote_attack(speed_scale: float = 1.0) -> void:
+	if is_local_player:
+		return
+	if animation != null:
+		animation.play_attack(speed_scale)
+
+
 func _auto_attack_animation_speed_scale() -> float:
 	if stats == null:
 		return 1.0
