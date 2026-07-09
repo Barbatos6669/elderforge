@@ -12,12 +12,15 @@ state for friend playtests:
 
 - player presence, movement, facing, and gathering animation state
 - gatherable resource tick counts, including depletion and replenishment
-- hostile mob health, death, hit feedback, and respawn visibility
+- hostile mob health, movement/facing animation, attack events, death, hit
+  feedback, and respawn visibility
 
 Inventory rewards, loot ownership, crafting costs, and anti-cheat validation are
 still local/prototype systems until we move to server-authoritative gameplay.
 For now the server relays and lightly clamps client action reports so everyone
-sees the same world during playtests.
+sees the same world during playtests. Hostile mob animation is still client
+reported: the peer currently fighting a mob drives the temporary movement and
+attack animation sync until we replace this with server-owned AI.
 
 Press `F9` during play to show or hide the multiplayer test panel. It is hidden
 by default now, because normal client flow is sign in -> auto-join.

@@ -73,6 +73,7 @@ var _original_collision_layer := 0
 var _original_collision_mask := 0
 var _is_respawning := false
 var _suppress_next_loot_drop := false
+var _network_control_timeout := 0.0
 
 
 func _ready() -> void:
@@ -97,6 +98,9 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _network_control_timeout > 0.0:
+		_network_control_timeout = maxf(_network_control_timeout - delta, 0.0)
+		return
 	if _body == null or _is_respawning or _is_self_defeated():
 		return
 
@@ -309,6 +313,54 @@ func apply_network_alive_state() -> void:
 ## Prevents replicated death visuals from spawning local-only loot copies.
 func suppress_next_network_loot_drop() -> void:
 	_suppress_next_loot_drop = true
+
+
+## Returns compact state for the temporary playtest mob animation sync.
+func get_network_state() -> Dictionary:
+	var visual_yaw := _visuals.global_rotation.y if _visuals != null else 0.0
+	var is_moving := (
+		_body != null
+		and Vector2(_body.velocity.x, _body.velocity.z).length_squared() > 0.0025
+	)
+	return {
+		"position": _body.global_position if _body != null else Vector3.ZERO,
+		"visual_yaw": visual_yaw,
+		"is_moving": is_moving,
+	}
+
+
+## Returns true while this client has meaningful mob motion to share.
+func has_network_activity() -> bool:
+	if _body == null or _is_respawning or _is_self_defeated():
+		return false
+
+	return (
+		_has_target()
+		or Vector2(_body.velocity.x, _body.velocity.z).length_squared() > 0.0025
+	)
+
+
+## Applies movement/facing from another peer and briefly pauses local AI drift.
+func apply_network_motion_state(position: Vector3, visual_yaw: float, is_moving: bool) -> void:
+	if _body == null or _is_respawning or _is_self_defeated():
+		return
+
+	_network_control_timeout = 0.35
+	_body.global_position = position
+	_body.velocity = Vector3.ZERO
+	if _visuals != null:
+		_visuals.global_rotation.y = visual_yaw
+	_set_moving_animation(is_moving)
+
+
+## Plays an attack animation reported by the peer currently fighting this mob.
+func play_network_attack(speed_scale: float = 1.0) -> void:
+	if _animation == null or _is_respawning or _is_self_defeated():
+		return
+
+	_network_control_timeout = maxf(_network_control_timeout, 0.35)
+	if _animation.has_method("play_attack"):
+		_animation.call("play_attack", speed_scale)
 
 
 func _set_defeated_state(is_defeated: bool, should_hide_body: bool = true) -> void:

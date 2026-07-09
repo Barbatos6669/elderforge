@@ -95,6 +95,7 @@ func _process(delta: float) -> void:
 
 	_send_elapsed = 0.0
 	_send_local_state()
+	_send_local_mob_states()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -342,6 +343,66 @@ func _client_receive_mob_combat_event(
 	_apply_mob_health_state(mob_path, current_health, max_health, false)
 
 
+@rpc("any_peer", "unreliable")
+func _server_receive_mob_motion_state(
+	mob_path: String,
+	position: Vector3,
+	visual_yaw: float,
+	is_moving: bool
+) -> void:
+	if not multiplayer.is_server() or not _is_network_active():
+		return
+
+	var sender_id := multiplayer.get_remote_sender_id()
+	if sender_id <= 0 or not _is_peer_authorized(sender_id):
+		return
+
+	var mob := _node_from_state_path(mob_path)
+	if mob == null:
+		return
+
+	_apply_mob_motion_state(mob_path, position, visual_yaw, is_moving)
+	rpc("_client_receive_mob_motion_state", sender_id, mob_path, position, visual_yaw, is_moving)
+
+
+@rpc("authority", "unreliable")
+func _client_receive_mob_motion_state(
+	controller_peer_id: int,
+	mob_path: String,
+	position: Vector3,
+	visual_yaw: float,
+	is_moving: bool
+) -> void:
+	if controller_peer_id == multiplayer.get_unique_id():
+		return
+
+	_apply_mob_motion_state(mob_path, position, visual_yaw, is_moving)
+
+
+@rpc("any_peer", "reliable")
+func _server_receive_mob_attack_event(mob_path: String, speed_scale: float) -> void:
+	if not multiplayer.is_server() or not _is_network_active():
+		return
+
+	var sender_id := multiplayer.get_remote_sender_id()
+	if sender_id <= 0 or not _is_peer_authorized(sender_id):
+		return
+
+	var mob := _node_from_state_path(mob_path)
+	if mob == null:
+		return
+
+	_broadcast_mob_attack_event(sender_id, mob, speed_scale)
+
+
+@rpc("authority", "reliable")
+func _client_receive_mob_attack_event(controller_peer_id: int, mob_path: String, speed_scale: float) -> void:
+	if controller_peer_id == multiplayer.get_unique_id():
+		return
+
+	_play_mob_attack(mob_path, speed_scale)
+
+
 func _send_local_state() -> void:
 	if _is_command_line_server:
 		return
@@ -376,6 +437,33 @@ func _send_local_state() -> void:
 		)
 	else:
 		rpc_id(1, "_server_receive_player_state", position, visual_yaw, is_moving, player_name, action_state, action_context)
+
+
+func _send_local_mob_states() -> void:
+	if _is_command_line_server:
+		return
+	if not multiplayer.is_server() and not _client_playtest_code_accepted:
+		return
+
+	for mob in get_tree().get_nodes_in_group("network_mobs"):
+		var ai := _mob_ai(mob)
+		if ai == null or not ai.has_method("has_network_activity") or not ai.has_method("get_network_state"):
+			continue
+		if not bool(ai.call("has_network_activity")):
+			continue
+
+		var mob_path := _state_path_for_node(mob)
+		if mob_path.is_empty():
+			continue
+
+		var state: Dictionary = ai.call("get_network_state")
+		var position := state.get("position", Vector3.ZERO) as Vector3
+		var visual_yaw := float(state.get("visual_yaw", 0.0))
+		var is_moving := bool(state.get("is_moving", false))
+		if multiplayer.is_server():
+			_broadcast_mob_motion_state(multiplayer.get_unique_id(), mob, position, visual_yaw, is_moving)
+		else:
+			rpc_id(1, "_server_receive_mob_motion_state", mob_path, position, visual_yaw, is_moving)
 
 
 func _connect_world_state_sources() -> void:
@@ -427,12 +515,16 @@ func _connect_mob_state_sources() -> void:
 
 	for mob in get_tree().get_nodes_in_group("network_mobs"):
 		var health := _mob_health(mob)
-		if health == null or not health.has_signal("health_changed"):
-			continue
+		if health != null and health.has_signal("health_changed"):
+			var health_callback := Callable(self, "_on_mob_health_changed").bind(mob)
+			if not health.is_connected("health_changed", health_callback):
+				health.connect("health_changed", health_callback)
 
-		var health_callback := Callable(self, "_on_mob_health_changed").bind(mob)
-		if not health.is_connected("health_changed", health_callback):
-			health.connect("health_changed", health_callback)
+		var ai := _mob_ai(mob)
+		if ai != null and ai.has_signal("attack_landed"):
+			var attack_callback := Callable(self, "_on_local_mob_attack_landed").bind(mob)
+			if not ai.is_connected("attack_landed", attack_callback):
+				ai.connect("attack_landed", attack_callback)
 
 
 func _on_local_gathering_completed(resource: Node, _item_id: String, _quantity_added: int) -> void:
@@ -466,6 +558,25 @@ func _on_local_attack_landed(target: Node, damage: float) -> void:
 		return
 
 	rpc_id(1, "_server_receive_mob_damage", mob_path, maxf(damage, 0.0))
+
+
+func _on_local_mob_attack_landed(_target: Node, _damage: float, mob: Node) -> void:
+	if mob == null:
+		return
+
+	var mob_path := _state_path_for_node(mob)
+	if mob_path.is_empty():
+		return
+
+	var ai := _mob_ai(mob)
+	var speed_scale := float(ai.get("attack_speed")) if ai != null else 1.0
+	if multiplayer.is_server():
+		_broadcast_mob_attack_event(multiplayer.get_unique_id(), mob, speed_scale)
+		return
+	if not _client_playtest_code_accepted:
+		return
+
+	rpc_id(1, "_server_receive_mob_attack_event", mob_path, speed_scale)
 
 
 func _on_resource_state_changed(_remaining_ticks: int, _max_ticks: int, resource: Node) -> void:
@@ -517,6 +628,28 @@ func _broadcast_mob_combat_event(attacker_peer_id: int, mob: Node, damage: float
 	rpc("_client_receive_mob_combat_event", attacker_peer_id, mob_path, damage, current_health, max_health)
 
 
+func _broadcast_mob_motion_state(
+	controller_peer_id: int,
+	mob: Node,
+	position: Vector3,
+	visual_yaw: float,
+	is_moving: bool
+) -> void:
+	var mob_path := _state_path_for_node(mob)
+	if mob_path.is_empty():
+		return
+
+	rpc("_client_receive_mob_motion_state", controller_peer_id, mob_path, position, visual_yaw, is_moving)
+
+
+func _broadcast_mob_attack_event(controller_peer_id: int, mob: Node, speed_scale: float) -> void:
+	var mob_path := _state_path_for_node(mob)
+	if mob_path.is_empty():
+		return
+
+	rpc("_client_receive_mob_attack_event", controller_peer_id, mob_path, maxf(speed_scale, 0.01))
+
+
 func _send_world_state_to_peer(peer_id: int) -> void:
 	if not multiplayer.is_server() or not _is_network_active() or peer_id <= 0:
 		return
@@ -551,6 +684,18 @@ func _send_world_state_to_peer(peer_id: int) -> void:
 			float(health.get("current_health")),
 			float(health.get("max_health"))
 		)
+		var ai := _mob_ai(mob)
+		if ai != null and ai.has_method("get_network_state"):
+			var state: Dictionary = ai.call("get_network_state")
+			rpc_id(
+				peer_id,
+				"_client_receive_mob_motion_state",
+				multiplayer.get_unique_id(),
+				mob_path,
+				state.get("position", Vector3.ZERO) as Vector3,
+				float(state.get("visual_yaw", 0.0)),
+				bool(state.get("is_moving", false))
+			)
 
 
 func _apply_mob_health_state(
@@ -579,6 +724,38 @@ func _apply_mob_health_state(
 	health.call("set_current_health", clean_current_health, emit_damage)
 	if clean_current_health > 0.0 and ai != null and ai.has_method("apply_network_alive_state"):
 		ai.call("apply_network_alive_state")
+
+
+func _apply_mob_motion_state(mob_path: String, position: Vector3, visual_yaw: float, is_moving: bool) -> void:
+	var mob := _node_from_state_path(mob_path)
+	var ai := _mob_ai(mob)
+	if ai != null and ai.has_method("apply_network_motion_state"):
+		ai.call("apply_network_motion_state", position, visual_yaw, is_moving)
+		return
+
+	var mob_3d := mob as Node3D
+	if mob_3d == null:
+		return
+
+	mob_3d.global_position = position
+	var visuals := mob_3d.get_node_or_null("Visuals") as Node3D
+	if visuals != null:
+		visuals.global_rotation.y = visual_yaw
+	var animation := mob_3d.get_node_or_null("Animation")
+	if animation != null and animation.has_method("set_moving"):
+		animation.call("set_moving", is_moving)
+
+
+func _play_mob_attack(mob_path: String, speed_scale: float) -> void:
+	var mob := _node_from_state_path(mob_path)
+	var ai := _mob_ai(mob)
+	if ai != null and ai.has_method("play_network_attack"):
+		ai.call("play_network_attack", maxf(speed_scale, 0.01))
+		return
+
+	var animation := mob.get_node_or_null("Animation") if mob != null else null
+	if animation != null and animation.has_method("play_attack"):
+		animation.call("play_attack", maxf(speed_scale, 0.01))
 
 
 func _emit_mob_damage_feedback(mob_path: String, damage: float) -> void:
