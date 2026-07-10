@@ -6,7 +6,8 @@ Files:
 
 - `chat_panel.gd`: bottom-left in-game chat box. It focuses on UI only:
   opening the input, sending typed text to `MultiplayerTestManager`, and
-  rendering messages received from the network layer.
+  rendering messages received from the network layer. It also owns the small
+  chat tab and the idle auto-hide timer.
 
 GDScript notes:
 
@@ -14,5 +15,8 @@ GDScript notes:
   Enter while the input has focus.
 - `blocks_world_input()` is called by `PlayerController` through the
   `blocking_world_input` group, so typing does not also move or attack.
+- Exported variables such as `auto_hide_delay_seconds` and
+  `reveal_on_new_message` appear in the Godot Inspector when the chat scene is
+  selected. Use those for tuning instead of editing timing constants in code.
 - The chat panel does not send ENet RPCs itself. It calls a narrow method on
   the network manager, which keeps validation and relay behavior centralized.

@@ -1,0 +1,202 @@
+﻿[
+    {
+        "asset_id":  "bark_willow_02",
+        "label":  "Bark Willow 02",
+        "group":  "bark_wood",
+        "kind":  "diffuse",
+        "file":  "assets\\texture_painting\\materials\\bark_wood\\bark_willow_02\\bark_willow_02_diffuse_1k.jpg",
+        "source":  "https://polyhaven.com/a/bark_willow_02",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/bark_willow_02/bark_willow_02_diff_1k.jpg",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "bark_willow_02",
+        "label":  "Bark Willow 02",
+        "group":  "bark_wood",
+        "kind":  "roughness_stamp",
+        "file":  "assets\\texture_painting\\stamps\\bark_wood\\bark_willow_02_roughness_stamp_1k.jpg",
+        "source":  "https://polyhaven.com/a/bark_willow_02",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/bark_willow_02/bark_willow_02_rough_1k.jpg",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "bark_willow_02",
+        "label":  "Bark Willow 02",
+        "group":  "bark_wood",
+        "kind":  "height_stamp",
+        "file":  "assets\\texture_painting\\stamps\\bark_wood\\bark_willow_02_height_stamp_1k.png",
+        "source":  "https://polyhaven.com/a/bark_willow_02",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/bark_willow_02/bark_willow_02_disp_1k.png",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "aerial_ground_rock",
+        "label":  "Aerial Ground Rock",
+        "group":  "terrain_ground",
+        "kind":  "diffuse",
+        "file":  "assets\\texture_painting\\materials\\terrain_ground\\aerial_ground_rock\\aerial_ground_rock_diffuse_1k.jpg",
+        "source":  "https://polyhaven.com/a/aerial_ground_rock",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/aerial_ground_rock/aerial_ground_rock_diff_1k.jpg",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "aerial_ground_rock",
+        "label":  "Aerial Ground Rock",
+        "group":  "terrain_ground",
+        "kind":  "roughness_stamp",
+        "file":  "assets\\texture_painting\\stamps\\terrain_ground\\aerial_ground_rock_roughness_stamp_1k.jpg",
+        "source":  "https://polyhaven.com/a/aerial_ground_rock",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/aerial_ground_rock/aerial_ground_rock_rough_1k.jpg",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "aerial_ground_rock",
+        "label":  "Aerial Ground Rock",
+        "group":  "terrain_ground",
+        "kind":  "height_stamp",
+        "file":  "assets\\texture_painting\\stamps\\terrain_ground\\aerial_ground_rock_height_stamp_1k.png",
+        "source":  "https://polyhaven.com/a/aerial_ground_rock",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/aerial_ground_rock/aerial_ground_rock_disp_1k.png",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "brown_mud_leaves_01",
+        "label":  "Brown Mud Leaves 01",
+        "group":  "terrain_ground",
+        "kind":  "diffuse",
+        "file":  "assets\\texture_painting\\materials\\terrain_ground\\brown_mud_leaves_01\\brown_mud_leaves_01_diffuse_1k.jpg",
+        "source":  "https://polyhaven.com/a/brown_mud_leaves_01",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_mud_leaves_01/brown_mud_leaves_01_diff_1k.jpg",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "brown_mud_leaves_01",
+        "label":  "Brown Mud Leaves 01",
+        "group":  "terrain_ground",
+        "kind":  "roughness_stamp",
+        "file":  "assets\\texture_painting\\stamps\\terrain_ground\\brown_mud_leaves_01_roughness_stamp_1k.jpg",
+        "source":  "https://polyhaven.com/a/brown_mud_leaves_01",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_mud_leaves_01/brown_mud_leaves_01_rough_1k.jpg",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "brown_mud_leaves_01",
+        "label":  "Brown Mud Leaves 01",
+        "group":  "terrain_ground",
+        "kind":  "height_stamp",
+        "file":  "assets\\texture_painting\\stamps\\terrain_ground\\brown_mud_leaves_01_height_stamp_1k.png",
+        "source":  "https://polyhaven.com/a/brown_mud_leaves_01",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/brown_mud_leaves_01/brown_mud_leaves_01_disp_1k.png",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "clean_pebbles",
+        "label":  "Clean Pebbles",
+        "group":  "stone_rock",
+        "kind":  "diffuse",
+        "file":  "assets\\texture_painting\\materials\\stone_rock\\clean_pebbles\\clean_pebbles_diffuse_1k.jpg",
+        "source":  "https://polyhaven.com/a/clean_pebbles",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/clean_pebbles/clean_pebbles_diff_1k.jpg",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "clean_pebbles",
+        "label":  "Clean Pebbles",
+        "group":  "stone_rock",
+        "kind":  "roughness_stamp",
+        "file":  "assets\\texture_painting\\stamps\\stone_rock\\clean_pebbles_roughness_stamp_1k.jpg",
+        "source":  "https://polyhaven.com/a/clean_pebbles",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/clean_pebbles/clean_pebbles_rough_1k.jpg",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "clean_pebbles",
+        "label":  "Clean Pebbles",
+        "group":  "stone_rock",
+        "kind":  "height_stamp",
+        "file":  "assets\\texture_painting\\stamps\\stone_rock\\clean_pebbles_height_stamp_1k.png",
+        "source":  "https://polyhaven.com/a/clean_pebbles",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/clean_pebbles/clean_pebbles_disp_1k.png",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "castle_wall_slates",
+        "label":  "Castle Wall Slates",
+        "group":  "stone_rock",
+        "kind":  "diffuse",
+        "file":  "assets\\texture_painting\\materials\\stone_rock\\castle_wall_slates\\castle_wall_slates_diffuse_1k.jpg",
+        "source":  "https://polyhaven.com/a/castle_wall_slates",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/castle_wall_slates/castle_wall_slates_diff_1k.jpg",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "castle_wall_slates",
+        "label":  "Castle Wall Slates",
+        "group":  "stone_rock",
+        "kind":  "roughness_stamp",
+        "file":  "assets\\texture_painting\\stamps\\stone_rock\\castle_wall_slates_roughness_stamp_1k.jpg",
+        "source":  "https://polyhaven.com/a/castle_wall_slates",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/castle_wall_slates/castle_wall_slates_rough_1k.jpg",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "castle_wall_slates",
+        "label":  "Castle Wall Slates",
+        "group":  "stone_rock",
+        "kind":  "height_stamp",
+        "file":  "assets\\texture_painting\\stamps\\stone_rock\\castle_wall_slates_height_stamp_1k.png",
+        "source":  "https://polyhaven.com/a/castle_wall_slates",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/castle_wall_slates/castle_wall_slates_disp_1k.png",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "brown_leather",
+        "label":  "Brown Leather",
+        "group":  "leather_cloth",
+        "kind":  "diffuse",
+        "file":  "assets\\texture_painting\\materials\\leather_cloth\\brown_leather\\brown_leather_diffuse_1k.jpg",
+        "source":  "https://polyhaven.com/a/brown_leather",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_leather/brown_leather_albedo_1k.jpg",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "brown_leather",
+        "label":  "Brown Leather",
+        "group":  "leather_cloth",
+        "kind":  "roughness_stamp",
+        "file":  "assets\\texture_painting\\stamps\\leather_cloth\\brown_leather_roughness_stamp_1k.jpg",
+        "source":  "https://polyhaven.com/a/brown_leather",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_leather/brown_leather_rough_1k.jpg",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "brown_leather",
+        "label":  "Brown Leather",
+        "group":  "leather_cloth",
+        "kind":  "height_stamp",
+        "file":  "assets\\texture_painting\\stamps\\leather_cloth\\brown_leather_height_stamp_1k.png",
+        "source":  "https://polyhaven.com/a/brown_leather",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/brown_leather/brown_leather_disp_1k.png",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "book_pattern",
+        "label":  "Book Pattern",
+        "group":  "leather_cloth",
+        "kind":  "roughness_stamp",
+        "file":  "assets\\texture_painting\\stamps\\leather_cloth\\book_pattern_roughness_stamp_1k.jpg",
+        "source":  "https://polyhaven.com/a/book_pattern",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/book_pattern/book_pattern_rough_1k.jpg",
+        "license":  "CC0"
+    },
+    {
+        "asset_id":  "book_pattern",
+        "label":  "Book Pattern",
+        "group":  "leather_cloth",
+        "kind":  "height_stamp",
+        "file":  "assets\\texture_painting\\stamps\\leather_cloth\\book_pattern_height_stamp_1k.png",
+        "source":  "https://polyhaven.com/a/book_pattern",
+        "download":  "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/book_pattern/book_pattern_disp_1k.png",
+        "license":  "CC0"
+    }
+]

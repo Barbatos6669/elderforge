@@ -30,9 +30,9 @@ height = 1.4
 height = 4.8
 radius = 1.45
 
-[node name="SilverneedlePineT1" type="Node3D" unique_id=306857052]
+[node name="OakTreeT1" type="Node3D" unique_id=306857052]
 script = ExtResource("1_gatherable")
-display_name = "Silverneedle Pine"
+display_name = "Oak Tree"
 active_visuals_path = NodePath("")
 depleted_visuals_path = NodePath("")
 
@@ -94,7 +94,7 @@ mesh = SubResource("CylinderMesh_debug_trunk")
 collision_layer = 8
 collision_mask = 0
 script = ExtResource("4_selectable")
-display_name = "Silverneedle Pine"
+display_name = "Oak Tree"
 relationship = 2
 neutral_color = Color(0.72, 0.86, 0.92, 1)
 

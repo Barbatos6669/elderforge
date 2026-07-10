@@ -5,6 +5,7 @@
 class_name PlayerStatusHud
 extends CanvasLayer
 
+const UiStyle := preload("res://scripts/ui/elderforge_ui_style.gd")
 const HudProfilePortraitScript := preload("res://scripts/ui/hud/hud_profile_portrait.gd")
 
 ## Player name shown beside the profile image.
@@ -27,7 +28,7 @@ var _mana: Node
 
 
 func _ready() -> void:
-	layer = 10
+	layer = UiStyle.LAYER_PLAYER_STATUS
 	_build_ui()
 	call_deferred("_connect_sources")
 
@@ -93,10 +94,7 @@ func _build_ui() -> void:
 	_name_label.custom_minimum_size = Vector2(0.0, 18.0)
 	_name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_name_label.add_theme_font_size_override("font_size", 14)
-	_name_label.add_theme_color_override("font_color", Color(0.98, 0.94, 0.82, 1.0))
-	_name_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	_name_label.add_theme_constant_override("outline_size", 1)
+	UiStyle.label_primary(_name_label, 14, 1)
 	stack.add_child(_name_label)
 
 	stack.add_child(_build_bar_row(true))
@@ -136,10 +134,7 @@ func _build_bar_row(is_health: bool) -> Control:
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", 9)
-	label.add_theme_color_override("font_color", Color.WHITE)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
-	label.add_theme_constant_override("outline_size", 1)
+	UiStyle.label_bar_text(label, 9)
 	holder.add_child(label)
 
 	if is_health:
@@ -208,36 +203,16 @@ func _format_value_pair(current: float, max_value: float) -> String:
 
 
 func _panel_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.055, 0.062, 0.055, 0.90)
-	style.border_color = Color(0.56, 0.47, 0.22, 1.0)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(5)
-	return style
+	return UiStyle.panel_style()
 
 
 func _bar_background_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.025, 0.027, 0.025, 1.0)
-	style.border_color = Color(0.0, 0.0, 0.0, 1.0)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(2)
-	return style
+	return UiStyle.bar_background_style()
 
 
 func _health_fill_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.78, 0.12, 0.08, 1.0)
-	style.border_color = Color(0.95, 0.32, 0.18, 1.0)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(2)
-	return style
+	return UiStyle.health_fill_style()
 
 
 func _mana_fill_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.36, 0.86, 1.0)
-	style.border_color = Color(0.25, 0.62, 1.0, 1.0)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(2)
-	return style
+	return UiStyle.mana_fill_style()

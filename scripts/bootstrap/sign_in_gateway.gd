@@ -5,6 +5,7 @@ class_name SignInGateway
 extends Node
 
 @export_file("*.tscn") var game_scene_path := "res://scenes/world/starting_city/StartingCity.tscn"
+@export_file("*.tscn") var character_scene_path := "res://scenes/ui/auth/CharacterCustomizationScreen.tscn"
 @export var auth_panel_path: NodePath = NodePath("AuthPanel")
 
 
@@ -19,7 +20,15 @@ func _ready() -> void:
 
 
 func _on_authentication_succeeded(_display_name: String) -> void:
-	_enter_game_scene()
+	_enter_character_scene()
+
+
+func _enter_character_scene() -> void:
+	if character_scene_path.strip_edges().is_empty():
+		_enter_game_scene()
+		return
+
+	get_tree().change_scene_to_file(character_scene_path)
 
 
 func _enter_game_scene() -> void:

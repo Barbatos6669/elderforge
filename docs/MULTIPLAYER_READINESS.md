@@ -25,7 +25,8 @@ a public economy or PvP environment.
 | Player vitals | Health, mana, and death animation state are replicated to remote player copies. |
 | Resource nodes | Remaining ticks, depletion, and replenishment are synced by scene path. |
 | Hostile mobs | Health, hit feedback, death, respawn, motion/facing, and attack-start animations are synced. |
-| Inventory snapshots | The local bag, equipped slots, silver, and gold have a bounded network snapshot that the server can store. |
+| Player database | The playtest server has a backend-based `PlayerDatabase` autoload. JSON is active today; SQLite migrations are staged for the next backend. |
+| Inventory snapshots | The local bag, equipped slots, silver, and gold have a bounded network snapshot that the server stores per signed-in playtest account. |
 | Chat | Local chat is server-relayed, length-limited, rate-limited, and hidden from unauthorized peers. |
 | Build updates | GitHub release assets and the launcher manifest point testers to the current build. |
 
@@ -40,7 +41,7 @@ a public economy or PvP environment.
 | Mob AI ownership | The peer fighting a mob can temporarily drive mob motion/attack animation sync. |
 | Anti-cheat | The server clamps obvious bad values, but it still trusts several client action reports. |
 | Chat moderation | Chat has basic length/rate limits, but no mute list, profanity filter, GM tools, or persistence yet. |
-| Persistence | Accounts, characters, inventory, and world state are not saved to a database yet. |
+| Persistence | Accounts, appearance, inventory snapshots, and stat snapshots have prototype JSON persistence. World state, loot containers, and full server-authoritative economy state are not persisted yet. |
 
 ## Code Rules From Here On
 
@@ -63,7 +64,7 @@ a public economy or PvP environment.
    requests with success/failure replies.
 3. Give world-spawned loot containers stable network ids and server ownership.
 4. Move hostile mob AI and damage application to the server.
-5. Save character inventory, equipment, position, and stats to a database.
+5. Move character position, world resources, and loot containers into server-owned persistence.
 6. Replace the playtest code gate with real account/session authentication.
 
 ## Quick Test Checklist

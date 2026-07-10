@@ -10,23 +10,26 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/PlayerStatusHud.tscn" id="8_player_status_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/DeathMessageHud.tscn" id="9_death_message_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/chat/ChatPanel.tscn" id="9_chat_panel"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud/TopRightHudMenu.tscn" id="10_top_right_hud_menu"]
 [ext_resource type="PackedScene" path="res://scenes/levels/lighting/BasicLevelLighting.tscn" id="10_basic_lighting"]
+[ext_resource type="PackedScene" path="res://scenes/ui/menu/MasterMenu.tscn" id="11_master_menu"]
 [ext_resource type="PackedScene" path="res://scenes/levels/atmosphere/AtmosphereField.tscn" id="12_atmosphere"]
 [ext_resource type="Script" path="res://scripts/visuals/runtime_world_environment.gd" id="15_runtime_environment"]
 [ext_resource type="Script" path="res://scripts/network/multiplayer_test_manager.gd" id="16_multiplayer_test"]
 [ext_resource type="Script" path="res://scripts/auth/play_session_name_applier.gd" id="17_play_session_name_applier"]
 [ext_resource type="Script" path="res://scripts/levels/playable_level_shell.gd" id="18_level_shell"]
+[ext_resource type="Shader" path="res://assets/materials/world/painted_ground.gdshader" id="19_ground_shader"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_level"]
-sky_top_color = Color(0.035, 0.058, 0.078, 1)
-sky_horizon_color = Color(0.17, 0.22, 0.25, 1)
-sky_curve = 0.28
-sky_energy_multiplier = 0.72
-ground_bottom_color = Color(0.055, 0.072, 0.06, 1)
-ground_horizon_color = Color(0.15, 0.2, 0.17, 1)
-ground_curve = 0.22
-sun_angle_max = 8.0
-sun_curve = 0.12
+sky_top_color = Color(0.018, 0.034, 0.058, 1)
+sky_horizon_color = Color(0.28, 0.34, 0.31, 1)
+sky_curve = 0.35
+sky_energy_multiplier = 1.12
+ground_bottom_color = Color(0.035, 0.055, 0.045, 1)
+ground_horizon_color = Color(0.12, 0.2, 0.13, 1)
+ground_curve = 0.28
+sun_angle_max = 10.0
+sun_curve = 0.1
 
 [sub_resource type="Sky" id="Sky_level"]
 sky_material = SubResource("ProceduralSkyMaterial_level")
@@ -36,24 +39,47 @@ background_mode = 2
 background_color = Color(0.07, 0.09, 0.1, 1)
 sky = SubResource("Sky_level")
 ambient_light_source = 2
-ambient_light_color = Color(0.55, 0.64, 0.68, 1)
-ambient_light_energy = 0.58
+ambient_light_color = Color(0.43, 0.53, 0.58, 1)
+ambient_light_sky_contribution = 0.34
+ambient_light_energy = 0.52
+reflected_light_source = 2
+tonemap_mode = 4
+tonemap_exposure = 1.16
+tonemap_white = 5.5
+tonemap_agx_contrast = 0.92
+ssao_enabled = true
+ssao_radius = 2.35
+ssao_intensity = 1.18
+ssao_power = 1.42
+ssao_detail = 0.45
+ssao_sharpness = 0.72
+ssao_light_affect = 0.22
+glow_enabled = true
+glow_levels/2 = true
+glow_levels/4 = true
+glow_intensity = 0.18
+glow_strength = 0.42
+glow_mix = 0.04
+glow_bloom = 0.08
+glow_blend_mode = 2
+glow_hdr_threshold = 1.18
 fog_enabled = false
-fog_light_color = Color(0.45, 0.58, 0.62, 1)
-fog_light_energy = 0.42
-fog_density = 0.018
-fog_sky_affect = 0.62
-fog_height_density = 0.055
+fog_light_color = Color(0.58, 0.7, 0.66, 1)
+fog_light_energy = 0.26
+fog_sun_scatter = 0.16
+fog_density = 0.0075
+fog_sky_affect = 0.34
+fog_height_density = 0.026
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
-albedo_color = Color(0.13, 0.2, 0.14, 1)
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ground"]
+shader = ExtResource("19_ground_shader")
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_boundary_wall"]
 albedo_color = Color(0.16, 0.14, 0.12, 1)
 roughness = 0.86
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
-material = SubResource("StandardMaterial3D_ground")
+material = SubResource("ShaderMaterial_ground")
 size = Vector2(100, 100)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
@@ -173,7 +199,7 @@ debug_seed_quantity = 100
 [node name="InventoryPanel" parent="." unique_id=680973026 instance=ExtResource("4_inventory_panel")]
 inventory_path = NodePath("../PlayerInventory")
 stats_path = NodePath("../World/Player/Stats")
-start_visible = true
+start_visible = false
 
 [node name="PlayerStatusHud" parent="." unique_id=1974137229 instance=ExtResource("8_player_status_hud")]
 player_name = "Barabtos6669"
@@ -192,6 +218,15 @@ inventory_panel_path = NodePath("../InventoryPanel")
 
 [node name="ChatPanel" parent="." instance=ExtResource("9_chat_panel")]
 network_manager_path = NodePath("../Network")
+
+[node name="TopRightHudMenu" parent="." instance=ExtResource("10_top_right_hud_menu")]
+inventory_panel_path = NodePath("../InventoryPanel")
+master_menu_path = NodePath("../MasterMenu")
+
+[node name="MasterMenu" parent="." instance=ExtResource("11_master_menu")]
+inventory_panel_path = NodePath("../InventoryPanel")
+inventory_path = NodePath("../PlayerInventory")
+stats_path = NodePath("../World/Player/Stats")
 
 [node name="PlaySessionNameApplier" type="Node" parent="."]
 script = ExtResource("17_play_session_name_applier")

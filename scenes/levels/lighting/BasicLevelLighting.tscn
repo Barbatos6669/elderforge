@@ -3,21 +3,35 @@
 [node name="BasicLevelLighting" type="Node3D"]
 
 [node name="KeySun" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.86602527, 0.38302252, -0.32139382, 0, 0.64278734, 0.7660447, 0.50000024, -0.66341406, 0.55667007, 0, 0, 0)
-light_color = Color(0.95, 0.86, 0.72, 1)
-light_energy = 1.55
+transform = Transform3D(0.86602527, 0.32139355, -0.38302273, 0, 0.7660444, 0.64278764, 0.50000024, -0.55667037, 0.66341376, 0, 0, 0)
+light_color = Color(1, 0.78, 0.46, 1)
+light_energy = 2.45
+light_angular_distance = 0.35
 shadow_enabled = true
-shadow_opacity = 0.58
+shadow_bias = 0.025
+shadow_normal_bias = 1.35
+shadow_opacity = 0.78
+shadow_blur = 0.42
+directional_shadow_blend_splits = true
+directional_shadow_fade_start = 0.78
+directional_shadow_max_distance = 115.0
 
 [node name="SkyFill" type="DirectionalLight3D" parent="."]
 transform = Transform3D(-0.707107, -0.286788, 0.64664, 0, 0.914412, 0.404786, -0.707107, 0.286788, -0.64664, 0, 0, 0)
-light_color = Color(0.42, 0.58, 0.95, 1)
-light_energy = 0.48
+light_color = Color(0.34, 0.5, 0.9, 1)
+light_energy = 0.26
 shadow_enabled = false
 
 [node name="SpawnWarmth" type="OmniLight3D" parent="."]
 position = Vector3(0, 3.5, 0)
 light_color = Color(1, 0.62, 0.34, 1)
-light_energy = 0.58
+light_energy = 0.48
 shadow_enabled = false
-omni_range = 8.0
+omni_range = 10.0
+
+[node name="RimMoon" type="DirectionalLight3D" parent="."]
+rotation = Vector3(-0.436332, 2.35619, 0)
+light_color = Color(0.5, 0.72, 1, 1)
+light_energy = 0.32
+light_specular = 0.35
+shadow_enabled = false

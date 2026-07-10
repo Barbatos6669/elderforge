@@ -76,6 +76,11 @@ const BASE_STAT_VALUES := {
 	ENERGY_REGENERATION: 10.0,
 }
 
+## Saves/restores stat values through the prototype player database for signed-in accounts.
+@export var persist_to_player_database := true
+## Optional explicit account key for test scenes; blank means use PrototypeAuthSession.
+@export var persistence_account_name := ""
+
 ## Ordered stat metadata used by future UI and gameplay systems.
 ##
 ## Each definition stores a stable id, player-facing name, grouping category,
@@ -125,11 +130,15 @@ const STAT_DEFINITIONS := [
 ]
 
 var _values: Dictionary = {}
+var _persistence_connected := false
+var _is_applying_persisted_stats := false
 
 
 func _ready() -> void:
 	add_to_group("player_stats")
 	reset_to_base_values()
+	_load_from_player_database()
+	_connect_persistence_signals()
 
 
 ## Resets every registered stat to zero, then applies the player's base stats.
@@ -184,6 +193,17 @@ func get_all_stats() -> Dictionary:
 	return _values.duplicate()
 
 
+## Applies stored stat values without changing the registered stat list.
+func apply_stats_snapshot(stats: Dictionary) -> void:
+	_is_applying_persisted_stats = true
+	for raw_stat_id in stats.keys():
+		var stat_id := StringName(String(raw_stat_id))
+		if not _is_defined_stat(stat_id):
+			continue
+		_values[stat_id] = float(stats[raw_stat_id])
+	_is_applying_persisted_stats = false
+
+
 ## Returns the player-facing name for a stat id.
 func get_display_name(stat_id: StringName) -> String:
 	var definition := get_definition(stat_id)
@@ -235,3 +255,71 @@ func _is_defined_stat(stat_id: StringName) -> bool:
 			return true
 
 	return false
+
+
+func _connect_persistence_signals() -> void:
+	if _persistence_connected:
+		return
+
+	_persistence_connected = true
+	if not stat_changed.is_connected(_on_persistent_stat_changed):
+		stat_changed.connect(_on_persistent_stat_changed)
+
+
+func _load_from_player_database() -> void:
+	if not persist_to_player_database:
+		return
+
+	var database := _player_database()
+	if database == null or not database.has_method("has_player_stats") or not database.has_method("get_player_stats"):
+		return
+
+	var account_key := _persistence_account_key(database)
+	if account_key.is_empty() or not bool(database.call("has_player_stats", account_key)):
+		return
+
+	var stats: Variant = database.call("get_player_stats", account_key)
+	if stats is Dictionary:
+		apply_stats_snapshot(stats as Dictionary)
+
+
+func _save_to_player_database() -> void:
+	if not persist_to_player_database or _is_applying_persisted_stats:
+		return
+
+	var database := _player_database()
+	if database == null or not database.has_method("set_player_stats"):
+		return
+
+	var account_key := _persistence_account_key(database)
+	if account_key.is_empty():
+		return
+
+	database.call("set_player_stats", account_key, get_all_stats())
+
+
+func _on_persistent_stat_changed(_stat_id: StringName, _value: float) -> void:
+	_save_to_player_database()
+
+
+func _persistence_account_key(database: Node) -> String:
+	var raw_account_name := persistence_account_name.strip_edges()
+	if raw_account_name.is_empty():
+		var auth_session := get_node_or_null("/root/PrototypeAuthSession")
+		if auth_session != null and bool(auth_session.get("is_signed_in")):
+			raw_account_name = String(auth_session.get("account_name")).strip_edges()
+
+	if raw_account_name.is_empty() or raw_account_name == "guest":
+		return ""
+
+	if database != null and database.has_method("normalize_account_name"):
+		return String(database.call("normalize_account_name", raw_account_name))
+
+	return raw_account_name.to_lower()
+
+
+func _player_database() -> Node:
+	if not is_inside_tree():
+		return null
+
+	return get_node_or_null("/root/PlayerDatabase")

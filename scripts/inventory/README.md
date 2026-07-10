@@ -23,7 +23,8 @@ Files:
   like gathering and refining use narrow commands such as `add_item()`,
   `remove_item()`, and `get_item_count()`. `get_network_snapshot()` and
   `apply_network_snapshot()` provide the compact bag/equipment/currency shape
-  that the playtest server can store today and own later.
+  that `/root/PlayerDatabase` and the playtest server can store today and own
+  later.
 
 The runtime player inventory starts empty by default. Enable
 `seed_prototype_resources` only in a debug/demo scene when you need sample
@@ -53,6 +54,9 @@ GDScript notes:
   reusable local offset for a character socket.
 - Equipment can set `equipment_animation_profile_path` when the item needs
   tool-specific or weapon-specific animation choices.
+- `persist_to_player_database` saves/restores signed-in account inventories
+  through the `PlayerDatabase` autoload. Guest sessions are intentionally not
+  persisted.
 
 Common edit points:
 

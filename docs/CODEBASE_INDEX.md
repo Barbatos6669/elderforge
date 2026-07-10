@@ -15,6 +15,7 @@ Use `CODEBASE_GUIDE.md` for the longer learning walkthrough.
 | `scripts/README.md` | GDScript primer and guide to script folder READMEs. |
 | `docs/ROADMAP.md` | Phase plan and milestone direction. |
 | `docs/MULTIPLAYER_READINESS.md` | Current multiplayer-safe systems, prototype-local systems, and next authority pass. |
+| `docs/PERSISTENCE_ARCHITECTURE.md` | Player database backend plan from JSON to SQLite to larger live databases. |
 
 ## Current 3D Assets
 
@@ -25,7 +26,7 @@ Use `CODEBASE_GUIDE.md` for the longer learning walkthrough.
 | `assets/animations/universal_animation_library_1/` | Shared animation pack 1. |
 | `assets/animations/universal_animation_library_2/` | Shared animation pack 2. |
 | `assets/animations/source/` | Editable Blender source files for the animation packs. |
-| `assets/trees/` | Project-owned tree models, starting with Silverneedle Pine T1. |
+| `assets/trees/` | Project-owned tree models. The current starter tree art still uses the old Silverneedle filename while gameplay labels it as Oak Tree. |
 
 Broad imported model/source packs were removed. Future world props, resources,
 equipment, and buildings should be rebuilt as project-owned assets or
@@ -54,13 +55,14 @@ Godot-native prototypes.
 | `scripts/player/combat/player_auto_attack.gd` | Prototype auto-attack flow for hostile targets. |
 | `scripts/player/channeling/player_channeling.gd` | Generic timed-action state for gathering and future spell casts. |
 | `scripts/player/gathering/player_gathering.gd` | Player-side gathering approach, channel start, and reward handoff. |
-| `scenes/gathering/trees/SilverneedlePineT1.tscn` | First gatherable T1 tree prefab. |
+| `scenes/gathering/trees/SilverneedlePineT1.tscn` | First gatherable T1 Oak Tree prefab; filename still reflects old placeholder art. |
 
 ## Core Systems
 
 | Path | Purpose |
 | --- | --- |
 | `scripts/inventory/` | Inventory data, item families, item stacks, and the prototype catalog. |
+| `scripts/persistence/` | File-backed player database for prototype accounts, appearance, inventory snapshots, and stat snapshots. |
 | `scripts/gathering/` | World resource metadata and visual state helpers. |
 | `scripts/levels/` | Shared playable-level shell startup behavior, including dedicated server cleanup. |
 | `scripts/entities/animals/` | Reusable animal animation and skinnable corpse behavior. |

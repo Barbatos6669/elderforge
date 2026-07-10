@@ -7,41 +7,45 @@
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_mist_pale"]
 render_priority = -2
 shader = ExtResource("2_mist_shader")
-shader_parameter/mist_color = Color(0.58, 0.75, 0.82, 0.22)
-shader_parameter/alpha_strength = 0.22
-shader_parameter/edge_softness = 2.7
-shader_parameter/noise_scale = 8.5
-shader_parameter/drift_speed = 0.035
+shader_parameter/mist_color = Color(0.62, 0.78, 0.72, 0.17)
+shader_parameter/alpha_strength = 0.17
+shader_parameter/edge_softness = 3.1
+shader_parameter/noise_scale = 7.2
+shader_parameter/drift_speed = 0.032
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_mist_cool"]
 render_priority = -2
 shader = ExtResource("2_mist_shader")
-shader_parameter/mist_color = Color(0.46, 0.58, 0.66, 0.18)
-shader_parameter/alpha_strength = 0.18
-shader_parameter/edge_softness = 2.2
-shader_parameter/noise_scale = 11.0
-shader_parameter/drift_speed = 0.045
+shader_parameter/mist_color = Color(0.36, 0.48, 0.56, 0.12)
+shader_parameter/alpha_strength = 0.12
+shader_parameter/edge_softness = 2.65
+shader_parameter/noise_scale = 9.5
+shader_parameter/drift_speed = 0.04
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_mist_large"]
 material = SubResource("ShaderMaterial_mist_pale")
-size = Vector2(18, 10)
+size = Vector2(30, 16)
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_mist_medium"]
 material = SubResource("ShaderMaterial_mist_cool")
-size = Vector2(12, 7)
+size = Vector2(20, 11)
 
 [node name="AtmosphereField" type="Node3D"]
 script = ExtResource("1_mist_script")
-drift_amplitude = 0.42
-drift_speed = 0.14
-rotation_wobble_degrees = 0.9
+drift_amplitude = 0.52
+drift_speed = 0.11
+rotation_wobble_degrees = 0.65
 
 [node name="AmbientParticles" type="Node3D" parent="."]
 script = ExtResource("3_particles_script")
 emission_extents = Vector3(52, 3.8, 52)
 emission_center_height = 1.65
 moon_mote_amount = 260
-leaf_fleck_amount = 96
+moon_mote_color = Color(0.62, 0.86, 0.82, 0.24)
+moon_mote_size = 0.065
+leaf_fleck_amount = 128
+leaf_fleck_color = Color(0.84, 0.72, 0.32, 0.22)
+leaf_fleck_size = 0.11
 
 [node name="MistPatchNorth" type="MeshInstance3D" parent="."]
 position = Vector3(4, 0.045, -8)

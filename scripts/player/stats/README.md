@@ -19,6 +19,9 @@ GDScript notes:
 - Health regeneration is applied by the player's `CombatHealth` node. Energy
   regeneration is tracked here and mirrored by the player's `Mana` resource pool
   until we have final formulas.
+- `persist_to_player_database` saves/restores signed-in account stat values
+  through `/root/PlayerDatabase`. Keep formula work separate so persistence only
+  stores the resulting values, not every temporary modifier.
 - Later equipment, buffs, food, mounts, and server data should write modifiers
   into this system.
 

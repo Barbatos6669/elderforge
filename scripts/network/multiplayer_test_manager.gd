@@ -62,6 +62,7 @@ var _peer: ENetMultiplayerPeer
 var _remote_players := {}
 var _player_inventory_snapshots := {}
 var _peer_display_names := {}
+var _peer_account_names := {}
 var _peer_last_chat_seconds := {}
 var _authorized_peers := {}
 var _send_elapsed := 0.0
@@ -135,11 +136,16 @@ func host(port: int = default_port) -> bool:
 	_authorized_peers.clear()
 	_player_inventory_snapshots.clear()
 	_peer_display_names.clear()
+	_peer_account_names.clear()
 	_peer_last_chat_seconds.clear()
 	_client_playtest_code_accepted = true
 	_send_elapsed = 0.0
 	_apply_local_player_name()
 	_peer_display_names[multiplayer.get_unique_id()] = _sanitize_display_name(_local_player_name())
+	_peer_account_names[multiplayer.get_unique_id()] = _normalize_player_account_name(
+		_local_account_name(),
+		multiplayer.get_unique_id()
+	)
 	call_deferred("_send_local_inventory_snapshot")
 	if _is_command_line_server:
 		_set_status("%s hosting on UDP %d" % [command_line_server_name, port])
@@ -177,6 +183,7 @@ func disconnect_from_session() -> void:
 	_authorized_peers.clear()
 	_player_inventory_snapshots.clear()
 	_peer_display_names.clear()
+	_peer_account_names.clear()
 	_peer_last_chat_seconds.clear()
 	_client_playtest_code_accepted = false
 	_send_elapsed = 0.0
@@ -272,7 +279,9 @@ func _server_receive_inventory_snapshot(snapshot: Dictionary) -> void:
 	if sender_id <= 0 or not _is_peer_authorized(sender_id):
 		return
 
-	_player_inventory_snapshots[sender_id] = _sanitize_inventory_snapshot(snapshot)
+	var clean_snapshot := _sanitize_inventory_snapshot(snapshot)
+	_player_inventory_snapshots[sender_id] = clean_snapshot
+	_save_peer_inventory_snapshot(sender_id, clean_snapshot)
 
 
 @rpc("any_peer", "reliable")
@@ -317,7 +326,9 @@ func _server_submit_playtest_code(
 	playtest_code_hash: String,
 	player_name: String,
 	client_build_id: String = "",
-	client_commit: String = ""
+	client_commit: String = "",
+	player_account_name: String = "",
+	appearance: Dictionary = {}
 ) -> void:
 	if not multiplayer.is_server():
 		return
@@ -338,8 +349,13 @@ func _server_submit_playtest_code(
 	var clean_hash := playtest_code_hash.strip_edges().to_lower()
 	if _is_playtest_code_accepted(clean_hash):
 		_authorized_peers[sender_id] = true
-		_peer_display_names[sender_id] = _sanitize_display_name(player_name)
+		var clean_display_name := _sanitize_display_name(player_name)
+		var account_key := _normalize_player_account_name(player_account_name, sender_id)
+		_peer_display_names[sender_id] = clean_display_name
+		_peer_account_names[sender_id] = account_key
+		var profile := _server_player_profile(account_key, clean_display_name, appearance)
 		rpc_id(sender_id, "_client_receive_playtest_code_result", true, "Playtest code accepted.")
+		rpc_id(sender_id, "_client_receive_player_database_profile", profile)
 		call_deferred("_send_world_state_to_peer", sender_id)
 		_set_status("Peer %d authorized as %s." % [sender_id, player_name.strip_edges()])
 		return
@@ -348,6 +364,19 @@ func _server_submit_playtest_code(
 	_set_status("Rejected peer %d: bad playtest code." % sender_id)
 	if _peer != null:
 		_peer.disconnect_peer(sender_id)
+
+
+@rpc("authority", "reliable")
+func _client_receive_player_database_profile(profile: Dictionary) -> void:
+	var inventory := _get_local_inventory()
+	if inventory == null or not inventory.has_method("apply_network_snapshot"):
+		return
+
+	var raw_inventory: Variant = profile.get("inventory", {})
+	if not (raw_inventory is Dictionary) or (raw_inventory as Dictionary).is_empty():
+		return
+
+	inventory.call("apply_network_snapshot", raw_inventory as Dictionary)
 
 
 @rpc("authority", "reliable")
@@ -743,6 +772,7 @@ func _send_local_inventory_snapshot() -> void:
 	var snapshot := _sanitize_inventory_snapshot(inventory.call("get_network_snapshot"))
 	if multiplayer.is_server():
 		_player_inventory_snapshots[multiplayer.get_unique_id()] = snapshot
+		_save_peer_inventory_snapshot(multiplayer.get_unique_id(), snapshot)
 	else:
 		rpc_id(1, "_server_receive_inventory_snapshot", snapshot)
 
@@ -977,6 +1007,82 @@ func _play_remote_attack_for_peer(peer_id: int) -> void:
 	var remote_player := _remote_players[peer_id] as Node
 	if remote_player != null and is_instance_valid(remote_player) and remote_player.has_method("play_remote_attack"):
 		remote_player.call("play_remote_attack")
+
+
+func _server_player_profile(account_key: String, display_name: String, appearance: Dictionary) -> Dictionary:
+	var safe_profile := {
+		"account_name": account_key,
+		"display_name": _sanitize_display_name(display_name),
+		"appearance": appearance.duplicate(true),
+		"inventory": {},
+	}
+
+	var database := _player_database()
+	if database == null or not database.has_method("get_or_create_player"):
+		return safe_profile
+
+	var record_variant: Variant = database.call("get_or_create_player", account_key, display_name, appearance)
+	if record_variant is Dictionary:
+		var record := record_variant as Dictionary
+		safe_profile["display_name"] = _sanitize_display_name(String(record.get("display_name", display_name)))
+		var record_appearance: Variant = record.get("appearance", appearance)
+		if record_appearance is Dictionary:
+			safe_profile["appearance"] = (record_appearance as Dictionary).duplicate(true)
+
+	if (
+		database.has_method("get_player_inventory")
+		and database.has_method("has_player_inventory")
+		and bool(database.call("has_player_inventory", account_key))
+	):
+		var inventory_variant: Variant = database.call("get_player_inventory", account_key)
+		if inventory_variant is Dictionary:
+			safe_profile["inventory"] = _sanitize_inventory_snapshot(inventory_variant)
+
+	return safe_profile
+
+
+func _save_peer_inventory_snapshot(peer_id: int, snapshot: Dictionary) -> void:
+	var account_key := String(_peer_account_names.get(peer_id, "")).strip_edges()
+	if account_key.is_empty():
+		return
+
+	var database := _player_database()
+	if database == null or not database.has_method("set_player_inventory"):
+		return
+	if database.has_method("has_player") and not bool(database.call("has_player", account_key)):
+		var display_name := _display_name_for_peer(peer_id)
+		if database.has_method("get_or_create_player"):
+			database.call("get_or_create_player", account_key, display_name, {})
+
+	database.call("set_player_inventory", account_key, snapshot)
+
+
+func _normalize_player_account_name(raw_account_name: String, peer_id: int) -> String:
+	var clean_name := raw_account_name.strip_edges()
+	if clean_name.is_empty() or clean_name.to_lower() == "guest":
+		clean_name = "peer_%d" % peer_id
+
+	var database := _player_database()
+	if database != null and database.has_method("normalize_account_name"):
+		var normalized := String(database.call("normalize_account_name", clean_name))
+		if not normalized.is_empty():
+			return normalized
+
+	clean_name = clean_name.to_lower()
+	var output := ""
+	for index in range(clean_name.length()):
+		var character := clean_name.substr(index, 1)
+		if character.is_valid_identifier() or character.is_valid_int() or character in ["-", "_", "."]:
+			output += character
+
+	return output if not output.is_empty() else "peer_%d" % peer_id
+
+
+func _player_database() -> Node:
+	if not is_inside_tree():
+		return null
+
+	return get_node_or_null("/root/PlayerDatabase")
 
 
 func _sanitize_inventory_snapshot(snapshot: Variant) -> Dictionary:
@@ -1242,6 +1348,7 @@ func _on_peer_disconnected(peer_id: int) -> void:
 	_authorized_peers.erase(peer_id)
 	_player_inventory_snapshots.erase(peer_id)
 	_peer_display_names.erase(peer_id)
+	_peer_account_names.erase(peer_id)
 	_peer_last_chat_seconds.erase(peer_id)
 	if multiplayer.is_server():
 		rpc("_client_remove_remote_player", peer_id)
@@ -1440,6 +1547,31 @@ func _local_player_name() -> String:
 	return _initial_local_player_name()
 
 
+func _local_account_name() -> String:
+	var auth_session := _auth_session()
+	if auth_session != null and bool(auth_session.get("is_signed_in")):
+		return String(auth_session.get("account_name")).strip_edges()
+
+	return ""
+
+
+func _local_character_appearance() -> Dictionary:
+	var auth_session := _auth_session()
+	if auth_session != null and auth_session.has_method("get_character_appearance"):
+		var appearance: Variant = auth_session.call("get_character_appearance")
+		if appearance is Dictionary:
+			return (appearance as Dictionary).duplicate(true)
+
+	return {}
+
+
+func _auth_session() -> Node:
+	if not is_inside_tree():
+		return null
+
+	return get_node_or_null("/root/PrototypeAuthSession")
+
+
 func _initial_local_player_name() -> String:
 	var local_player := _get_local_player()
 	var nameplate := local_player.get_node_or_null("Nameplate") if local_player != null else null
@@ -1513,7 +1645,9 @@ func _submit_playtest_code_to_server() -> void:
 		code_hash,
 		_local_player_name(),
 		String(build_metadata.get("build_id", "")),
-		String(build_metadata.get("commit", ""))
+		String(build_metadata.get("commit", "")),
+		_local_account_name(),
+		_local_character_appearance()
 	)
 
 

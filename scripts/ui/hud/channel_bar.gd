@@ -5,6 +5,8 @@
 class_name ChannelBar
 extends CanvasLayer
 
+const UiStyle := preload("res://scripts/ui/elderforge_ui_style.gd")
+
 ## PlayerChanneling node to observe.
 @export var channeling_path: NodePath
 ## Vertical offset from the bottom center of the viewport.
@@ -84,8 +86,7 @@ func _build_ui() -> void:
 	_action_label.text = ""
 	_action_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_action_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_action_label.add_theme_font_size_override("font_size", 13)
-	_action_label.add_theme_color_override("font_color", Color(0.96, 0.9, 0.72, 1.0))
+	UiStyle.label_primary(_action_label, 13)
 	label_row.add_child(_action_label)
 
 	_time_label = Label.new()
@@ -93,8 +94,7 @@ func _build_ui() -> void:
 	_time_label.custom_minimum_size = Vector2(58.0, 0.0)
 	_time_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_time_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_time_label.add_theme_font_size_override("font_size", 12)
-	_time_label.add_theme_color_override("font_color", Color(0.78, 0.82, 0.76, 1.0))
+	UiStyle.label_muted(_time_label, 12)
 	label_row.add_child(_time_label)
 
 	_progress_bar = ProgressBar.new()
@@ -134,25 +134,12 @@ func _format_seconds(value: float) -> String:
 
 
 func _panel_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.06, 0.065, 0.055, 0.92)
-	style.border_color = Color(0.55, 0.47, 0.22, 1.0)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(4)
-	return style
+	return UiStyle.compact_panel_style()
 
 
 func _bar_background_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.03, 0.035, 0.03, 1.0)
-	style.border_color = Color(0.16, 0.18, 0.15, 1.0)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(2)
-	return style
+	return UiStyle.channel_background_style()
 
 
 func _bar_fill_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.86, 0.68, 0.24, 1.0)
-	style.set_corner_radius_all(2)
-	return style
+	return UiStyle.channel_fill_style()

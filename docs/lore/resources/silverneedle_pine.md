@@ -1,7 +1,7 @@
 # Silverneedle Pine
 
-Silverneedle Pine is one of the first sacred trees players encounter around
-Hearthgrove. It grows tall and straight, with pale bark and long blue-green
+Silverneedle Pine is a pale mountain tree found mostly in the Frostspine
+Mountains. It grows tall and straight, with pale bark and long blue-green
 needles that shine silver under moonlight.
 
 Old woodcutters say the tree was created when Lunara, the Silver Veil, spilled
@@ -22,7 +22,7 @@ Villagers say a Silverneedle remembers every oath spoken beneath its branches.
 ## Resource Names
 
 - Tree node: Silverneedle Pine
-- Raw resource: Silverneedle Logs
+- Raw resource: Silverneedle Pine
 - Refined resource: Silverneedle Beams
 - Rare drop: Silverpine Resin
 - Magical rare drop: Moonlit Resin
@@ -30,9 +30,9 @@ Villagers say a Silverneedle remembers every oath spoken beneath its branches.
 
 ## Crafting Identity
 
-Silverneedle Pine is the starter magical wood. It is common enough for new
-players to gather, but special enough to teach that even basic resources have
-lore, spirits, and crafting value.
+Silverneedle Pine is not the Hearthvale starter wood. Oak fills that role in
+the lore bible. Silverneedle Pine is an early magical wood that becomes
+important once players reach Frostspine content or anti-corruption crafting.
 
 It is especially useful for beginner bows, wooden shields, staves, house beams,
 shop signs, crafting tables, shrine repairs, ward posts around town, and
@@ -67,20 +67,20 @@ harvest corrupted groves.
 **Silverbark Wardens** are large tree spirits that protect ancient
 Silverneedle groves.
 
-## Starting Quest Hook
+## Quest Hook
 
 **The Trees Remember**
 
-A carpenter in Hearthgrove needs Silverneedle Beams to repair the town gate,
-but the nearby grove has become hostile.
+A Frostspine carpenter or Lantern Warden needs Silverneedle Beams to repair
+ward posts near a corrupted pass, but the nearby grove has become hostile.
 
 Quest beats:
 
-- Gather Silverneedle Logs.
+- Gather Silverneedle Pine.
 - Defeat corrupted Needlekin.
 - Find a broken shrine stone in the grove.
 - Leave a pinecone offering.
-- Return to town and craft Silverneedle Beams.
+- Return to camp and craft Silverneedle Beams.
 
 Rewards:
 

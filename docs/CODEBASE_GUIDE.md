@@ -191,8 +191,8 @@ appear, enable `force_hover` on that node to confirm hover detection and outline
 behavior before tuning detection.
 
 Gatherable resources can also set `hover_cursor_texture` on their
-`HoverSelectionRing` node. `SilverneedlePineT1` uses the gather cursor asset so
-hovering a gatherable tree replaces the normal mouse pointer. Tune
+`HoverSelectionRing` node. The T1 Oak Tree prefab uses the gather cursor asset
+so hovering a gatherable tree replaces the normal mouse pointer. Tune
 `hover_cursor_hotspot` if the click point feels offset from the icon. It also
 uses `unavailable_hover_cursor_texture` for the red X cursor shown when the tree
 is depleted and cannot currently be gathered.
@@ -586,25 +586,26 @@ visible until the player drags a valid item into a gear slot.
 
 Silver and gold are owned by `PlayerInventory`, centered in the inventory
 header, and start at `0`. Their labels use fixed-width space and comma
-formatting so larger currency totals stay readable. These values are still local
-prototype data until an economy, wallet, persistence, or server module exists.
+formatting so larger currency totals stay readable. Signed-in playtest accounts
+now save bag, equipped-slot, silver, and gold snapshots through
+`PlayerDatabase`; the economy is still not server-authoritative yet.
 
 `PrototypeItemCatalog` defines eight timber resources. Turning on
 `seed_prototype_resources` in a debug/demo scene can seed these stacks into the
 bag, but the playable prototype now leaves the bag empty by default:
 
-- `Crude Logs I`
-- `Rough Logs II`
-- `Sturdy Logs III`
-- `Seasoned Logs IV`
-- `Hardened Logs V`
-- `Emberwood Logs VI`
-- `Sunheart Logs VII`
-- `Kingswood Logs VIII`
+- `Oak Wood I`
+- `Ironwood II`
+- `Silverneedle Pine III`
+- `Blackroot Wood IV`
+- `Emberwood V`
+- `Sunheart Wood VI`
+- `Kingswood VII`
+- `Elderwood VIII`
 
 It also defines eight stone resources:
 
-- `Crude Stone I`
+- `Clay I`
 - `Rough Stone II`
 - `Sturdy Stone III`
 - `Dense Stone IV`
@@ -615,16 +616,17 @@ It also defines eight stone resources:
 
 And eight ore resources:
 
-- `Crude Ore I`
-- `Rough Ore II`
-- `Sturdy Ore III`
+- `Iron Ore I`
+- `Copper Ore II`
+- `Silver Ore III`
 - `Dense Ore IV`
 - `Hardened Ore V`
 - `Runed Ore VI`
 - `Star Ore VII`
 - `Kingsmetal Ore VIII`
 
-And eight cotton resources:
+And eight cotton resources. Cotton remains a prototype cloth-crafting lane until
+the lore bible defines a dedicated fiber plant:
 
 - `Crude Cotton I`
 - `Rough Cotton II`
@@ -637,8 +639,8 @@ And eight cotton resources:
 
 And eight hide resources:
 
-- `Crude Hide I`
-- `Rough Hide II`
+- `Wolf Hide I`
+- `Deer Hide II`
 - `Thick Hide III`
 - `Cured Hide IV`
 - `Hardened Hide V`
@@ -694,14 +696,17 @@ blue, red, orange, yellow, and white for tiers I through VIII.
 
 `scenes/gathering/trees/SilverneedlePineT1.tscn`
 
-The first project-owned gatherable resource is Silverneedle Pine. It wraps the
-user-authored `assets/trees/Silverneedle_Pine_T1.glb` model and keeps gameplay
-scale, colliders, selection, hover cursor, and gather metadata in the prefab.
+The first project-owned gatherable resource is currently the T1 Oak Tree. The
+scene path still uses its older temporary name, but the player-facing node and
+item names now follow the lore bible: the tree yields `Oak Wood I`. The scene
+wraps the temporary `assets/trees/Silverneedle_Pine_T_var2.glb` model and keeps
+gameplay scale, colliders, selection, hover cursor, and gather metadata in the
+prefab.
 
 The root has `GatherableResource3D`, which stores the resource family, tier,
 yield item id, per-tick yield quantity, gather duration, and remaining gather
-ticks. The Silverneedle prefab pairs it with a neutral `Selectable` area,
-hover cursor support, a selected ring, and a separate trunk collider.
+ticks. The tree prefab pairs it with a neutral `Selectable` area, hover cursor
+support, a selected ring, and a separate trunk collider.
 
 Clicking the tree now starts the first gathering flow:
 
@@ -712,7 +717,7 @@ Clicking the tree now starts the first gathering flow:
 5. `ChannelBar` shows the channel progress.
 6. `PlayerAnimationController` loops the active gathering animation while the
    channel is active.
-7. On completion, `PlayerInventory.add_item("timber_t1", quantity)` adds 1 log.
+7. On completion, `PlayerInventory.add_item("timber_t1", quantity)` adds 1 Oak Wood.
 8. `GatherableResource3D.consume_gather_tick()` subtracts one available tick.
 9. If ticks remain, `PlayerGathering` queues the next gathering channel.
 10. When the final tick is consumed, the full tree hides and only the depleted
@@ -720,7 +725,7 @@ Clicking the tree now starts the first gathering flow:
 11. Every 30 seconds, `GatherableResource3D` restores one missing tick. When
     the first tick returns, the full tree visual and selection come back.
 
-Useful exported values on `SilverneedlePineT1`:
+Useful exported values on the T1 tree:
 
 - `yield_quantity`
 - `max_gather_ticks`
@@ -863,13 +868,13 @@ split it.
 These are expected gaps, not bugs:
 
 - No server-authoritative networking yet.
-- Inventory is local prototype data only; no persistence, trading, crafting,
-  equipment rules, or server authority yet.
-- Stats are tracked but not applied to movement/combat formulas yet.
+- Inventory has prototype player-database persistence, but no trading or
+  server-authoritative economy yet.
+- Stats are tracked and can persist, but most are not applied to final
+  movement/combat formulas yet.
 - No combat abilities yet.
 - No terrain surface detector yet.
-- No save/load persistence yet.
-- No character creation or account system yet.
+- World resources, loot containers, and position are not saved yet.
 
 The next systems should stay small and testable: equipment data, stat modifiers,
 terrain surface detection, gathering nodes, or a first ability prototype.

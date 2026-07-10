@@ -15,6 +15,7 @@ extends Node3D
 	NodePath("RefiningPanel"),
 	NodePath("LootPanel"),
 	NodePath("ChatPanel"),
+	NodePath("TopRightHudMenu"),
 ]
 
 

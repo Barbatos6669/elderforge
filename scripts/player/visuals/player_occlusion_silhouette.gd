@@ -67,6 +67,13 @@ func _exit_tree() -> void:
 	_restore_next_passes()
 
 
+## Recollects materials after the character model changes.
+func refresh_targets() -> void:
+	_collect_excluded_rids()
+	_collect_target_materials()
+	_apply_silhouette_alpha(_current_alpha, true)
+
+
 func _initialize_targets() -> void:
 	_collect_excluded_rids()
 	_collect_target_materials()

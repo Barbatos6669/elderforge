@@ -30,9 +30,9 @@ size = Vector3(0.32, 0.13, 0.24)
 material = SubResource("StandardMaterial3D_depleted")
 size = Vector3(0.25, 0.1, 0.2)
 
-[node name="HearthsteelOreT1" type="Node3D"]
+[node name="IronOreT1" type="Node3D"]
 script = ExtResource("1_gatherable")
-display_name = "Hearthsteel Ore"
+display_name = "Iron Ore"
 resource_family_id = "ore"
 yield_item_id = "ore_t1"
 tier = 1
@@ -76,7 +76,7 @@ shape = SubResource("BoxShape3D_body")
 collision_layer = 8
 collision_mask = 0
 script = ExtResource("3_selectable")
-display_name = "Hearthsteel Ore"
+display_name = "Iron Ore"
 relationship = 2
 neutral_color = Color(0.64, 0.7, 0.76, 1)
 

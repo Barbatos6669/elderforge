@@ -40,6 +40,7 @@ const NETWORK_ACTION_GATHERING := "gathering"
 @onready var combat_state = get_node_or_null("CombatState")
 @onready var respawn = get_node_or_null("Respawn")
 @onready var visuals: Node3D = $Visuals
+@onready var visual_style = get_node_or_null("VisualStyle")
 
 var _pending_refining_station: Node
 var _pending_loot_container: Node
@@ -673,6 +674,8 @@ func _network_vitals() -> Dictionary:
 	if mana != null:
 		vitals["mana_current"] = float(mana.get("current_resource"))
 		vitals["mana_max"] = float(mana.get("max_resource"))
+	if visual_style != null and visual_style.has_method("get_network_appearance"):
+		vitals["appearance"] = visual_style.call("get_network_appearance")
 
 	return vitals
 
@@ -703,6 +706,10 @@ func _apply_remote_vitals(vitals: Dictionary) -> void:
 			mana.call("set_current_resource", current_mana)
 		else:
 			mana.set("current_resource", current_mana)
+
+	var appearance_value: Variant = vitals.get("appearance", {})
+	if visual_style != null and appearance_value is Dictionary and visual_style.has_method("apply_appearance"):
+		visual_style.call("apply_appearance", appearance_value as Dictionary)
 
 	if is_defeated and not _remote_is_defeated:
 		_remote_is_defeated = true

@@ -37,6 +37,13 @@ func _process(_delta: float) -> void:
 		_sync_preview_driven_slots()
 
 
+## Rebinds equipment sockets after the character model is swapped at runtime.
+func refresh_sockets() -> void:
+	_collect_sockets()
+	_hide_socket_previews()
+	_refresh_equipment()
+
+
 ## Allows scenes/tests to bind an inventory directly without relying on groups.
 func set_inventory(inventory: Node) -> void:
 	if _inventory == inventory:

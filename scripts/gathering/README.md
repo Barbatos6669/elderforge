@@ -14,18 +14,21 @@ Files:
 
 Related scenes:
 
-- `scenes/gathering/trees/SilverneedlePineT1.tscn`: first project-owned
-  gatherable tree. It yields `timber_t1` and uses the Silverneedle Pine model.
-- `scenes/gathering/rocks/MoonchalkRockT1.tscn`: T1 stone node. It yields
-  `stone_t1`, uses the Moonchalk rock model, and swaps to placeholder rubble
-  when depleted.
+- `scenes/gathering/trees/SilverneedlePineT1.tscn`: T1 Oak Tree node. It yields
+  `timber_t1`, which displays as `Oak Wood I`. The file still uses the older
+  temporary tree model until an oak source asset replaces it.
+- `scenes/gathering/rocks/MoonchalkRockT1.tscn`: T1 Clay Deposit node. It yields
+  `stone_t1`, which displays as `Clay I`, and swaps to placeholder rubble when
+  depleted.
+- `scenes/gathering/ore/HearthsteelOreT1.tscn`: T1 Iron Ore node. It yields
+  `ore_t1`, which displays as `Iron Ore I`.
 
 Related art:
 
-- `assets/trees/Silverneedle_Pine_T_var2.glb`: Silverneedle Pine model with
+- `assets/trees/Silverneedle_Pine_T_var2.glb`: temporary tree model with
   `Full_Tree`, `Pine_leaves`, `De_Render`, and `Trunk` mesh pieces.
-- `assets/Rocks/Moonchalk_Var1.glb`: Moonchalk Rock model used by the T1 stone
-  resource.
+- `assets/Rocks/Moonchalk_Var1.glb`: temporary rock model used by the T1 Clay
+  Deposit resource.
 
 GDScript notes:
 
@@ -48,14 +51,14 @@ GDScript notes:
 - `replenish_gather_tick()` adds one missing tick, updates visuals, and enables
   selection again if the resource was depleted.
 - `active_visuals_path` and `depleted_visuals_path` are still available for
-  simple scenes. Silverneedle Pine uses `GatherableResourceModelState` instead
+  simple scenes. The T1 Oak Tree uses `GatherableResourceModelState` instead
   because active and depleted mesh pieces live inside one imported `.glb`.
 - `active_mesh_names` are shown while the resource can be gathered.
 - `depleted_mesh_names` are shown after the resource reaches 0 gather ticks.
 - `disabled_mesh_names` keeps unused imported helper meshes hidden without
   deleting them from the source GLB.
-- Player visibility is intentionally separate from gathering state. Silverneedle
-  Pine uses `OccludableVisual3D` to pixel-fade only `Pine_leaves` when they
+- Player visibility is intentionally separate from gathering state. The T1 Oak
+  Tree uses `OccludableVisual3D` to pixel-fade only `Pine_leaves` when they
   block the player. Use the same pattern later for roofs, canopies, or tall
   props.
 - Gatherable scenes should have a separate `StaticBody3D` trunk/rock collider on

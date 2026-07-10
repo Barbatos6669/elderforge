@@ -30,9 +30,9 @@ size = Vector3(0.3, 0.13, 0.26)
 material = SubResource("StandardMaterial3D_depleted")
 size = Vector3(0.24, 0.1, 0.2)
 
-[node name="MoonchalkRockT1" type="Node3D"]
+[node name="ClayDepositT1" type="Node3D"]
 script = ExtResource("1_gatherable")
-display_name = "Moonchalk Rock"
+display_name = "Clay Deposit"
 resource_family_id = "stone"
 yield_item_id = "stone_t1"
 tier = 1
@@ -76,7 +76,7 @@ shape = SubResource("BoxShape3D_body")
 collision_layer = 8
 collision_mask = 0
 script = ExtResource("3_selectable")
-display_name = "Moonchalk Rock"
+display_name = "Clay Deposit"
 relationship = 2
 neutral_color = Color(0.72, 0.72, 0.72, 1)
 

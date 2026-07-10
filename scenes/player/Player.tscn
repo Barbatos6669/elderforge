@@ -30,6 +30,7 @@
 [ext_resource type="Script" path="res://scripts/combat/resource_pool.gd" id="29_resource_pool"]
 [ext_resource type="Script" path="res://scripts/player/lifecycle/player_respawn.gd" id="30_respawn"]
 [ext_resource type="Script" path="res://scripts/player/visuals/player_occlusion_silhouette.gd" id="31_occlusion_silhouette"]
+[ext_resource type="Script" path="res://scripts/player/visuals/player_visual_style.gd" id="32_visual_style"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -124,6 +125,14 @@ click_indicator_scene = ExtResource("7_click_indicator")
 
 [node name="BaseCharacter" parent="Visuals" unique_id=1504128645 instance=ExtResource("8_base_character")]
 transform = Transform3D(-1, 0, 2.5351817e-06, 0, 1, 0, -2.5351817e-06, 0, -1, 0, 0, 0)
+
+[node name="HairAttachment" type="BoneAttachment3D" parent="Visuals/BaseCharacter/Armature/Skeleton3D"]
+bone_name = "Head"
+
+[node name="VisualStyle" type="Node" parent="." node_paths=PackedStringArray("model_root_path")]
+script = ExtResource("32_visual_style")
+model_root_path = NodePath("../Visuals/BaseCharacter")
+use_auth_session_appearance = true
 
 [node name="MainHandAttachment" type="BoneAttachment3D" parent="Visuals/BaseCharacter/Armature/Skeleton3D"]
 bone_name = "hand_r"

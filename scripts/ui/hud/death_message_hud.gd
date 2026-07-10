@@ -6,6 +6,8 @@
 class_name DeathMessageHud
 extends CanvasLayer
 
+const UiStyle := preload("res://scripts/ui/elderforge_ui_style.gd")
+
 ## PlayerRespawn node to observe.
 @export var respawn_path: NodePath
 ## Main text shown while the player is dead.
@@ -22,7 +24,7 @@ var _is_showing := false
 
 
 func _ready() -> void:
-	layer = 30
+	layer = UiStyle.LAYER_MODAL_NOTICE
 	_build_ui()
 	hide_message()
 	call_deferred("_connect_respawn")
@@ -110,10 +112,7 @@ func _build_ui() -> void:
 	_countdown_label = Label.new()
 	_countdown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_countdown_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_countdown_label.add_theme_font_size_override("font_size", 17)
-	_countdown_label.add_theme_color_override("font_color", Color(0.96, 0.90, 0.76, 1.0))
-	_countdown_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	_countdown_label.add_theme_constant_override("outline_size", 2)
+	UiStyle.label_primary(_countdown_label, 17, 2)
 	stack.add_child(_countdown_label)
 
 
@@ -133,9 +132,4 @@ func _on_respawned() -> void:
 
 
 func _panel_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.035, 0.025, 0.025, 0.88)
-	style.border_color = Color(0.55, 0.08, 0.06, 1.0)
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(5)
-	return style
+	return UiStyle.death_panel_style()

@@ -28,6 +28,10 @@ signal equipped_slots_changed
 @export var starting_silver := 0
 ## Prototype gold amount until wallet/economy state exists.
 @export var starting_gold := 0
+## Saves/restores this inventory through the prototype player database for signed-in accounts.
+@export var persist_to_player_database := true
+## Optional explicit account key for test scenes; blank means use PrototypeAuthSession.
+@export var persistence_account_name := ""
 
 var _slots: Array = []
 var _equipped_slots := {}
@@ -36,14 +40,20 @@ var _definitions_by_id := {}
 var _silver := 0
 var _gold := 0
 var _initialized := false
+var _persistence_connected := false
+var _is_applying_persisted_snapshot := false
 
 
 func _ready() -> void:
 	add_to_group("player_inventory")
 	if _initialized:
+		_load_from_player_database()
+		_connect_persistence_signals()
 		return
 
 	initialize(slot_count, starting_silver, starting_gold, seed_prototype_resources)
+	_load_from_player_database()
+	_connect_persistence_signals()
 
 
 ## Rebuilds the inventory with optional prototype seed stacks.
@@ -434,6 +444,86 @@ func move_or_swap_equipped_slots(source_slot_id: String, target_slot_id: String)
 func set_equipped_slots(new_equipped_slots: Dictionary) -> void:
 	_equipped_slots = new_equipped_slots.duplicate(true)
 	equipped_slots_changed.emit()
+
+
+func _connect_persistence_signals() -> void:
+	if _persistence_connected:
+		return
+
+	_persistence_connected = true
+	if not slots_changed.is_connected(_on_persistent_inventory_changed):
+		slots_changed.connect(_on_persistent_inventory_changed)
+	if not equipped_slots_changed.is_connected(_on_persistent_inventory_changed):
+		equipped_slots_changed.connect(_on_persistent_inventory_changed)
+	if not currency_changed.is_connected(_on_persistent_currency_changed):
+		currency_changed.connect(_on_persistent_currency_changed)
+
+
+func _load_from_player_database() -> void:
+	if not persist_to_player_database:
+		return
+
+	var database := _player_database()
+	if database == null or not database.has_method("has_player_inventory") or not database.has_method("get_player_inventory"):
+		return
+
+	var account_key := _persistence_account_key(database)
+	if account_key.is_empty() or not bool(database.call("has_player_inventory", account_key)):
+		return
+
+	var snapshot: Variant = database.call("get_player_inventory", account_key)
+	if not (snapshot is Dictionary):
+		return
+
+	_is_applying_persisted_snapshot = true
+	apply_network_snapshot(snapshot as Dictionary)
+	_is_applying_persisted_snapshot = false
+
+
+func _save_to_player_database() -> void:
+	if not persist_to_player_database or _is_applying_persisted_snapshot:
+		return
+
+	var database := _player_database()
+	if database == null or not database.has_method("set_player_inventory"):
+		return
+
+	var account_key := _persistence_account_key(database)
+	if account_key.is_empty():
+		return
+
+	database.call("set_player_inventory", account_key, get_network_snapshot())
+
+
+func _on_persistent_inventory_changed() -> void:
+	_save_to_player_database()
+
+
+func _on_persistent_currency_changed(_silver_value: int, _gold_value: int) -> void:
+	_save_to_player_database()
+
+
+func _persistence_account_key(database: Node) -> String:
+	var raw_account_name := persistence_account_name.strip_edges()
+	if raw_account_name.is_empty():
+		var auth_session := get_node_or_null("/root/PrototypeAuthSession")
+		if auth_session != null and bool(auth_session.get("is_signed_in")):
+			raw_account_name = String(auth_session.get("account_name")).strip_edges()
+
+	if raw_account_name.is_empty() or raw_account_name == "guest":
+		return ""
+
+	if database != null and database.has_method("normalize_account_name"):
+		return String(database.call("normalize_account_name", raw_account_name))
+
+	return raw_account_name.to_lower()
+
+
+func _player_database() -> Node:
+	if not is_inside_tree():
+		return null
+
+	return get_node_or_null("/root/PlayerDatabase")
 
 
 func _normalize_slot_count() -> void:

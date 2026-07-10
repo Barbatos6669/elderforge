@@ -50,6 +50,15 @@ func _ready() -> void:
 	call_deferred("_setup_animation_player")
 
 
+## Rebuilds the runtime AnimationPlayer after the visible character model swaps.
+func rebuild_animation_player() -> void:
+	if _animation_player != null and is_instance_valid(_animation_player):
+		_animation_player.queue_free()
+	_animation_player = null
+	_animation_library = null
+	call_deferred("_setup_animation_player")
+
+
 ## Switches between idle and movement animation states.
 func set_moving(is_moving: bool) -> void:
 	if _animation_player == null:
@@ -168,6 +177,9 @@ func get_current_animation_progress() -> float:
 
 
 func _setup_animation_player() -> void:
+	if _animation_player != null and is_instance_valid(_animation_player):
+		return
+
 	var model_root := get_node_or_null(model_root_path) as Node
 	if model_root == null or source_animation_scene == null:
 		return
