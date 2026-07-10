@@ -34,7 +34,7 @@ builds/packages/Elderforge_Windows_Playtest.version.json
 
 Send that zip to your tester. They should extract the folder and run
 `Start_Elderforge_Playtest.bat`. The launcher passes the playtest server address
-into the game, then the tester signs in or uses Guest.
+into the game, then the tester signs in or creates a playtest account.
 
 To package a build for a specific LAN or VPN host:
 
@@ -98,7 +98,7 @@ tool such as Tailscale/ZeroTier/Radmin, or forward UDP on the chosen port.
 
 Good things for testers to try:
 
-- Sign in or use Guest.
+- Sign in or create a playtest account.
 - Move, zoom, and click around the starting city.
 - Confirm the client auto-connects after sign-in.
 - Hover/select the player and resources.

@@ -16,6 +16,8 @@ const DEFAULT_HAIR_COLOR := Color(0.16, 0.11, 0.08, 1.0)
 var is_signed_in := false
 var account_name := ""
 var display_name := ""
+var active_character_id := ""
+var join_order := 0
 var auto_join_server := true
 var server_address := "127.0.0.1"
 var server_port := 24566
@@ -27,14 +29,11 @@ var character_hair_color := DEFAULT_HAIR_COLOR
 
 
 ## Creates a local prototype account and signs into it immediately.
-func create_account(raw_account_name: String, raw_display_name: String, password: String) -> Dictionary:
+func create_account(raw_account_name: String, password: String) -> Dictionary:
 	var normalized_name := _normalize_account_name(raw_account_name)
-	var clean_display_name := raw_display_name.strip_edges()
 	var validation_error := _validate_credentials(normalized_name, password)
 	if not validation_error.is_empty():
 		return _failure(validation_error)
-	if clean_display_name.is_empty():
-		return _failure("Enter a character name.")
 
 	var database := _database()
 	if database != null:
@@ -42,43 +41,35 @@ func create_account(raw_account_name: String, raw_display_name: String, password
 		if bool(database.call("has_player", normalized_name)):
 			return _failure("That account already exists.")
 
-		var appearance := _serialized_appearance_from_values(
-			DEFAULT_BODY_TYPE,
-			DEFAULT_SKIN_COLOR,
-			DEFAULT_HAIR_STYLE,
-			DEFAULT_HAIR_COLOR
-		)
 		var create_result: Dictionary = database.call(
 			"create_player",
 			normalized_name,
-			clean_display_name,
+			"",
 			_password_hash(password),
-			appearance
+			{}
 		)
 		if not bool(create_result.get("ok", false)):
 			return _failure(String(create_result.get("message", "Could not create account.")))
 
-		_apply_appearance_from_data(appearance)
-		_sign_in_as(normalized_name, clean_display_name)
-		return _success("Account created.")
+		_apply_join_order_from_record(create_result.get("record", {}))
+		_apply_default_appearance()
+		_sign_in_as(normalized_name, "")
+		return _success("Account created.", true)
 
 	var accounts := _load_accounts()
 	if accounts.has(normalized_name):
 		return _failure("That account already exists.")
 
 	accounts[normalized_name] = {
-		"display_name": clean_display_name,
+		"display_name": "",
 		"password_hash": _password_hash(password),
-		"appearance": _serialized_appearance_from_values(
-			DEFAULT_BODY_TYPE,
-			DEFAULT_SKIN_COLOR,
-			DEFAULT_HAIR_STYLE,
-			DEFAULT_HAIR_COLOR
-		),
+		"appearance": {},
+		"characters": [],
+		"active_character_id": "",
 	}
 	_save_accounts(accounts)
-	_sign_in_as(normalized_name, clean_display_name)
-	return _success("Account created.")
+	_sign_in_as(normalized_name, "")
+	return _success("Account created.", true)
 
 
 ## Signs into an existing local prototype account.
@@ -98,9 +89,10 @@ func sign_in(raw_account_name: String, password: String) -> Dictionary:
 		if String(record.get("password_hash", "")) != _password_hash(password):
 			return _failure("Password does not match.")
 
-		_apply_appearance_from_data(record.get("appearance", {}))
-		_sign_in_as(normalized_name, String(record.get("display_name", normalized_name)))
-		return _success("Signed in.")
+		_apply_join_order_from_record(record)
+		_apply_active_character_from_record(record)
+		_sign_in_as(normalized_name, display_name)
+		return _success("Signed in.", false)
 
 	var accounts := _load_accounts()
 	if not accounts.has(normalized_name):
@@ -110,26 +102,18 @@ func sign_in(raw_account_name: String, password: String) -> Dictionary:
 	if String(account.get("password_hash", "")) != _password_hash(password):
 		return _failure("Password does not match.")
 
-	_apply_appearance_from_data(account.get("appearance", {}))
-	_sign_in_as(normalized_name, String(account.get("display_name", normalized_name)))
-	return _success("Signed in.")
-
-
-## Developer bypass for quick local playtests.
-func play_as_guest(raw_display_name: String) -> Dictionary:
-	var clean_display_name := raw_display_name.strip_edges()
-	if clean_display_name.is_empty():
-		clean_display_name = "Guest"
-
-	_apply_default_appearance()
-	_sign_in_as("guest", clean_display_name)
-	return _success("Playing as guest.")
+	join_order = int(account.get("join_order", 0))
+	_apply_active_character_from_record(account)
+	_sign_in_as(normalized_name, display_name)
+	return _success("Signed in.", false)
 
 
 func sign_out() -> void:
 	is_signed_in = false
 	account_name = ""
 	display_name = ""
+	active_character_id = ""
+	join_order = 0
 	_apply_default_appearance()
 	signed_out.emit()
 
@@ -146,6 +130,74 @@ func set_playtest_server(
 	server_port = clampi(port, 1024, 65535)
 	auto_join_server = should_auto_join
 	playtest_access_code_hash = access_code_hash.strip_edges().to_lower()
+
+
+func get_characters() -> Array:
+	if not is_signed_in or account_name.is_empty():
+		return []
+
+	var database := _database()
+	if database != null and database.has_method("get_player_characters"):
+		var characters: Variant = database.call("get_player_characters", account_name)
+		if characters is Array:
+			return (characters as Array).duplicate(true)
+
+	var account := _legacy_account_record()
+	if account.is_empty():
+		return []
+
+	var raw_characters: Variant = account.get("characters", [])
+	if raw_characters is Array:
+		return (raw_characters as Array).duplicate(true)
+
+	return []
+
+
+func has_characters() -> bool:
+	return not get_characters().is_empty()
+
+
+func can_create_character() -> bool:
+	return get_characters().size() < 3
+
+
+func create_character(character_name: String, appearance: Dictionary) -> Dictionary:
+	if not is_signed_in or account_name.is_empty():
+		return _failure("Sign in before creating a character.")
+	if not can_create_character():
+		return _failure("This account already has three characters.")
+
+	var database := _database()
+	if database != null and database.has_method("create_character"):
+		var result: Dictionary = database.call("create_character", account_name, character_name, appearance)
+		if bool(result.get("ok", false)):
+			_apply_active_character_from_record(result.get("record", {}))
+		return result
+
+	return _create_legacy_character(character_name, appearance)
+
+
+func select_character(character_id: String) -> Dictionary:
+	if not is_signed_in or account_name.is_empty():
+		return _failure("Sign in before selecting a character.")
+
+	var database := _database()
+	if database != null and database.has_method("set_active_character"):
+		if not bool(database.call("set_active_character", account_name, character_id)):
+			return _failure("Character not found.")
+
+		var record: Dictionary = database.call("get_player", account_name)
+		_apply_active_character_from_record(record)
+		return _success("Character selected.", false)
+
+	var characters := get_characters()
+	for character in characters:
+		if String((character as Dictionary).get("character_id", "")) == character_id:
+			_apply_character_record(character as Dictionary)
+			_save_legacy_active_character(character_id, character as Dictionary)
+			return _success("Character selected.", false)
+
+	return _failure("Character not found.")
 
 
 ## Stores the appearance selected on the character screen.
@@ -172,6 +224,25 @@ func get_character_appearance() -> Dictionary:
 	)
 
 
+## Applies trusted profile metadata returned by the playtest server.
+func apply_server_profile(profile: Dictionary) -> void:
+	if not is_signed_in:
+		return
+
+	var server_account := _normalize_account_name(String(profile.get("account_name", "")))
+	if not server_account.is_empty() and server_account != account_name:
+		return
+
+	join_order = maxi(int(profile.get("join_order", join_order)), 0)
+	active_character_id = String(profile.get("active_character_id", active_character_id)).strip_edges()
+	var server_display_name := String(profile.get("display_name", "")).strip_edges()
+	if not server_display_name.is_empty():
+		display_name = server_display_name
+	var server_appearance: Variant = profile.get("appearance", {})
+	if server_appearance is Dictionary:
+		_apply_appearance_from_data(server_appearance)
+
+
 func _sign_in_as(new_account_name: String, new_display_name: String) -> void:
 	is_signed_in = true
 	account_name = new_account_name
@@ -184,6 +255,48 @@ func _apply_default_appearance() -> void:
 	character_skin_color = DEFAULT_SKIN_COLOR
 	character_hair_style = DEFAULT_HAIR_STYLE
 	character_hair_color = DEFAULT_HAIR_COLOR
+
+
+func _apply_active_character_from_record(raw_record: Variant) -> void:
+	if not (raw_record is Dictionary):
+		display_name = ""
+		active_character_id = ""
+		_apply_default_appearance()
+		return
+
+	var record := raw_record as Dictionary
+	active_character_id = String(record.get("active_character_id", record.get("character_id", ""))).strip_edges()
+	var active_character := {}
+	var raw_characters: Variant = record.get("characters", [])
+	if raw_characters is Array:
+		for raw_character in (raw_characters as Array):
+			if not (raw_character is Dictionary):
+				continue
+
+			var character := raw_character as Dictionary
+			if String(character.get("character_id", "")) == active_character_id:
+				active_character = character
+				break
+
+	if active_character.is_empty() and raw_characters is Array and not (raw_characters as Array).is_empty():
+		var first_character: Variant = (raw_characters as Array)[0]
+		if first_character is Dictionary:
+			active_character = first_character as Dictionary
+			active_character_id = String(active_character.get("character_id", ""))
+
+	if active_character.is_empty():
+		display_name = ""
+		active_character_id = ""
+		_apply_default_appearance()
+		return
+
+	_apply_character_record(active_character)
+
+
+func _apply_character_record(character: Dictionary) -> void:
+	active_character_id = String(character.get("character_id", active_character_id)).strip_edges()
+	display_name = String(character.get("display_name", "")).strip_edges()
+	_apply_appearance_from_data(character.get("appearance", {}))
 
 
 func _apply_appearance_from_data(raw_data: Variant) -> void:
@@ -199,7 +312,7 @@ func _apply_appearance_from_data(raw_data: Variant) -> void:
 
 
 func _save_current_account_appearance() -> void:
-	if not is_signed_in or account_name.is_empty() or account_name == "guest":
+	if not is_signed_in or account_name.is_empty():
 		return
 
 	var database := _database()
@@ -286,6 +399,11 @@ func _color_from_html(raw_value: String, fallback: Color) -> Color:
 	return _sanitize_color(Color.html(clean_value), fallback)
 
 
+func _apply_join_order_from_record(raw_record: Variant) -> void:
+	if raw_record is Dictionary:
+		join_order = maxi(int((raw_record as Dictionary).get("join_order", 0)), 0)
+
+
 func _load_accounts() -> Dictionary:
 	var database := _database()
 	if database != null and database.has_method("get_account_map"):
@@ -314,6 +432,61 @@ func _save_accounts(accounts: Dictionary) -> void:
 		return
 
 	file.store_string(JSON.stringify(accounts, "\t"))
+
+
+func _legacy_account_record() -> Dictionary:
+	if account_name.is_empty():
+		return {}
+
+	var accounts := _load_legacy_accounts()
+	var raw_account: Variant = accounts.get(account_name, {})
+	return raw_account as Dictionary if raw_account is Dictionary else {}
+
+
+func _create_legacy_character(character_name: String, appearance: Dictionary) -> Dictionary:
+	var clean_name := character_name.strip_edges()
+	if clean_name.is_empty():
+		return _failure("Enter a character name.")
+
+	var accounts := _load_legacy_accounts()
+	var raw_account: Variant = accounts.get(account_name, {})
+	var account := raw_account as Dictionary if raw_account is Dictionary else {}
+	var characters := []
+	var raw_characters: Variant = account.get("characters", [])
+	if raw_characters is Array:
+		characters = (raw_characters as Array).duplicate(true)
+	if characters.size() >= 3:
+		return _failure("This account already has three characters.")
+
+	var slot_number := characters.size() + 1
+	var character := {
+		"character_id": "%s:main:%d" % [account_name, slot_number],
+		"slot_number": slot_number,
+		"display_name": clean_name,
+		"appearance": appearance.duplicate(true),
+	}
+	characters.append(character)
+	account["characters"] = characters
+	account["active_character_id"] = String(character["character_id"])
+	account["display_name"] = clean_name
+	account["appearance"] = appearance.duplicate(true)
+	accounts[account_name] = account
+	_save_accounts(accounts)
+	_apply_character_record(character)
+	return _success("Character created.", false)
+
+
+func _save_legacy_active_character(character_id: String, character: Dictionary) -> void:
+	var accounts := _load_legacy_accounts()
+	if not accounts.has(account_name):
+		return
+
+	var account := accounts[account_name] as Dictionary
+	account["active_character_id"] = character_id
+	account["display_name"] = String(character.get("display_name", ""))
+	account["appearance"] = character.get("appearance", {})
+	accounts[account_name] = account
+	_save_accounts(accounts)
 
 
 func _migrate_legacy_accounts_to_database(database: Node) -> void:
@@ -347,10 +520,11 @@ func _database() -> Node:
 	return get_node_or_null("/root/PlayerDatabase")
 
 
-func _success(message: String) -> Dictionary:
+func _success(message: String, created_account: bool = false) -> Dictionary:
 	return {
 		"ok": true,
 		"message": message,
+		"created_account": created_account,
 	}
 
 

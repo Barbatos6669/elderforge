@@ -1,20 +1,16 @@
 ## First-pass sign-in and account creation screen.
 ##
 ## The panel owns UI state only. PrototypeAuthSession owns the local mock
-## account data, and gameplay nodes receive only the signed-in display name.
+## account data. Character identity is chosen after account sign-in.
 class_name AuthPanel
 extends CanvasLayer
 
-signal authentication_succeeded(display_name: String)
+signal authentication_succeeded(created_account: bool)
 
 const WORLD_INPUT_BLOCKER_GROUP := "blocking_world_input"
 const PLAYTEST_CONFIG_FILE := "playtest_server.cfg"
 
 @export var start_visible := true
-@export var default_display_name := "Barabtos6669"
-@export var player_path: NodePath
-@export var status_hud_path: NodePath
-@export var network_manager_path: NodePath
 @export var auto_join_after_sign_in := true
 @export var playtest_server_address := "127.0.0.1"
 @export_range(1024, 65535, 1) var playtest_server_port := 24566
@@ -27,12 +23,10 @@ var _window: PanelContainer
 var _title_label: Label
 var _account_field: LineEdit
 var _password_field: LineEdit
-var _display_name_field: LineEdit
 var _playtest_code_field: LineEdit
 var _status_label: Label
 var _sign_in_button: Button
 var _create_button: Button
-var _guest_button: Button
 var _prefilled_playtest_code := ""
 
 
@@ -110,8 +104,6 @@ func _build_ui() -> void:
 
 	_account_field = _build_field(layout, "Account", false)
 	_password_field = _build_field(layout, "Password", true)
-	_display_name_field = _build_field(layout, "Character Name", false)
-	_display_name_field.text = default_display_name
 	_playtest_code_field = _build_field(layout, "Playtest Code", true)
 	_playtest_code_field.text = _prefilled_playtest_code
 
@@ -127,10 +119,6 @@ func _build_ui() -> void:
 	_create_button.pressed.connect(_on_create_pressed)
 	button_row.add_child(_create_button)
 
-	_guest_button = _build_button("Guest")
-	_guest_button.pressed.connect(_on_guest_pressed)
-	button_row.add_child(_guest_button)
-
 	_status_label = Label.new()
 	_status_label.custom_minimum_size = Vector2(0.0, 30.0)
 	_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -142,7 +130,6 @@ func _build_ui() -> void:
 
 	_account_field.text_submitted.connect(_on_text_submitted)
 	_password_field.text_submitted.connect(_on_text_submitted)
-	_display_name_field.text_submitted.connect(_on_text_submitted)
 	_playtest_code_field.text_submitted.connect(_on_text_submitted)
 
 
@@ -187,16 +174,7 @@ func _on_create_pressed() -> void:
 		return
 	if not _validate_playtest_access_code():
 		return
-	_handle_auth_result(_session.create_account(_account_field.text, _display_name_field.text, _password_field.text))
-
-
-func _on_guest_pressed() -> void:
-	if _session == null:
-		_set_status("Auth session not available.")
-		return
-	if not _validate_playtest_access_code():
-		return
-	_handle_auth_result(_session.play_as_guest(_display_name_field.text))
+	_handle_auth_result(_session.create_account(_account_field.text, _password_field.text))
 
 
 func _on_text_submitted(_submitted_text: String) -> void:
@@ -216,28 +194,8 @@ func _handle_auth_result(result: Dictionary) -> void:
 			auto_join_after_sign_in,
 			_entered_playtest_code_hash()
 		)
-	_apply_signed_in_display_name(_session.display_name)
-	authentication_succeeded.emit(String(_session.display_name))
+	authentication_succeeded.emit(bool(result.get("created_account", false)))
 	close()
-
-
-func _apply_signed_in_display_name(new_display_name: String) -> void:
-	var clean_name := new_display_name.strip_edges()
-	if clean_name.is_empty():
-		clean_name = default_display_name
-
-	var player := get_node_or_null(player_path)
-	var nameplate := player.get_node_or_null("Nameplate") if player != null else null
-	if nameplate != null and nameplate.has_method("set_player_name"):
-		nameplate.call("set_player_name", clean_name)
-
-	var status_hud := get_node_or_null(status_hud_path)
-	if status_hud != null and status_hud.has_method("set_player_name"):
-		status_hud.call("set_player_name", clean_name)
-
-	var network_manager := get_node_or_null(network_manager_path)
-	if network_manager != null and network_manager.has_method("set_local_player_name"):
-		network_manager.call("set_local_player_name", clean_name)
 
 
 func _focus_first_field() -> void:

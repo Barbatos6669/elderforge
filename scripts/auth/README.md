@@ -2,10 +2,10 @@
 
 Authentication starts here while the project is still local/direct-connect.
 
-- `prototype_auth_session.gd`: stores throwaway local accounts in `user://` and
-  emits the signed-in display name used by the nameplate, HUD, and multiplayer
-  test panel. It now writes account, password hash, and appearance data through
-  `/root/PlayerDatabase`, while still migrating older
+- `prototype_auth_session.gd`: stores throwaway local accounts in `user://`,
+  signs players into an account, and tracks the active character selected for
+  that session. It now writes account, password hash, join order, and up to
+  three character slots through `/root/PlayerDatabase`, and still migrates older
   `user://prototype_accounts.json` saves. It also carries the playtest server
   address and playtest access code hash from the sign-in UI into the world
   scene.

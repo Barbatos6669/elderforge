@@ -57,6 +57,7 @@ const CUSTOMIZATION_STEPS: Array[Dictionary] = [
 
 @export_file("*.tscn") var game_scene_path := "res://scenes/world/starting_city/StartingCity.tscn"
 @export_file("*.tscn") var sign_in_scene_path := "res://scenes/bootstrap/SignInGateway.tscn"
+@export_file("*.tscn") var character_selection_scene_path := "res://scenes/ui/auth/CharacterSelectionScreen.tscn"
 
 var _session: Node
 var _current_step_index := 0
@@ -71,6 +72,7 @@ var _option_pages := {}
 var _skin_buttons: Array[Button] = []
 var _hair_color_buttons: Array[Button] = []
 var _preview: Control
+var _character_name_field: LineEdit
 var _step_status_label: Label
 var _status_label: Label
 var _zoom_slider: HSlider
@@ -85,6 +87,8 @@ func _ready() -> void:
 	_load_session_appearance()
 	_build_ui()
 	_refresh_controls()
+	if _character_name_field != null:
+		_character_name_field.call_deferred("grab_focus")
 
 
 func blocks_world_input() -> bool:
@@ -138,15 +142,18 @@ func _build_options_panel() -> PanelContainer:
 	layout.add_theme_constant_override("separation", 8)
 	margin.add_child(layout)
 
-	var display_name := _display_name()
-	var title := _make_label("%s's" % display_name, 14, COLOR_TEXT_DIM)
+	var title := _make_label("%s's Account" % _account_name(), 14, COLOR_TEXT_DIM)
 	layout.add_child(title)
 
-	var heading := _make_label("Appearance", 30, COLOR_GOLD)
+	var heading := _make_label("Create Character", 30, COLOR_GOLD)
 	layout.add_child(heading)
 
 	var divider := HSeparator.new()
 	layout.add_child(divider)
+
+	_character_name_field = _make_text_field("Character Name")
+	_character_name_field.text_changed.connect(_on_character_name_changed)
+	layout.add_child(_character_name_field)
 
 	layout.add_child(_build_step_selector())
 	_step_status_label = _make_label("", 13, COLOR_TEXT_DIM)
@@ -424,6 +431,11 @@ func _on_hair_color_selected(hair_color: Color) -> void:
 	_refresh_controls()
 
 
+func _on_character_name_changed(_new_text: String) -> void:
+	if _status_label != null:
+		_status_label.text = _display_name()
+
+
 func _on_step_selected(step_index: int) -> void:
 	_current_step_index = clampi(step_index, 0, CUSTOMIZATION_STEPS.size() - 1)
 	_refresh_controls()
@@ -479,13 +491,30 @@ func _on_reset_pressed() -> void:
 
 
 func _on_back_pressed() -> void:
+	if _session != null and _session.has_method("has_characters") and bool(_session.call("has_characters")):
+		get_tree().change_scene_to_file(character_selection_scene_path)
+		return
+
 	if _session != null and _session.has_method("sign_out"):
 		_session.call("sign_out")
 	get_tree().change_scene_to_file(sign_in_scene_path)
 
 
 func _on_enter_world_pressed() -> void:
-	_save_session_appearance()
+	var character_name := _character_name()
+	if character_name.is_empty():
+		_set_status("Enter a character name.")
+		return
+
+	var appearance := _current_appearance()
+	if _session != null and _session.has_method("create_character"):
+		var result: Dictionary = _session.call("create_character", character_name, appearance)
+		if not bool(result.get("ok", false)):
+			_set_status(String(result.get("message", "Could not create character.")))
+			return
+	elif _session != null and _session.has_method("set_character_appearance"):
+		_save_session_appearance()
+
 	get_tree().change_scene_to_file(game_scene_path)
 
 
@@ -511,6 +540,15 @@ func _save_session_appearance() -> void:
 		_selected_hair_style,
 		_selected_hair_color
 	)
+
+
+func _current_appearance() -> Dictionary:
+	return {
+		"body_type": _selected_body_type,
+		"skin_color": _selected_skin_color.to_html(true),
+		"hair_style": _selected_hair_style,
+		"hair_color": _selected_hair_color.to_html(true),
+	}
 
 
 func _refresh_controls() -> void:
@@ -583,12 +621,32 @@ func _apply_swatch_selection_styles(buttons: Array[Button], selected_color: Colo
 		button.add_theme_stylebox_override("pressed", _swatch_style(color.darkened(0.08), true))
 
 
-func _display_name() -> String:
-	if _session == null:
-		return "Player"
+func _set_status(message: String) -> void:
+	if _status_label != null:
+		_status_label.text = message
 
-	var display_name := String(_session.get("display_name")).strip_edges()
-	return display_name if not display_name.is_empty() else "Player"
+
+func _character_name() -> String:
+	if _character_name_field == null:
+		return ""
+
+	return _character_name_field.text.strip_edges()
+
+
+func _display_name() -> String:
+	var character_name := _character_name()
+	if not character_name.is_empty():
+		return character_name
+
+	return "New Character"
+
+
+func _account_name() -> String:
+	if _session == null:
+		return "Account"
+
+	var account_name := String(_session.get("account_name")).strip_edges()
+	return account_name if not account_name.is_empty() else "Account"
 
 
 func _sanitize_body_type(body_type: String) -> String:
@@ -628,6 +686,19 @@ func _make_section_label(text: String) -> Label:
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_stylebox_override("normal", _panel_style(Color(0.09, 0.1, 0.09, 0.92), COLOR_PANEL_BORDER, 1))
 	return label
+
+
+func _make_text_field(placeholder: String) -> LineEdit:
+	var field := LineEdit.new()
+	field.placeholder_text = placeholder
+	field.custom_minimum_size = Vector2(0.0, 36.0)
+	field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	field.add_theme_font_size_override("font_size", 15)
+	field.add_theme_color_override("font_color", COLOR_TEXT)
+	field.add_theme_color_override("font_placeholder_color", COLOR_TEXT_DIM)
+	field.add_theme_stylebox_override("normal", _input_style(false))
+	field.add_theme_stylebox_override("focus", _input_style(true))
+	return field
 
 
 func _make_button(text: String) -> Button:
@@ -682,6 +753,19 @@ func _button_style(background: Color, border: Color, border_width: int = 1) -> S
 	style.border_color = border
 	style.set_border_width_all(border_width)
 	style.set_corner_radius_all(5)
+	return style
+
+
+func _input_style(is_focused: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = COLOR_PANEL_DARK
+	style.border_color = COLOR_PANEL_BORDER_HOT if is_focused else COLOR_PANEL_BORDER
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(4)
+	style.content_margin_left = 10.0
+	style.content_margin_right = 10.0
+	style.content_margin_top = 7.0
+	style.content_margin_bottom = 7.0
 	return style
 
 

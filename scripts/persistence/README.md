@@ -6,8 +6,9 @@ Files:
 
 - `player_database.gd`: file-backed player database autoload. It stores player
   records in `user://player_database.json` with account name, display name,
-  password hash for the prototype sign-in flow, appearance, inventory snapshots,
-  stat snapshots, and last-position space for later.
+  password hash for the prototype sign-in flow, server-local join order,
+  appearance, inventory snapshots, stat snapshots, and last-position space for
+  later.
 - `json_player_database_backend.gd`: active storage backend for the current
   playtest. It reads and writes the whole player database snapshot as JSON.
 - `sqlite_player_database_backend.gd`: dormant backend slot for the next

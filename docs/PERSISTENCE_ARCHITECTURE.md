@@ -8,9 +8,10 @@ Postgres, or a remote service.
 
 - Active backend: JSON.
 - File: `user://player_database.json`.
-- Owned data today: account name, display name, prototype password hash,
-  appearance, inventory snapshot, stat snapshot, item transaction history, and
-  position fields.
+- Owned data today: account name, prototype password hash, server-local join
+  order, up to three character slots, active character id, character display
+  name, appearance, inventory snapshot, stat snapshot, item transaction history,
+  and position fields.
 
 JSON is still useful while systems are moving quickly because it has no server
 setup cost and is easy to inspect during playtests.
@@ -41,6 +42,7 @@ Use stable IDs now even when there is only one world:
 - `character_id`
 - `world_id`
 - `zone_id`
+- `join_order`
 
 That lets us add zone servers, multiple worlds, or a larger database later
 without rewriting every save record.

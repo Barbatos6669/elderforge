@@ -112,9 +112,9 @@ const DETAIL_CONTENT := {
 	"characters": {
 		"title": "Characters",
 		"left_title": "Known People",
-		"items": ["Barabtos6669", "Hearthbridge Guard", "Tool Maker"],
-		"selected": "Barabtos6669",
-		"right_title": "Barabtos6669",
+		"items": ["Player", "Hearthbridge Guard", "Tool Maker"],
+		"selected": "Player",
+		"right_title": "Player",
 		"description": "A new arrival in Hearthbridge with a growing collection of tools, crafting notes, and unfinished town work.",
 	},
 	"books": {

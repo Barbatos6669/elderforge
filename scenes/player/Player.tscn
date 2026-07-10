@@ -142,7 +142,7 @@ use_preview_transform = false
 
 [node name="Nameplate" parent="." unique_id=889818390 instance=ExtResource("15_nameplate")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 0)
-player_name = "Barabtos6669"
+player_name = "Player"
 health_source_path = NodePath("../Health")
 
 [node name="ChannelBar" parent="." unique_id=202133527 instance=ExtResource("22_channel_bar")]

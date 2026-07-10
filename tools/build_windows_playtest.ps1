@@ -271,7 +271,7 @@ $statusMetadata |
 $readmeContents = @"
 Elderforge Windows Playtest
 
-Run Elderforge_Playtest.exe, then sign in or use Guest.
+Run Elderforge_Playtest.exe, then sign in or create a playtest account.
 The game automatically connects to $ServerAddress`:$ServerPort using playtest_server.cfg.
 If this playtest requires a code, enter the shared playtest code on the sign-in screen.
 

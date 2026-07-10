@@ -348,9 +348,18 @@ func _server_submit_playtest_code(
 
 	var clean_hash := playtest_code_hash.strip_edges().to_lower()
 	if _is_playtest_code_accepted(clean_hash):
+		var account_result := _server_account_result(player_account_name)
+		if not bool(account_result.get("accepted", false)):
+			var account_message := String(account_result.get("message", "Sign in before joining."))
+			rpc_id(sender_id, "_client_receive_playtest_code_result", false, account_message)
+			_set_status("Rejected peer %d: %s" % [sender_id, account_message])
+			if _peer != null:
+				_peer.disconnect_peer(sender_id)
+			return
+
 		_authorized_peers[sender_id] = true
 		var clean_display_name := _sanitize_display_name(player_name)
-		var account_key := _normalize_player_account_name(player_account_name, sender_id)
+		var account_key := String(account_result.get("account_name", ""))
 		_peer_display_names[sender_id] = clean_display_name
 		_peer_account_names[sender_id] = account_key
 		var profile := _server_player_profile(account_key, clean_display_name, appearance)
@@ -368,6 +377,10 @@ func _server_submit_playtest_code(
 
 @rpc("authority", "reliable")
 func _client_receive_player_database_profile(profile: Dictionary) -> void:
+	var auth_session := _auth_session()
+	if auth_session != null and auth_session.has_method("apply_server_profile"):
+		auth_session.call("apply_server_profile", profile)
+
 	var inventory := _get_local_inventory()
 	if inventory == null or not inventory.has_method("apply_network_snapshot"):
 		return
@@ -1013,6 +1026,9 @@ func _server_player_profile(account_key: String, display_name: String, appearanc
 	var safe_profile := {
 		"account_name": account_key,
 		"display_name": _sanitize_display_name(display_name),
+		"active_character_id": "",
+		"characters": [],
+		"join_order": 0,
 		"appearance": appearance.duplicate(true),
 		"inventory": {},
 	}
@@ -1024,7 +1040,10 @@ func _server_player_profile(account_key: String, display_name: String, appearanc
 	var record_variant: Variant = database.call("get_or_create_player", account_key, display_name, appearance)
 	if record_variant is Dictionary:
 		var record := record_variant as Dictionary
+		safe_profile["join_order"] = maxi(int(record.get("join_order", 0)), 0)
 		safe_profile["display_name"] = _sanitize_display_name(String(record.get("display_name", display_name)))
+		safe_profile["active_character_id"] = String(record.get("active_character_id", ""))
+		safe_profile["characters"] = _safe_character_summaries(record.get("characters", []))
 		var record_appearance: Variant = record.get("appearance", appearance)
 		if record_appearance is Dictionary:
 			safe_profile["appearance"] = (record_appearance as Dictionary).duplicate(true)
@@ -1039,6 +1058,36 @@ func _server_player_profile(account_key: String, display_name: String, appearanc
 			safe_profile["inventory"] = _sanitize_inventory_snapshot(inventory_variant)
 
 	return safe_profile
+
+
+func _server_account_result(raw_account_name: String) -> Dictionary:
+	var clean_name := raw_account_name.strip_edges()
+	if clean_name.is_empty() or clean_name.to_lower() == "guest":
+		return {
+			"accepted": false,
+			"account_name": "",
+			"message": "Sign in with an account before joining.",
+		}
+
+	var database := _player_database()
+	var normalized := ""
+	if database != null and database.has_method("normalize_account_name"):
+		normalized = String(database.call("normalize_account_name", clean_name))
+	else:
+		normalized = _normalize_player_account_name(clean_name, 0)
+
+	if normalized.is_empty() or normalized == "guest":
+		return {
+			"accepted": false,
+			"account_name": "",
+			"message": "Sign in with an account before joining.",
+		}
+
+	return {
+		"accepted": true,
+		"account_name": normalized,
+		"message": "",
+	}
 
 
 func _save_peer_inventory_snapshot(peer_id: int, snapshot: Dictionary) -> void:
@@ -1147,6 +1196,31 @@ func _sanitize_inventory_stack(raw_stack: Variant) -> Dictionary:
 		"item_id": item_id,
 		"quantity": quantity,
 	}
+
+
+func _safe_character_summaries(raw_characters: Variant) -> Array:
+	var output := []
+	if not (raw_characters is Array):
+		return output
+
+	for raw_character in (raw_characters as Array):
+		if not (raw_character is Dictionary):
+			continue
+
+		var character := raw_character as Dictionary
+		output.append({
+			"character_id": String(character.get("character_id", "")),
+			"slot_number": int(character.get("slot_number", output.size() + 1)),
+			"display_name": _sanitize_display_name(String(character.get("display_name", ""))),
+			"appearance": _dictionary_copy(character.get("appearance", {})),
+		})
+	return output
+
+
+func _dictionary_copy(raw_value: Variant) -> Dictionary:
+	if raw_value is Dictionary:
+		return (raw_value as Dictionary).duplicate(true)
+	return {}
 
 
 func _sanitize_chat_message(message: String) -> String:

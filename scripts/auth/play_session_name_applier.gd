@@ -1,4 +1,4 @@
-## Applies the signed-in display name from the auth session to the playable scene.
+## Applies the active character name from the auth session to the playable scene.
 class_name PlaySessionNameApplier
 extends Node
 

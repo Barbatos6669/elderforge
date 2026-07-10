@@ -6,6 +6,7 @@ extends Node
 
 @export_file("*.tscn") var game_scene_path := "res://scenes/world/starting_city/StartingCity.tscn"
 @export_file("*.tscn") var character_scene_path := "res://scenes/ui/auth/CharacterCustomizationScreen.tscn"
+@export_file("*.tscn") var character_selection_scene_path := "res://scenes/ui/auth/CharacterSelectionScreen.tscn"
 @export var auth_panel_path: NodePath = NodePath("AuthPanel")
 
 
@@ -19,8 +20,13 @@ func _ready() -> void:
 		auth_panel.authentication_succeeded.connect(_on_authentication_succeeded)
 
 
-func _on_authentication_succeeded(_display_name: String) -> void:
-	_enter_character_scene()
+func _on_authentication_succeeded(created_account: bool) -> void:
+	var session := get_node_or_null("/root/PrototypeAuthSession")
+	if created_account or session == null or not session.has_method("has_characters") or not bool(session.call("has_characters")):
+		_enter_character_scene()
+		return
+
+	_enter_character_selection_scene()
 
 
 func _enter_character_scene() -> void:
@@ -29,6 +35,14 @@ func _enter_character_scene() -> void:
 		return
 
 	get_tree().change_scene_to_file(character_scene_path)
+
+
+func _enter_character_selection_scene() -> void:
+	if character_selection_scene_path.strip_edges().is_empty():
+		_enter_character_scene()
+		return
+
+	get_tree().change_scene_to_file(character_selection_scene_path)
 
 
 func _enter_game_scene() -> void:

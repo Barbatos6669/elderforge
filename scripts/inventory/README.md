@@ -55,8 +55,8 @@ GDScript notes:
 - Equipment can set `equipment_animation_profile_path` when the item needs
   tool-specific or weapon-specific animation choices.
 - `persist_to_player_database` saves/restores signed-in account inventories
-  through the `PlayerDatabase` autoload. Guest sessions are intentionally not
-  persisted.
+  through the `PlayerDatabase` autoload. Public playtests now require a signed-in
+  account so each player keeps one persistent profile.
 
 Common edit points:
 
