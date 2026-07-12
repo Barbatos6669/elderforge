@@ -33,5 +33,5 @@ state use those IDs internally.
   bible gets a dedicated fiber plant line.
 - Moonleaf, Basic Herbs, and Grave Moss are lore-correct Hearthvale alchemy
   resources, but they do not have gatherable node prefabs yet.
-- The T1 tree scene still points at the temporary Silverneedle GLB file, but its
-  player-facing name is Oak Tree until we replace the art with an oak model.
+- The T1 tree prefab now uses the nature pack CommonTree art while keeping the
+  lore-facing Oak Tree / Oak Wood I naming.

@@ -37,6 +37,10 @@ const SILHOUETTE_OUTLINE_SHADER := preload("res://assets/materials/characters/ch
 ## Extra brightness on the filled silhouette.
 @export_range(0.0, 2.0, 0.01) var fill_strength: float = 0.86
 
+@export_group("Performance")
+## Limits raycasts and visual-occluder scans. The silhouette fade still updates every frame.
+@export_range(1.0, 60.0, 1.0) var occlusion_check_hz := 15.0
+
 var _character: Node3D
 var _silhouette_material: ShaderMaterial
 var _silhouette_outline_material: ShaderMaterial
@@ -45,6 +49,10 @@ var _original_next_passes := {}
 var _excluded_rids: Array[RID] = []
 var _current_alpha := 0.0
 var _target_alpha := 0.0
+var _occlusion_check_elapsed := 0.0
+var _last_occlusion_state := false
+var _last_applied_alpha := -1.0
+var _next_pass_enabled := false
 
 
 func _ready() -> void:
@@ -57,7 +65,12 @@ func _process(delta: float) -> void:
 	if _character == null or _tracked_materials.is_empty():
 		return
 
-	_target_alpha = silhouette_color.a if _is_player_occluded() else 0.0
+	_occlusion_check_elapsed += maxf(delta, 0.0)
+	if _occlusion_check_elapsed >= _occlusion_check_interval():
+		_occlusion_check_elapsed = 0.0
+		_last_occlusion_state = _is_player_occluded()
+
+	_target_alpha = silhouette_color.a if _last_occlusion_state else 0.0
 	var duration := fade_in_seconds if _target_alpha > _current_alpha else fade_out_seconds
 	_current_alpha = move_toward(_current_alpha, _target_alpha, delta / maxf(duration, 0.001))
 	_apply_silhouette_alpha(_current_alpha)
@@ -77,6 +90,8 @@ func refresh_targets() -> void:
 func _initialize_targets() -> void:
 	_collect_excluded_rids()
 	_collect_target_materials()
+	_last_occlusion_state = _is_player_occluded()
+	_target_alpha = silhouette_color.a if _last_occlusion_state else 0.0
 	_apply_silhouette_alpha(_current_alpha, true)
 
 
@@ -193,6 +208,11 @@ func _apply_silhouette_alpha(alpha: float, force: bool = false) -> void:
 		return
 
 	var safe_alpha := clampf(alpha, 0.0, silhouette_color.a)
+	var should_enable := safe_alpha > 0.01
+	if not force and absf(safe_alpha - _last_applied_alpha) <= 0.002 and should_enable == _next_pass_enabled:
+		return
+
+	_last_applied_alpha = safe_alpha
 	_silhouette_material.set_shader_parameter(
 		"silhouette_color",
 		Color(silhouette_color.r, silhouette_color.g, silhouette_color.b, safe_alpha)
@@ -206,19 +226,24 @@ func _apply_silhouette_alpha(alpha: float, force: bool = false) -> void:
 		)
 		_silhouette_outline_material.set_shader_parameter("outline_width", outline_width)
 
-	var should_enable := safe_alpha > 0.01
 	for material in _tracked_materials:
 		if material == null:
 			continue
 
-		if should_enable:
+		if should_enable and (force or not _next_pass_enabled):
 			if force or material.next_pass != _silhouette_material:
 				material.next_pass = _silhouette_material
-		elif force or material.next_pass == _silhouette_material:
+		elif not should_enable and (force or _next_pass_enabled or material.next_pass == _silhouette_material):
 			material.next_pass = _original_next_passes.get(material)
+
+	_next_pass_enabled = should_enable
 
 
 func _restore_next_passes() -> void:
 	for material in _original_next_passes.keys():
 		if material != null and material.next_pass == _silhouette_material:
 			material.next_pass = _original_next_passes[material]
+
+
+func _occlusion_check_interval() -> float:
+	return 1.0 / maxf(occlusion_check_hz, 1.0)

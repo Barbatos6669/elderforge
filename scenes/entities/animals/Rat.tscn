@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="PackedScene" uid="uid://ce5rlviapqld2" path="res://assets/animals/rat/Rat.glb" id="1_rat_model"]
 [ext_resource type="Script" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
@@ -12,6 +12,9 @@
 [ext_resource type="Script" path="res://scripts/combat/damage_number_emitter_3d.gd" id="10_damage_numbers"]
 [ext_resource type="Script" path="res://scripts/entities/animals/animal_animation_controller.gd" id="11_animal_animation"]
 [ext_resource type="Script" path="res://scripts/entities/animals/skinnable_animal_3d.gd" id="12_skinnable_animal"]
+[ext_resource type="Script" path="res://scripts/stats/entity_stats.gd" id="13_entity_stats"]
+[ext_resource type="Script" path="res://scripts/stats/forged_trait_loadout.gd" id="14_forged_traits"]
+[ext_resource type="Script" path="res://scripts/stats/forged_trait_auto_allocator.gd" id="15_trait_allocator"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.18
@@ -71,12 +74,31 @@ fill_selection_color_mix = 0.2
 [node name="Visuals" type="Node3D" parent="."]
 
 [node name="RatModel" parent="Visuals" instance=ExtResource("1_rat_model")]
+rotation = Vector3(0, 3.1415927, 0)
 scale = Vector3(0.18, 0.18, 0.18)
 
 [node name="Health" type="Node" parent="."]
 script = ExtResource("9_health")
 max_health = 40.0
 current_health = 40.0
+
+[node name="ForgedTraits" type="Node" parent="."]
+script = ExtResource("14_forged_traits")
+entity_type = &"creature"
+persist_to_player_database = false
+
+[node name="Stats" type="Node" parent="."]
+script = ExtResource("13_entity_stats")
+max_health = 40.0
+auto_attack_damage = 2.0
+auto_attack_speed = 0.5
+move_speed = 0.85
+
+[node name="TraitAllocator" type="Node" parent="."]
+script = ExtResource("15_trait_allocator")
+entity_type = &"creature"
+level = 1
+trait_budget = 1
 
 [node name="DamageNumbers" type="Node" parent="."]
 script = ExtResource("10_damage_numbers")

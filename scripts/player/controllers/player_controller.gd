@@ -56,6 +56,9 @@ var _remote_is_defeated := false
 
 
 func _ready() -> void:
+	_connect_stats_runtime_signals()
+	_sync_stats_to_runtime_components(true)
+
 	if is_local_player:
 		add_to_group("player")
 		camera_rig.set_target(camera_target)
@@ -328,10 +331,15 @@ func _start_loot_container_interaction(target: Node) -> bool:
 
 func _try_open_refining_station(target: Node) -> bool:
 	var station := _find_refining_station(target)
-	if station == null or not station.has_method("open_refining_menu"):
+	if station == null:
 		return false
 
-	return bool(station.call("open_refining_menu", self))
+	if station.has_method("open_refining_menu"):
+		return bool(station.call("open_refining_menu", self))
+	if station.has_method("open_service_interaction"):
+		return bool(station.call("open_service_interaction", self))
+
+	return false
 
 
 func _try_open_loot_container(target: Node) -> bool:
@@ -346,6 +354,8 @@ func _find_refining_station(target: Node) -> Node:
 	var current := target
 	while current != null:
 		if current.has_method("open_refining_menu") and current.has_method("get_refining_recipe"):
+			return current
+		if current.has_method("open_service_interaction") and current.has_method("can_interact_from"):
 			return current
 
 		current = current.get_parent()
@@ -507,6 +517,53 @@ func _sync_health_regeneration_with_combat() -> void:
 		and bool(combat_state.call("is_in_combat"))
 	)
 	health.call("set_regeneration_enabled", not is_in_combat)
+
+
+func _connect_stats_runtime_signals() -> void:
+	if stats == null or not stats.has_signal("stat_changed"):
+		return
+
+	var callable := Callable(self, "_on_player_stat_changed")
+	if not stats.is_connected("stat_changed", callable):
+		stats.connect("stat_changed", callable)
+
+
+func _sync_stats_to_runtime_components(should_fill_pools := false) -> void:
+	if stats == null:
+		return
+
+	var max_health := maxf(stats.get_stat(PlayerStats.MAX_HEALTH), 1.0)
+	if health != null:
+		if health.has_method("set_max_health"):
+			health.call("set_max_health", max_health, should_fill_pools)
+		else:
+			health.set("max_health", max_health)
+		health.set("health_regeneration_per_second", maxf(stats.get_stat(PlayerStats.HEALTH_REGENERATION), 0.0))
+
+	if mana != null:
+		var max_energy := maxf(stats.get_stat(PlayerStats.MAX_ENERGY), 0.0)
+		if mana.has_method("set_max_resource"):
+			mana.call("set_max_resource", max_energy, should_fill_pools)
+		else:
+			mana.set("max_resource", max_energy)
+		mana.set("regeneration_per_second", maxf(stats.get_stat(PlayerStats.ENERGY_REGENERATION), 0.0))
+
+	if movement_motor != null:
+		var move_speed := stats.get_stat(PlayerStats.MOVE_SPEED)
+		if move_speed > 0.0:
+			movement_motor.movement_speed = move_speed
+
+	_sync_health_regeneration_with_combat()
+
+
+func _on_player_stat_changed(stat_id: StringName, _value: float) -> void:
+	match stat_id:
+		PlayerStats.MAX_HEALTH, \
+		PlayerStats.HEALTH_REGENERATION, \
+		PlayerStats.MAX_ENERGY, \
+		PlayerStats.ENERGY_REGENERATION, \
+		PlayerStats.MOVE_SPEED:
+			_sync_stats_to_runtime_components(false)
 
 
 ## Converts this prefab instance into a visual-only network copy.

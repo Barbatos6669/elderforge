@@ -9,9 +9,12 @@ Folders:
   progress-bar style helpers. New HUD/panel scripts should use this before
   creating local `StyleBoxFlat` helpers.
 - `hud/`: in-game HUD widgets, such as the channel bar.
+- `auction/`: auction house market panel for buy orders, sell orders, and quick
+  sale.
 - `inventory/`: inventory and equipment UI.
 - `menu/`: fullscreen master menu and submenu navigation.
 - `nameplates/`: world-space nameplates above characters and targets.
+- `npc/`: small interaction windows for NPC-backed services.
 - `auth/`: first-pass sign-in and account creation screens.
 - `chat/`: in-game chat display and text entry.
 

@@ -694,14 +694,13 @@ blue, red, orange, yellow, and white for tiers I through VIII.
 
 `scripts/gathering/gatherable_resource_3d.gd`
 
-`scenes/gathering/trees/SilverneedlePineT1.tscn`
+`scenes/gathering/trees/OakTreeT1.tscn`
 
 The first project-owned gatherable resource is currently the T1 Oak Tree. The
-scene path still uses its older temporary name, but the player-facing node and
-item names now follow the lore bible: the tree yields `Oak Wood I`. The scene
-wraps the temporary `assets/trees/Silverneedle_Pine_T_var2.glb` model and keeps
-gameplay scale, colliders, selection, hover cursor, and gather metadata in the
-prefab.
+player-facing node and item names follow the lore bible: the tree yields
+`Oak Wood I`. The scene wraps `assets/Nature Pack/CommonTree_1.gltf` and keeps
+gameplay scale, colliders, selection, alpha-cut leaves, hover cursor, wind sway,
+depleted stump visuals, and gather metadata in the prefab.
 
 The root has `GatherableResource3D`, which stores the resource family, tier,
 yield item id, per-tick yield quantity, gather duration, and remaining gather

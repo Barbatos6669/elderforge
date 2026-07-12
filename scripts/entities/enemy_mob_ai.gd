@@ -16,6 +16,8 @@ signal respawned
 @export var target_group := "player"
 ## Health component on this mob.
 @export var health_path: NodePath = NodePath("../Health")
+## Optional shared stat component. When present, it overrides local combat exports.
+@export var stats_path: NodePath = NodePath("../Stats")
 ## Animation controller used for idle, move, and attack playback.
 @export var animation_path: NodePath = NodePath("../Animation")
 ## Selectable component disabled when the mob is defeated.
@@ -62,6 +64,7 @@ signal respawned
 
 var _body: CharacterBody3D
 var _health: Node
+var _stats: Node
 var _animation: Node
 var _selectable: Node
 var _visuals: Node3D
@@ -88,6 +91,7 @@ func _ready() -> void:
 	_original_collision_layer = _body.collision_layer
 	_original_collision_mask = _body.collision_mask
 	_health = get_node_or_null(health_path)
+	_stats = get_node_or_null(stats_path)
 	_animation = get_node_or_null(animation_path)
 	_selectable = get_node_or_null(selectable_path)
 	_visuals = get_node_or_null(visuals_path) as Node3D
@@ -96,6 +100,8 @@ func _ready() -> void:
 
 	if _health != null and _health.has_signal("defeated"):
 		_health.defeated.connect(_on_defeated)
+	_connect_stats_signals()
+	_sync_health_stats(true)
 
 
 func _physics_process(delta: float) -> void:
@@ -152,11 +158,12 @@ func _update_attack(delta: float) -> void:
 		_drop_aggro()
 		return
 
+	var attack_speed_value := _attack_speed()
 	if _animation != null and _animation.has_method("play_attack"):
-		_animation.call("play_attack", attack_speed)
-	attack_started.emit(_target, attack_speed)
+		_animation.call("play_attack", attack_speed_value)
+	attack_started.emit(_target, attack_speed_value)
 
-	var applied_damage := float(target_health.call("apply_damage", attack_damage))
+	var applied_damage := float(target_health.call("apply_damage", _attack_damage()))
 	if applied_damage <= 0.0:
 		_drop_aggro()
 		return
@@ -182,7 +189,7 @@ func _move_toward(destination: Vector3, delta: float) -> void:
 
 	var distance := _horizontal_distance_to(destination)
 	var speed_ratio := clampf(distance / maxf(slowdown_distance, 0.01), 0.0, 1.0)
-	var target_velocity := direction * movement_speed * speed_ratio
+	var target_velocity := direction * _movement_speed() * speed_ratio
 	var horizontal_velocity := Vector3(_body.velocity.x, 0.0, _body.velocity.z)
 	horizontal_velocity = horizontal_velocity.move_toward(target_velocity, acceleration * delta)
 	_body.velocity.x = horizontal_velocity.x
@@ -463,7 +470,7 @@ func _distance_from_home() -> float:
 
 
 func _attack_interval() -> float:
-	return 1.0 / maxf(attack_speed, 0.01)
+	return 1.0 / _attack_speed()
 
 
 func _face_direction(direction: Vector3, delta: float = -1.0) -> void:
@@ -482,3 +489,51 @@ func _face_direction(direction: Vector3, delta: float = -1.0) -> void:
 func _set_moving_animation(is_moving: bool) -> void:
 	if _animation != null and _animation.has_method("set_moving"):
 		_animation.call("set_moving", is_moving)
+
+
+func _connect_stats_signals() -> void:
+	if _stats == null or not _stats.has_signal("stat_changed"):
+		return
+
+	var callable := Callable(self, "_on_stat_changed")
+	if not _stats.is_connected("stat_changed", callable):
+		_stats.connect("stat_changed", callable)
+
+
+func _on_stat_changed(stat_id: StringName, _value: float) -> void:
+	match stat_id:
+		&"max_health", &"health_regeneration":
+			_sync_health_stats(false)
+
+
+func _sync_health_stats(should_fill := false) -> void:
+	if _health == null:
+		return
+
+	var max_health := _stat_value(&"max_health", float(_health.get("max_health")))
+	if _health.has_method("set_max_health"):
+		_health.call("set_max_health", max_health, should_fill)
+	else:
+		_health.set("max_health", max_health)
+	_health.set("health_regeneration_per_second", maxf(_stat_value(&"health_regeneration", 0.0), 0.0))
+
+
+func _movement_speed() -> float:
+	return maxf(_stat_value(&"move_speed", movement_speed), 0.0)
+
+
+func _attack_damage() -> float:
+	return maxf(_stat_value(&"auto_attack_damage", attack_damage), 0.0)
+
+
+func _attack_speed() -> float:
+	return maxf(_stat_value(&"auto_attack_speed", attack_speed), 0.01)
+
+
+func _stat_value(stat_id: StringName, fallback: float) -> float:
+	if _stats != null and _stats.has_method("get_stat"):
+		var value := float(_stats.call("get_stat", stat_id))
+		if value > 0.0:
+			return value
+
+	return fallback

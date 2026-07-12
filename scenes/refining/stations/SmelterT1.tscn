@@ -3,37 +3,50 @@
 [ext_resource type="Script" uid="uid://c11s0eq5k2747" path="res://scripts/refining/refining_station_3d.gd" id="1_station"]
 [ext_resource type="Script" uid="uid://br3ubcjkrdw57" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
 [ext_resource type="Script" uid="uid://i4o11j0hk5eg" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="3_selection"]
-[ext_resource type="Script" uid="uid://deovgvj3mxpf5" path="res://scripts/refining/refining_station_tier_visuals.gd" id="4_tier_visuals"]
-[ext_resource type="PackedScene" uid="uid://dtu3jqfgg62v7" path="res://assets/Buildings/Refining/Bloomery .glb" id="5_fcwpv"]
+[ext_resource type="PackedScene" path="res://scenes/entities/npcs/ServiceNpcVisual.tscn" id="4_service_npc"]
+[ext_resource type="Script" path="res://scripts/entities/npc/service_npc_ambient_wander_3d.gd" id="5_ambient"]
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
-size = Vector3(3.8, 1.6, 3.8)
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.35
+height = 1.8
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_selectable"]
-size = Vector3(4.8, 2.8, 4.8)
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_selectable"]
+radius = 0.65
+height = 2.1
 
 [node name="SmelterT1" type="Node3D" unique_id=1807100471]
 script = ExtResource("1_station")
 display_name = "Smelter"
 station_type = "smelter"
+service_level = 1
 input_item_id_prefix = "ore"
 output_item_id_prefix = "ingots"
 input_quantity = 4
+interaction_half_extents = Vector2(0.35, 0.35)
+interaction_anchor_path = NodePath("Visuals")
 
 [node name="Visuals" type="Node3D" parent="." unique_id=1817831961]
 
-[node name="TierVisuals" type="Node3D" parent="Visuals" unique_id=324273366]
-script = ExtResource("4_tier_visuals")
-family_style = "smelter"
-accent_color = Color(0.95, 0.34, 0.08, 1)
+[node name="ServiceNpcVisual" parent="Visuals" unique_id=324273366 instance=ExtResource("4_service_npc")]
+skin_color = Color(0.50, 0.36, 0.26, 1)
+hair_style = "buzzed"
+hair_color = Color(0.05, 0.04, 0.035, 1)
+outfit_style = "ranger"
+outfit_fallback_color = Color(0.33, 0.23, 0.18, 1)
+outfit_tint = Color(0.95, 0.48, 0.24, 1)
+
+[node name="AmbientWander" type="Node" parent="." unique_id=1139284509]
+script = ExtResource("5_ambient")
+wander_radius = 0.65
+move_speed = 0.42
 
 [node name="Body" type="StaticBody3D" parent="." unique_id=22561694]
 collision_layer = 2
 collision_mask = 0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Body" unique_id=582463290]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
-shape = SubResource("BoxShape3D_body")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_body")
 
 [node name="Selectable" type="Area3D" parent="." unique_id=440937734]
 collision_layer = 8
@@ -44,17 +57,14 @@ relationship = 2
 neutral_color = Color(1, 0.8, 0.28, 1)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable" unique_id=1871238035]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
-shape = SubResource("BoxShape3D_selectable")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+shape = SubResource("CapsuleShape3D_selectable")
 
 [node name="SelectedRing" type="MeshInstance3D" parent="." unique_id=472393810]
 script = ExtResource("3_selection")
-ring_radius = 2.2
-ring_width = 0.1
+ring_radius = 0.75
+ring_width = 0.06
 ring_y_offset = 0.055
 ring_color = Color(1, 0.8, 0.28, 1)
 fill_color = Color(1, 0.8, 0.28, 0.13)
 fill_selection_color_mix = 0.2
-
-[node name="Bloomery " parent="." unique_id=1284711903 instance=ExtResource("5_fcwpv")]
-transform = Transform3D(0.36202022, 0, -0.9321702, 0, 1, 0, 0.9321702, 0, 0.36202022, 0.007024288, -0.049689412, 1.2569703)

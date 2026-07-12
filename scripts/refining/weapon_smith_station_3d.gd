@@ -36,9 +36,7 @@ func _init() -> void:
 ## Returns one recipe per weapon family per available tier.
 func get_refining_recipes() -> Array:
 	var recipes := []
-	var first_tier := clampi(min_recipe_tier, 1, 8)
-	var last_tier := clampi(max_recipe_tier, first_tier, 8)
-	for tier in range(first_tier, last_tier + 1):
+	for tier in _available_recipe_tiers():
 		for weapon_prefix in weapon_item_id_prefixes:
 			var weapon_id := String(weapon_prefix)
 			if weapon_id.is_empty():
@@ -55,6 +53,7 @@ func _build_weapon_recipe(weapon_prefix: String, tier: int) -> Dictionary:
 		"station_type": station_type,
 		"tier": tier,
 		"tier_roman": tier_roman,
+		"service_level": service_level,
 		"recipe_label": "Tier %s %s" % [tier_roman, _weapon_label(weapon_prefix)],
 		"action_text": "Craft",
 		"inputs": _build_weapon_inputs(weapon_prefix, tier),

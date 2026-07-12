@@ -74,12 +74,16 @@ const BASE_STAT_VALUES := {
 	MAX_ENERGY: 120.0,
 	HEALTH_REGENERATION: 10.0,
 	ENERGY_REGENERATION: 10.0,
+	MOVE_SPEED: 3.2,
+	MAX_LOAD: 50.0,
 }
 
 ## Saves/restores stat values through the prototype player database for signed-in accounts.
 @export var persist_to_player_database := true
 ## Optional explicit account key for test scenes; blank means use PrototypeAuthSession.
 @export var persistence_account_name := ""
+## Forged Trait loadout that contributes active stat modifiers.
+@export var forged_traits_path: NodePath = NodePath("ForgedTraits")
 
 ## Ordered stat metadata used by future UI and gameplay systems.
 ##
@@ -130,6 +134,7 @@ const STAT_DEFINITIONS := [
 ]
 
 var _values: Dictionary = {}
+var _forged_traits: Node
 var _persistence_connected := false
 var _is_applying_persisted_stats := false
 
@@ -137,6 +142,7 @@ var _is_applying_persisted_stats := false
 func _ready() -> void:
 	add_to_group("player_stats")
 	reset_to_base_values()
+	_bind_forged_traits()
 	_load_from_player_database()
 	_connect_persistence_signals()
 
@@ -164,7 +170,21 @@ func get_stat(stat_id: StringName) -> float:
 	if not has_stat(stat_id):
 		return 0.0
 
-	return _values[stat_id]
+	return get_base_stat(stat_id) + get_stat_modifier(stat_id)
+
+
+## Returns the stored base value before active traits or future modifiers.
+func get_base_stat(stat_id: StringName) -> float:
+	if not has_stat(stat_id):
+		return 0.0
+
+	return float(_values[stat_id])
+
+
+## Returns the active modifier total for a single stat.
+func get_stat_modifier(stat_id: StringName) -> float:
+	var modifiers := get_active_stat_modifiers()
+	return float(modifiers.get(StringName(String(stat_id)), 0.0))
 
 
 ## Sets a stat value and emits stat_changed when the value actually changes.
@@ -176,21 +196,41 @@ func set_stat(stat_id: StringName, value: float) -> void:
 	if not has_stat(stat_id):
 		_values[stat_id] = 0.0
 
-	if is_equal_approx(_values[stat_id], value):
+	var previous_value := get_stat(stat_id)
+	if is_equal_approx(float(_values[stat_id]), value):
 		return
 
 	_values[stat_id] = value
-	stat_changed.emit(stat_id, value)
+	var next_value := get_stat(stat_id)
+	if not is_equal_approx(previous_value, next_value):
+		stat_changed.emit(stat_id, next_value)
 
 
 ## Adds amount to the current stat value.
 func add_to_stat(stat_id: StringName, amount: float) -> void:
-	set_stat(stat_id, get_stat(stat_id) + amount)
+	set_stat(stat_id, get_base_stat(stat_id) + amount)
 
 
 ## Returns a copy of all current stat values.
-func get_all_stats() -> Dictionary:
-	return _values.duplicate()
+func get_all_stats(include_modifiers := true) -> Dictionary:
+	var output := {}
+	for stat_id in _values.keys():
+		var clean_id := StringName(String(stat_id))
+		output[clean_id] = get_stat(clean_id) if include_modifiers else float(_values[stat_id])
+
+	return output
+
+
+## Returns all active stat modifiers from equipped/active progression.
+func get_active_stat_modifiers() -> Dictionary:
+	if _forged_traits == null or not _forged_traits.has_method("get_active_stat_modifiers"):
+		return {}
+
+	var modifiers: Variant = _forged_traits.call("get_active_stat_modifiers")
+	if modifiers is Dictionary:
+		return modifiers as Dictionary
+
+	return {}
 
 
 ## Applies stored stat values without changing the registered stat list.
@@ -295,11 +335,28 @@ func _save_to_player_database() -> void:
 	if account_key.is_empty():
 		return
 
-	database.call("set_player_stats", account_key, get_all_stats())
+	database.call("set_player_stats", account_key, get_all_stats(false))
 
 
 func _on_persistent_stat_changed(_stat_id: StringName, _value: float) -> void:
 	_save_to_player_database()
+
+
+func _bind_forged_traits() -> void:
+	_forged_traits = get_node_or_null(forged_traits_path)
+	if _forged_traits == null:
+		_forged_traits = get_node_or_null("ForgedTraits")
+	if _forged_traits == null:
+		return
+
+	var callable := Callable(self, "_on_forged_traits_changed")
+	if _forged_traits.has_signal("traits_changed") and not _forged_traits.is_connected("traits_changed", callable):
+		_forged_traits.connect("traits_changed", callable)
+
+
+func _on_forged_traits_changed() -> void:
+	for stat_id in get_stat_ids():
+		stat_changed.emit(stat_id, get_stat(stat_id))
 
 
 func _persistence_account_key(database: Node) -> String:

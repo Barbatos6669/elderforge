@@ -41,6 +41,8 @@ const CHAT_RATE_LIMIT_SECONDS := 0.7
 @export_range(1, 32, 1) var max_clients := 8
 ## How often local player state is sent.
 @export_range(1.0, 30.0, 1.0) var send_rate_hz := 15.0
+## How often active mob movement is sent. Mobs can update slower than players.
+@export_range(1.0, 20.0, 1.0) var mob_send_rate_hz := 6.0
 ## Default name used if the local nameplate is empty.
 @export var fallback_player_name := "Player"
 ## Name shown in logs if this process is running as a dedicated test host.
@@ -66,6 +68,7 @@ var _peer_account_names := {}
 var _peer_last_chat_seconds := {}
 var _authorized_peers := {}
 var _send_elapsed := 0.0
+var _mob_send_elapsed := 0.0
 var _is_command_line_server := false
 var _client_playtest_code_accepted := false
 var _panel: Control
@@ -108,7 +111,11 @@ func _process(delta: float) -> void:
 
 	_send_elapsed = 0.0
 	_send_local_state()
-	_send_local_mob_states()
+	_mob_send_elapsed += send_interval
+	var mob_send_interval := 1.0 / maxf(mob_send_rate_hz, 1.0)
+	if _mob_send_elapsed >= mob_send_interval:
+		_mob_send_elapsed = 0.0
+		_send_local_mob_states()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -140,6 +147,7 @@ func host(port: int = default_port) -> bool:
 	_peer_last_chat_seconds.clear()
 	_client_playtest_code_accepted = true
 	_send_elapsed = 0.0
+	_mob_send_elapsed = 0.0
 	_apply_local_player_name()
 	_peer_display_names[multiplayer.get_unique_id()] = _sanitize_display_name(_local_player_name())
 	_peer_account_names[multiplayer.get_unique_id()] = _normalize_player_account_name(
@@ -170,6 +178,7 @@ func join(address: String, port: int = default_port) -> bool:
 	multiplayer.multiplayer_peer = _peer
 	_client_playtest_code_accepted = false
 	_send_elapsed = 0.0
+	_mob_send_elapsed = 0.0
 	_apply_local_player_name()
 	_set_status("Connecting to %s:%d" % [trimmed_address, port])
 	return true
@@ -187,6 +196,7 @@ func disconnect_from_session() -> void:
 	_peer_last_chat_seconds.clear()
 	_client_playtest_code_accepted = false
 	_send_elapsed = 0.0
+	_mob_send_elapsed = 0.0
 	_clear_remote_players()
 	_set_status("Offline")
 

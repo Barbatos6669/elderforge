@@ -1,13 +1,15 @@
 # Inventory UI Scripts
 
-This folder renders the inventory and equipment UI. Inventory state lives in
-`scripts/inventory/`.
+This folder contains the prototype inventory and equipment UI. Most player
+inventory browsing is moving into the fullscreen master menu, but the old
+`InventoryPanel` still acts as the temporary drag/drop companion for loot
+windows.
 
 Files:
 
-- `inventory_panel.gd`: toggleable character window with Inventory and Stats
-  tabs, bag slot rendering, details panel, currency display, bag drag/drop,
-  loot drag/drop receiving, and gear drag/drop forwarding.
+- `inventory_panel.gd`: companion inventory window. Its old `I` key toggle has
+  been removed, but playable levels still instance it hidden so loot windows can
+  open it beside themselves for drag/drop transfers.
 - `equipment_panel.gd`: equipped gear slot layout, selection state, and gear
   drop routing.
 - `equipment_slot_button.gd`: Godot drag/drop hooks for one equipped gear slot.
@@ -24,12 +26,12 @@ GDScript notes:
 - Drag/drop methods return and accept `Dictionary` payloads. Loot rows send an
   `elderforge_loot_item` payload that inventory slots use to pull from the
   source loot container.
-- `InventoryPanel` calls `PlayerInventory.move_or_swap_slots(...)`,
+- The companion `InventoryPanel` calls `PlayerInventory.move_or_swap_slots(...)`,
   `equip_from_slot(...)`, and `unequip_to_slot(...)`; it does not own the
   authoritative slot data.
 - The Stats tab reads from `PlayerStats`. `stats_path` can point at a specific
   node, and the panel falls back to the `player_stats` group for dropped-in
   player prefabs.
 
-Change this folder when the inventory should look or behave differently on
-screen. Change `scripts/inventory/` when item ownership rules change.
+Use this folder as reference while building the new fullscreen inventory.
+Change `scripts/inventory/` when item ownership rules change.

@@ -46,6 +46,7 @@ func _ready() -> void:
 	add_to_group("gatherable_resources")
 	_remaining_gather_ticks = max_gather_ticks
 	_sync_depleted_state()
+	set_process(_can_replenish())
 
 
 func _process(delta: float) -> void:
@@ -114,6 +115,7 @@ func consume_gather_tick() -> bool:
 	_replenish_elapsed = 0.0
 	gather_tick_consumed.emit(_remaining_gather_ticks, max_gather_ticks)
 	_sync_depleted_state()
+	set_process(_can_replenish())
 	if is_depleted():
 		depleted.emit()
 
@@ -131,6 +133,7 @@ func replenish_gather_tick() -> bool:
 	if _remaining_gather_ticks >= max_gather_ticks:
 		_replenish_elapsed = 0.0
 		fully_replenished.emit()
+	set_process(_can_replenish())
 
 	return true
 
@@ -147,6 +150,7 @@ func set_remaining_ticks(remaining_ticks: int) -> void:
 		gather_tick_replenished.emit(_remaining_gather_ticks, max_gather_ticks)
 
 	_sync_depleted_state()
+	set_process(_can_replenish())
 	if previous_ticks > 0 and is_depleted():
 		depleted.emit()
 	elif _remaining_gather_ticks >= max_gather_ticks:
@@ -170,6 +174,7 @@ func reset_resource() -> void:
 	_replenish_elapsed = 0.0
 	gather_enabled = true
 	_sync_depleted_state()
+	set_process(false)
 
 
 func can_gather() -> bool:
@@ -179,12 +184,15 @@ func can_gather() -> bool:
 func _update_replenishment(delta: float) -> void:
 	if not _can_replenish():
 		_replenish_elapsed = 0.0
+		set_process(false)
 		return
 
 	_replenish_elapsed += maxf(delta, 0.0)
 	while _replenish_elapsed >= replenish_interval_seconds and _can_replenish():
 		_replenish_elapsed -= replenish_interval_seconds
 		replenish_gather_tick()
+
+	set_process(_can_replenish())
 
 
 func _can_replenish() -> bool:

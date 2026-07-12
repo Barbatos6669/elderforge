@@ -1,11 +1,12 @@
 ## Fullscreen hub for opening game submenus.
 ##
-## The master menu owns only navigation UI. Gameplay panels, such as inventory,
-## still own their own data binding and presentation once opened.
+## The master menu owns the active navigation shell. Prototype data still comes
+## from feature modules such as PlayerInventory and PlayerStats.
 class_name MasterMenu
 extends CanvasLayer
 
 const UiStyle := preload("res://scripts/ui/elderforge_ui_style.gd")
+const CraftingRecipeCatalogScript := preload("res://scripts/crafting/crafting_recipe_catalog.gd")
 const MasterMenuStatIconScript := preload("res://scripts/ui/menu/master_menu_stat_icon.gd")
 const MasterMenuTileIconScript := preload("res://scripts/ui/menu/master_menu_tile_icon.gd")
 const MasterMenuCreaturePortraitScript := preload("res://scripts/ui/menu/master_menu_creature_portrait.gd")
@@ -45,9 +46,9 @@ const CATEGORY_NEWS := {
 	"glossary": {
 		"title": "Recent glossary entries",
 		"entries": [
-			{"tag": "Creatures", "title": "Corrupted Wolf"},
-			{"tag": "Resources", "title": "Oak Wood"},
-			{"tag": "Lore", "title": "Hearthbridge Charter"},
+			{"tag": "Creatures", "title": "Lantern Moth"},
+			{"tag": "Creatures", "title": "Mineweb Spider"},
+			{"tag": "Threat", "title": "Blackroot Stag"},
 		],
 	},
 	"alchemy": {
@@ -92,14 +93,99 @@ const CATEGORY_NEWS := {
 	},
 }
 
+const CREATURE_ENTRY_ORDER := [
+	"hollowfield_rat",
+	"hearthvale_hare",
+	"vale_deer",
+	"ashback_boar",
+	"lantern_moth",
+	"claybank_toad",
+	"mineweb_spider",
+	"duskfeather_crow",
+	"corrupted_wolf",
+	"blackroot_stag",
+	"silverneedle_needlekin",
+]
+
+const CREATURE_DETAIL_ENTRIES := {
+	"hollowfield_rat": {
+		"label": "Hollowfield Rat",
+		"vulnerabilities": ["Steel", "Traps", "Fire"],
+		"right_title": "Hollowfield Rat",
+		"description": "A lean field rat with pale whiskers and sharp black eyes. Hollowfield rats are ordinary animals, but their nests often mark forgotten grain stores, rotten floorboards, or places where people left in a hurry.\n\nThey make good early skinning and combat targets, and their nests can point toward ruined cellars, food stores, or small scavenger loot.",
+	},
+	"hearthvale_hare": {
+		"label": "Hearthvale Hare",
+		"vulnerabilities": ["Traps", "Bows", "Stealth"],
+		"right_title": "Hearthvale Hare",
+		"description": "A quick brown hare with bright eyes and long ears. It is common enough to hunt, but hard enough to catch that new hunters learn patience before they learn pride.\n\nHearthvale Hares flee toward brush and hedgerows. Quiet approach, simple traps, and bow practice make them useful for the first hunting lessons around Hearthbridge.",
+	},
+	"vale_deer": {
+		"label": "Vale Deer",
+		"vulnerabilities": ["Bows", "Traps", "Terrain"],
+		"right_title": "Vale Deer",
+		"description": "A lean forest deer with warm brown fur and pale throat markings. It listens more than it looks, and by the time most hunters see it clearly, it has already decided where to run.\n\nVale Deer are an early source of Deer Hide II, venison, antler, and sinew. The Verdant Circle teaches that taking one deer is hunting, but scattering the herd is arrogance.",
+	},
+	"ashback_boar": {
+		"label": "Ashback Boar",
+		"vulnerabilities": ["Spears", "Sidestep", "Traps"],
+		"right_title": "Ashback Boar",
+		"description": "A heavy boar with a dark ash-colored stripe down its back and small tusks polished by rooting through clay and stone. It is not evil, but it is very easy to insult.\n\nAshback Boars warn first, charge if approached, and retreat when badly wounded. They teach new players to read enemy wind-up animations before the first real monster fights.",
+	},
+	"lantern_moth": {
+		"label": "Lantern Moth",
+		"vulnerabilities": ["Smoke", "Cold", "Covered Light"],
+		"right_title": "Lantern Moth",
+		"description": "A soft-winged moth with a faint gold glow under its wings. It is harmless, but its dust is useful in weak light potions, trail markers, and beginner warding mixtures.\n\nLantern Moths gather around old lamps, moonleaf patches, shrine stones, and lantern oil spills. Unusual swarms may reveal a hidden shrine, fresh spirit trace, or old path.",
+	},
+	"claybank_toad": {
+		"label": "Claybank Toad",
+		"vulnerabilities": ["Nets", "Care", "Clean Water"],
+		"right_title": "Claybank Toad",
+		"description": "A squat brown toad with clay-colored skin and a pale throat pouch. It croaks before rain and carries a mild toxin useful for early antidote practice.\n\nClaybank Toads live in ditches, river bends, and muddy clay pits. Apothecaries use their glands for weak poison, weak antidotes, and wetland gathering lessons.",
+	},
+	"mineweb_spider": {
+		"label": "Mineweb Spider",
+		"vulnerabilities": ["Fire", "Boots", "Range"],
+		"right_title": "Mineweb Spider",
+		"description": "A low cave spider with gray legs, pale eyes, and sticky webbing stretched between cracked stones. It waits where careless miners put their hands.\n\nMineweb Spiders hide near corners, spit web to slow targets, and retreat toward nests. Burning weak webs is the first lesson most miners learn twice.",
+	},
+	"duskfeather_crow": {
+		"label": "Duskfeather Crow",
+		"vulnerabilities": ["Bows", "Bait", "Noise"],
+		"right_title": "Duskfeather Crow",
+		"description": "A dark crow with blue-black feathers and a sharp voice. It is no monster, but it has an uncomfortable habit of finding trouble before people do.\n\nDuskfeather Crows gather near recent kills, abandoned camps, gallows, and hidden caches. If one watches too long, check whether you are standing on someone else's secret.",
+	},
+	"corrupted_wolf": {
+		"label": "Corrupted Wolf",
+		"vulnerabilities": ["Fire", "Steel", "Traps"],
+		"right_title": "Corrupted Wolf",
+		"description": "A Hearthvale wolf warped by Rift-scarred root corruption. It still hunts like a wolf, but the pack no longer kills only to eat.\n\nCorrupted Wolves circle weak targets, howl to pull nearby packmates, and ignore fear. Blackroot splinters in their fur can point toward a nearby corruption source.",
+	},
+	"blackroot_stag": {
+		"label": "Blackroot Stag",
+		"vulnerabilities": ["Fire", "Spears", "Cleansing Oil"],
+		"right_title": "Blackroot Stag",
+		"description": "A corrupted stag with black antlers and rootlike growths beneath its hide. It moves like a wounded forest trying to gore the thing that hurt it.\n\nBlackroot Stags usually mark a nearby corrupted water source. Their charge is dangerous but predictable, and cleansing the source can prevent future stag corruption.",
+	},
+	"silverneedle_needlekin": {
+		"label": "Silverneedle Needlekin",
+		"vulnerabilities": ["Fire", "Steel", "Offerings"],
+		"right_title": "Silverneedle Needlekin",
+		"description": "A small grove spirit with a bark mask, needle-cloak, and eyes like moonlit sap. It remembers oaths spoken beneath Silverneedle branches and does not forgive wasteful cutting quickly.\n\nNeedlekin are not evil. They attack gatherers who cut too much, cut corrupted trees carelessly, or forget the old rule: take the trunk, leave the cone.",
+	},
+}
+
 const DETAIL_CONTENT := {
 	"creatures": {
 		"title": "Creatures",
 		"left_title": "Known Creatures",
-		"items": ["Wolf", "Corrupted Wolf", "Bandit"],
-		"selected": "Wolf",
-		"right_title": "Hearthvale Wolf",
-		"description": "Wolves are common around Hearthvale forests, hills, and abandoned farms. They hunt in packs, test weak targets, and become much more dangerous when corrupted by Rift-scarred magic.\n\nFire, traps, noise, and separating the pack are the first lessons a Lantern Warden teaches new hunters.",
+		"items": ["Hollowfield Rat", "Hearthvale Hare", "Vale Deer", "Ashback Boar", "Lantern Moth", "Claybank Toad", "Mineweb Spider", "Duskfeather Crow", "Corrupted Wolf", "Blackroot Stag", "Silverneedle Needlekin"],
+		"selected": "Lantern Moth",
+		"creature_id": "lantern_moth",
+		"vulnerabilities": ["Smoke", "Cold", "Covered Light"],
+		"right_title": "Lantern Moth",
+		"description": "A soft-winged moth with a faint gold glow under its wings. It is harmless, but its dust is useful in weak light potions, trail markers, and beginner warding mixtures.\n\nLantern Moths gather around old lamps, moonleaf patches, shrine stones, and lantern oil spills. Unusual swarms may reveal a hidden shrine, fresh spirit trace, or old path.",
 	},
 	"tutorial": {
 		"title": "Tutorial",
@@ -175,7 +261,6 @@ const DETAIL_CONTENT := {
 	},
 }
 
-@export var inventory_panel_path: NodePath
 @export var inventory_path: NodePath
 @export var stats_path: NodePath
 @export var start_visible := false
@@ -219,9 +304,12 @@ var _detail_body: HBoxContainer
 var _status_label: Label
 var _hidden_game_ui_states: Array[Dictionary] = []
 var _button_highlights: Dictionary = {}
+var _detail_list_scroll_offsets: Dictionary = {}
 var _block_world_input_until_mouse_release := false
 var _active_category_id := "glossary"
 var _active_detail_id := ""
+var _selected_creature_id := "lantern_moth"
+var _selected_crafting_recipe_id := ""
 
 
 func _ready() -> void:
@@ -472,19 +560,15 @@ func _category_news_data(category_id: String) -> Dictionary:
 
 func _inventory_news_data() -> Dictionary:
 	var entries: Array = []
-	if _inventory != null and _inventory.has_method("get_display_slots"):
-		var slots := _inventory.call("get_display_slots") as Array
-		for slot in slots:
-			var slot_data := slot as Dictionary
-			if slot_data == null or slot_data.is_empty():
-				continue
-
-			entries.append({
-				"tag": String(slot_data.get("category", "Item")),
-				"title": "%s x%d" % [String(slot_data.get("name", "Item")), int(slot_data.get("quantity", 1))],
-			})
-			if entries.size() >= 2:
-				break
+	for row in _inventory_item_rows(2):
+		var row_data := row as Dictionary
+		entries.append({
+			"tag": String(row_data.get("category", "Item")),
+			"title": "%s x%d" % [
+				String(row_data.get("name", "Item")),
+				int(row_data.get("quantity", 1)),
+			],
+		})
 
 	var silver := _inventory_silver()
 	if silver > 0:
@@ -494,10 +578,13 @@ func _inventory_news_data() -> Dictionary:
 		})
 
 	if entries.is_empty():
-		return (CATEGORY_NEWS["inventory"] as Dictionary).duplicate(true)
+		entries.append({
+			"tag": "Bag",
+			"title": "Inventory is empty",
+		})
 
 	return {
-		"title": "Recent inventory changes",
+		"title": "Current inventory",
 		"entries": entries.slice(0, 3),
 	}
 
@@ -746,6 +833,7 @@ func _build_detail_list_panel(data: Dictionary, width: float) -> Control:
 	panel.add_theme_stylebox_override("panel", UiStyle.master_menu_detail_panel_style())
 
 	var layout := VBoxContainer.new()
+	layout.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	layout.add_theme_constant_override("separation", 7)
 	panel.add_child(_wrap_margin(layout, 8))
 
@@ -754,28 +842,48 @@ func _build_detail_list_panel(data: Dictionary, width: float) -> Control:
 	UiStyle.label_primary(title, 16, 1)
 	layout.add_child(title)
 
+	var scroll := ScrollContainer.new()
+	scroll.name = "EntryScroll"
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	layout.add_child(scroll)
+
+	var item_list := VBoxContainer.new()
+	item_list.name = "EntryList"
+	item_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	item_list.add_theme_constant_override("separation", 7)
+	scroll.add_child(item_list)
+
 	var items := data.get("items", []) as Array
 	var selected := String(data.get("selected", ""))
 	for item in items:
-		layout.add_child(_build_detail_list_item(String(item), String(item) == selected))
-
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	layout.add_child(spacer)
+		var item_data := _detail_item_data(item)
+		var item_label := String(item_data.get("label", "Entry"))
+		var item_id := String(item_data.get("id", item_label))
+		item_list.add_child(_build_detail_list_item(item_label, item_label == selected, item_id))
 	return panel
 
 
-func _build_detail_list_item(label_text: String, is_selected: bool) -> Control:
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(0.0, 46.0)
-	panel.add_theme_stylebox_override("panel", UiStyle.master_menu_detail_item_style(is_selected))
-
-	var label := Label.new()
-	label.text = label_text
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	UiStyle.label_primary(label, 14 if is_selected else 13, 1 if is_selected else 0)
-	panel.add_child(_wrap_margin(label, 9))
-	return panel
+func _build_detail_list_item(label_text: String, is_selected: bool, item_id: String) -> Control:
+	var button := Button.new()
+	button.text = label_text
+	button.tooltip_text = label_text
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.clip_text = true
+	button.focus_mode = Control.FOCUS_NONE
+	button.custom_minimum_size = Vector2(0.0, 46.0)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.add_theme_font_size_override("font_size", 14 if is_selected else 13)
+	button.add_theme_color_override("font_color", UiStyle.COLOR_TEXT_PRIMARY)
+	button.add_theme_color_override("font_hover_color", Color.WHITE)
+	button.add_theme_color_override("font_pressed_color", Color.WHITE)
+	button.add_theme_stylebox_override("normal", UiStyle.master_menu_detail_item_style(is_selected))
+	button.add_theme_stylebox_override("hover", UiStyle.master_menu_detail_item_style(true))
+	button.add_theme_stylebox_override("pressed", UiStyle.master_menu_detail_item_style(true))
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.add_theme_constant_override("h_separation", 0)
+	button.pressed.connect(_on_detail_list_item_pressed.bind(item_id))
+	return button
 
 
 func _build_creature_center_panel(data: Dictionary) -> Control:
@@ -794,6 +902,7 @@ func _build_creature_center_panel(data: Dictionary) -> Control:
 	var portrait := MasterMenuCreaturePortraitScript.new() as Control
 	portrait.name = "CreaturePortrait"
 	portrait.custom_minimum_size = Vector2(230.0, 230.0)
+	portrait.set("creature_id", String(data.get("creature_id", "needlekin")))
 	layout.add_child(portrait)
 
 	var title := Label.new()
@@ -811,8 +920,9 @@ func _build_creature_center_panel(data: Dictionary) -> Control:
 	var badges := HBoxContainer.new()
 	badges.alignment = BoxContainer.ALIGNMENT_CENTER
 	badges.add_theme_constant_override("separation", 10)
-	badges.add_child(_build_vulnerability_badge("FIRE"))
-	badges.add_child(_build_vulnerability_badge("STEEL"))
+	var vulnerabilities := data.get("vulnerabilities", ["Fire", "Steel"]) as Array
+	for raw_vulnerability in vulnerabilities:
+		badges.add_child(_build_vulnerability_badge(String(raw_vulnerability).to_upper()))
 	layout.add_child(badges)
 	return panel
 
@@ -830,22 +940,97 @@ func _build_generic_center_panel(data: Dictionary) -> Control:
 	layout.add_theme_constant_override("separation", 14)
 	panel.add_child(_wrap_margin(layout, 14))
 
+	if data.has("ingredients"):
+		_populate_ingredients_center_panel(layout, data)
+		return panel
+
 	var icon := MasterMenuTileIconScript.new() as Control
 	icon.custom_minimum_size = Vector2(78.0, 78.0)
 	icon.set("icon_id", _active_detail_id)
 	layout.add_child(icon)
 
 	var title := Label.new()
-	title.text = String(data.get("selected", _detail_label(_active_detail_id))).to_upper()
+	title.text = String(data.get("center_title", data.get("selected", _detail_label(_active_detail_id)))).to_upper()
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	UiStyle.label_primary(title, 20, 2)
 	layout.add_child(title)
 
 	var hint := Label.new()
-	hint.text = "PAGE PREVIEW"
+	hint.text = String(data.get("center_hint", "PAGE PREVIEW")).to_upper()
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	UiStyle.label_muted(hint, 12)
 	layout.add_child(hint)
+	return panel
+
+
+func _populate_ingredients_center_panel(layout: VBoxContainer, data: Dictionary) -> void:
+	var icon := MasterMenuTileIconScript.new() as Control
+	icon.custom_minimum_size = Vector2(54.0, 54.0)
+	icon.set("icon_id", "crafting")
+	layout.add_child(icon)
+
+	var title := Label.new()
+	title.text = String(data.get("center_title", "Ingredients")).to_upper()
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UiStyle.label_primary(title, 18, 2)
+	layout.add_child(title)
+
+	var station := Label.new()
+	station.text = String(data.get("center_hint", "Crafting Station")).to_upper()
+	station.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UiStyle.label_muted(station, 11)
+	layout.add_child(station)
+
+	var output := Label.new()
+	output.text = "MAKES: %s" % String(data.get("output_text", "Selected item")).to_upper()
+	output.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UiStyle.label_muted(output, 11)
+	output.add_theme_color_override("font_color", UiStyle.COLOR_GOLD)
+	layout.add_child(output)
+
+	var ingredient_list := VBoxContainer.new()
+	ingredient_list.name = "IngredientList"
+	ingredient_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ingredient_list.add_theme_constant_override("separation", 7)
+	layout.add_child(ingredient_list)
+
+	var ingredients := data.get("ingredients", []) as Array
+	if ingredients.is_empty():
+		ingredient_list.add_child(_build_ingredient_row("No ingredients listed", 0))
+		return
+
+	for ingredient in ingredients:
+		var ingredient_data := ingredient as Dictionary
+		ingredient_list.add_child(_build_ingredient_row(
+			String(ingredient_data.get("name", "Item")),
+			int(ingredient_data.get("quantity", 1))
+		))
+
+
+func _build_ingredient_row(item_name: String, quantity: int) -> Control:
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_theme_stylebox_override("panel", UiStyle.master_menu_detail_item_style(false))
+
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 8)
+	panel.add_child(_wrap_margin(row, 8))
+
+	var name_label := Label.new()
+	name_label.text = item_name
+	name_label.clip_text = true
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	UiStyle.label_primary(name_label, 12, 1)
+	row.add_child(name_label)
+
+	var quantity_label := Label.new()
+	quantity_label.text = "x%d" % maxi(quantity, 0) if quantity > 0 else ""
+	quantity_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	quantity_label.custom_minimum_size = Vector2(42.0, 0.0)
+	UiStyle.label_muted(quantity_label, 12)
+	quantity_label.add_theme_color_override("font_color", UiStyle.COLOR_GOLD)
+	row.add_child(quantity_label)
 	return panel
 
 
@@ -1125,6 +1310,11 @@ func _connect_inventory_signals() -> void:
 		if not _inventory.is_connected("currency_changed", currency_callable):
 			_inventory.connect("currency_changed", currency_callable)
 
+	if _inventory.has_signal("equipped_slots_changed"):
+		var equipped_callable := Callable(self, "_on_inventory_equipment_changed")
+		if not _inventory.is_connected("equipped_slots_changed", equipped_callable):
+			_inventory.connect("equipped_slots_changed", equipped_callable)
+
 
 func _disconnect_inventory_signals() -> void:
 	if _inventory == null:
@@ -1137,6 +1327,10 @@ func _disconnect_inventory_signals() -> void:
 	var currency_callable := Callable(self, "_on_inventory_currency_changed")
 	if _inventory.has_signal("currency_changed") and _inventory.is_connected("currency_changed", currency_callable):
 		_inventory.disconnect("currency_changed", currency_callable)
+
+	var equipped_callable := Callable(self, "_on_inventory_equipment_changed")
+	if _inventory.has_signal("equipped_slots_changed") and _inventory.is_connected("equipped_slots_changed", equipped_callable):
+		_inventory.disconnect("equipped_slots_changed", equipped_callable)
 
 
 func _bind_stats() -> void:
@@ -1170,14 +1364,22 @@ func _disconnect_stats_signals() -> void:
 
 func _on_inventory_slots_changed() -> void:
 	_refresh_inventory_summary()
+	_refresh_live_inventory_views()
 
 
 func _on_inventory_currency_changed(_silver: int, _gold: int) -> void:
 	_refresh_inventory_summary()
+	_refresh_live_inventory_views()
+
+
+func _on_inventory_equipment_changed() -> void:
+	_refresh_live_inventory_views()
 
 
 func _on_player_stat_changed(_stat_id: StringName, _value: float) -> void:
 	_refresh_inventory_summary()
+	if _active_detail_id == "character":
+		_update_detail_view()
 
 
 func _refresh_inventory_summary() -> void:
@@ -1221,6 +1423,13 @@ func _inventory_silver() -> int:
 	return 0
 
 
+func _inventory_gold() -> int:
+	if _inventory != null and _inventory.has_method("get_gold"):
+		return maxi(int(_inventory.call("get_gold")), 0)
+
+	return 0
+
+
 func _inventory_carried_weight() -> float:
 	if _inventory == null or not _inventory.has_method("get_display_slots"):
 		return 0.0
@@ -1246,6 +1455,307 @@ func _inventory_max_load() -> float:
 			return stat_max_load
 
 	return fallback_max_load_kg
+
+
+func _refresh_live_inventory_views() -> void:
+	if _active_category_id == "inventory":
+		_refresh_news_panel()
+	if _active_detail_id == "inventory":
+		_update_detail_view()
+
+
+func _inventory_display_slots() -> Array:
+	if _inventory == null or not _inventory.has_method("get_display_slots"):
+		return []
+
+	var slots: Variant = _inventory.call("get_display_slots")
+	return slots if slots is Array else []
+
+
+func _inventory_item_rows(limit: int = 0) -> Array:
+	var totals := {}
+	var ordered_ids: Array[String] = []
+	for slot in _inventory_display_slots():
+		var slot_data := slot as Dictionary
+		if slot_data == null or slot_data.is_empty():
+			continue
+
+		var item_id := String(slot_data.get("id", slot_data.get("item_id", ""))).strip_edges()
+		if item_id.is_empty():
+			item_id = _fallback_item_id(slot_data)
+		if item_id.is_empty():
+			continue
+
+		if not totals.has(item_id):
+			ordered_ids.append(item_id)
+			totals[item_id] = {
+				"name": _slot_display_name(slot_data),
+				"category": String(slot_data.get("category", "Item")),
+				"quantity": 0,
+				"tier": int(slot_data.get("tier", 0)),
+				"tier_roman": String(slot_data.get("tier_roman", "")),
+				"unit_weight": float(slot_data.get("unit_weight", 0.0)),
+				"description": String(slot_data.get("description", "")),
+			}
+
+		var row := totals[item_id] as Dictionary
+		row["quantity"] = int(row.get("quantity", 0)) + int(slot_data.get("quantity", 1))
+
+	var rows: Array = []
+	for item_id in ordered_ids:
+		rows.append(totals[item_id])
+		if limit > 0 and rows.size() >= limit:
+			break
+
+	return rows
+
+
+func _inventory_equipped_rows() -> Array:
+	if _inventory == null or not _inventory.has_method("get_equipped_slots"):
+		return []
+
+	var equipped_value: Variant = _inventory.call("get_equipped_slots")
+	if not (equipped_value is Dictionary):
+		return []
+
+	var equipped := equipped_value as Dictionary
+	var rows: Array = []
+	var slot_order := [
+		"bag",
+		"helmet",
+		"cape",
+		"main_hand",
+		"chest",
+		"off_hand",
+		"potion",
+		"shoes",
+		"food",
+	]
+	var consumed := {}
+	for slot_id in slot_order:
+		if not equipped.has(slot_id):
+			continue
+		consumed[slot_id] = true
+		_append_equipped_row(rows, slot_id, equipped[slot_id])
+
+	for slot_id in equipped.keys():
+		var slot_key := String(slot_id)
+		if consumed.has(slot_key):
+			continue
+		_append_equipped_row(rows, slot_key, equipped[slot_id])
+
+	return rows
+
+
+func _append_equipped_row(rows: Array, slot_id: String, slot_value: Variant) -> void:
+	var slot_data := slot_value as Dictionary
+	if slot_data == null or slot_data.is_empty():
+		return
+
+	rows.append({
+		"slot": _format_slot_label(slot_id),
+		"name": _slot_display_name(slot_data),
+		"category": String(slot_data.get("category", "Gear")),
+	})
+
+
+func _inventory_detail_content() -> Dictionary:
+	var item_rows := _inventory_item_rows(12)
+	var list_items: Array[String] = []
+	for row in item_rows:
+		list_items.append(_format_inventory_item_row(row as Dictionary))
+	if list_items.is_empty():
+		list_items.append("Empty Bag")
+
+	return {
+		"title": "Inventory",
+		"left_title": "Bag Contents",
+		"items": list_items,
+		"selected": list_items[0],
+		"center_title": "%d / %d slots" % [_inventory_slots_used(), _inventory_slot_total()],
+		"center_hint": "%s / %s kg" % [
+			_format_decimal(_inventory_carried_weight()),
+			_format_decimal(_inventory_max_load()),
+		],
+		"right_title": "Inventory Overview",
+		"description": _inventory_detail_description(item_rows),
+	}
+
+
+func _inventory_detail_description(item_rows: Array) -> String:
+	var lines := PackedStringArray()
+	lines.append("Slots used: %d / %d" % [_inventory_slots_used(), _inventory_slot_total()])
+	lines.append("Weight: %s / %s kg" % [_format_decimal(_inventory_carried_weight()), _format_decimal(_inventory_max_load())])
+	lines.append("Silver: %s" % _format_whole_number(_inventory_silver()))
+	var gold := _inventory_gold()
+	if gold > 0:
+		lines.append("Gold: %s" % _format_whole_number(gold))
+
+	var equipped_rows := _inventory_equipped_rows()
+	if not equipped_rows.is_empty():
+		lines.append("")
+		lines.append("Equipped")
+		for row in equipped_rows.slice(0, 5):
+			var row_data := row as Dictionary
+			lines.append("%s: %s" % [String(row_data.get("slot", "Slot")), String(row_data.get("name", "Item"))])
+
+	lines.append("")
+	if item_rows.is_empty():
+		lines.append("Bag is empty.")
+	else:
+		lines.append("Bag Contents")
+		for row in item_rows.slice(0, 8):
+			lines.append(_format_inventory_item_row(row as Dictionary))
+
+	return "\n".join(lines)
+
+
+func _format_inventory_item_row(row: Dictionary) -> String:
+	var quantity := maxi(int(row.get("quantity", 1)), 1)
+	var tier_roman := String(row.get("tier_roman", "")).strip_edges()
+	var prefix := "T%s " % tier_roman if not tier_roman.is_empty() else ""
+	return "%s%s x%d" % [prefix, String(row.get("name", "Item")), quantity]
+
+
+func _slot_display_name(slot_data: Dictionary) -> String:
+	var display_name := String(slot_data.get("name", "")).strip_edges()
+	if display_name.is_empty():
+		display_name = String(slot_data.get("display_name", "")).strip_edges()
+	if display_name.is_empty():
+		display_name = _prettify_id(String(slot_data.get("id", slot_data.get("item_id", "Item"))))
+	return display_name
+
+
+func _fallback_item_id(slot_data: Dictionary) -> String:
+	return "%s:%s:%s" % [
+		String(slot_data.get("category", "Item")),
+		_slot_display_name(slot_data),
+		String(slot_data.get("tier", 0)),
+	]
+
+
+func _format_slot_label(slot_id: String) -> String:
+	return slot_id.replace("_", " ").capitalize()
+
+
+func _prettify_id(value: String) -> String:
+	var cleaned := value.strip_edges().replace("_", " ")
+	return cleaned.capitalize() if not cleaned.is_empty() else "Item"
+
+
+func _character_detail_content() -> Dictionary:
+	var key_stats := _character_key_stat_rows()
+	var list_items: Array[String] = []
+	for row in key_stats:
+		var row_data := row as Dictionary
+		list_items.append("%s: %s" % [String(row_data.get("name", "Stat")), String(row_data.get("value", "0"))])
+	if list_items.is_empty():
+		list_items.append("Stats unavailable")
+
+	return {
+		"title": "Character",
+		"left_title": "Core Stats",
+		"items": list_items,
+		"selected": list_items[0],
+		"center_title": "Level %d" % maxi(player_level, 1),
+		"center_hint": "%d/%d" % [clampi(level_progress_current, 0, maxi(level_progress_required, 1)), maxi(level_progress_required, 1)],
+		"right_title": "Character Overview",
+		"description": _character_detail_description(key_stats),
+	}
+
+
+func _character_key_stat_rows() -> Array:
+	if _stats == null or not _stats.has_method("get_stat"):
+		return []
+
+	var key_stat_ids := [
+		&"max_health",
+		&"health_regeneration",
+		&"max_energy",
+		&"energy_regeneration",
+		&"auto_attack_damage",
+		&"auto_attack_speed",
+		&"move_speed",
+		&"max_load",
+	]
+	var rows: Array = []
+	for stat_id in key_stat_ids:
+		rows.append({
+			"name": _stat_display_name(stat_id),
+			"value": _format_stat_value(stat_id),
+		})
+
+	return rows
+
+
+func _character_detail_description(key_stats: Array) -> String:
+	var lines := PackedStringArray()
+	lines.append("Level %d" % maxi(player_level, 1))
+	lines.append("Progress: %d/%d" % [clampi(level_progress_current, 0, maxi(level_progress_required, 1)), maxi(level_progress_required, 1)])
+	lines.append("")
+	lines.append("Core Stats")
+	for row in key_stats:
+		var row_data := row as Dictionary
+		lines.append("%s: %s" % [String(row_data.get("name", "Stat")), String(row_data.get("value", "0"))])
+	_append_forged_trait_summary(lines)
+	return "\n".join(lines)
+
+
+func _append_forged_trait_summary(lines: PackedStringArray) -> void:
+	var loadout := _forged_trait_loadout()
+	if loadout == null:
+		return
+
+	lines.append("")
+	lines.append("Forged Traits")
+	if loadout.has_method("get_unspent_trait_points"):
+		lines.append("Ability Points: %d" % int(loadout.call("get_unspent_trait_points")))
+	if loadout.has_method("get_active_traits") and loadout.has_method("get_active_slot_limit"):
+		var active_traits: Array = loadout.call("get_active_traits")
+		lines.append("Active Slots: %d/%d" % [active_traits.size(), int(loadout.call("get_active_slot_limit"))])
+		if active_traits.is_empty():
+			lines.append("Active: None")
+		else:
+			for raw_trait_id in active_traits:
+				var trait_id := StringName(String(raw_trait_id))
+				var rank := int(loadout.call("get_trait_rank", trait_id)) if loadout.has_method("get_trait_rank") else 1
+				lines.append("%s Rank %d" % [ForgedTraitCatalog.get_display_name(trait_id), rank])
+
+
+func _forged_trait_loadout() -> Node:
+	if _stats == null:
+		return null
+
+	return _stats.get_node_or_null("ForgedTraits")
+
+
+func _stat_display_name(stat_id: StringName) -> String:
+	if _stats != null and _stats.has_method("get_display_name"):
+		return String(_stats.call("get_display_name", stat_id))
+
+	return _format_slot_label(String(stat_id))
+
+
+func _format_stat_value(stat_id: StringName) -> String:
+	if _stats == null or not _stats.has_method("get_stat"):
+		return "0"
+
+	var value := float(_stats.call("get_stat", stat_id))
+	var format := &"number"
+	if _stats.has_method("get_format"):
+		format = StringName(String(_stats.call("get_format", stat_id)))
+
+	match format:
+		&"percent":
+			return "%s%%" % _format_decimal(value)
+		&"per_second":
+			return "%s/s" % _format_decimal(value)
+		&"kilogram":
+			return "%s kg" % _format_decimal(value)
+		&"per_day":
+			return "%s/d" % _format_decimal(value)
+		_:
+			return _format_decimal(value)
 
 
 func _apply_button_theme(button: Button, font_size: int) -> void:
@@ -1320,30 +1830,46 @@ func _on_glossary_submenu_pressed(submenu_id: String, _submenu_label: String) ->
 	_open_detail_view(submenu_id)
 
 
-func _open_inventory() -> void:
-	var inventory_panel := _find_inventory_panel()
-	if inventory_panel == null:
-		_set_status("Inventory panel not found.")
+func _on_detail_list_item_pressed(item_id: String) -> void:
+	match _active_detail_id:
+		"creatures":
+			if not CREATURE_DETAIL_ENTRIES.has(item_id):
+				return
+			_remember_detail_list_scroll(_active_detail_id)
+			_selected_creature_id = item_id
+			_update_detail_view()
+			call_deferred("_restore_detail_list_scroll", _active_detail_id)
+		"crafting":
+			var recipes := CraftingRecipeCatalogScript.create_recipe_lookup()
+			if not recipes.has(item_id):
+				return
+			_remember_detail_list_scroll(_active_detail_id)
+			_selected_crafting_recipe_id = item_id
+			_update_detail_view()
+			call_deferred("_restore_detail_list_scroll", _active_detail_id)
+
+
+func _remember_detail_list_scroll(detail_id: String) -> void:
+	var scroll := _current_detail_list_scroll()
+	if scroll == null:
 		return
 
-	close()
-	if inventory_panel.has_method("open"):
-		inventory_panel.call("open")
-	else:
-		inventory_panel.set("visible", true)
+	_detail_list_scroll_offsets[detail_id] = scroll.scroll_vertical
 
 
-func _find_inventory_panel() -> Node:
-	if inventory_panel_path != NodePath(""):
-		var panel := get_node_or_null(inventory_panel_path)
-		if panel != null:
-			return panel
+func _restore_detail_list_scroll(detail_id: String) -> void:
+	var scroll := _current_detail_list_scroll()
+	if scroll == null:
+		return
 
-	var panels := get_tree().get_nodes_in_group("inventory_panel")
-	if panels.is_empty():
+	scroll.scroll_vertical = int(_detail_list_scroll_offsets.get(detail_id, 0))
+
+
+func _current_detail_list_scroll() -> ScrollContainer:
+	if _detail_body == null:
 		return null
 
-	return panels[0]
+	return _detail_body.find_child("EntryScroll", true, false) as ScrollContainer
 
 
 func _find_inventory() -> Node:
@@ -1392,7 +1918,127 @@ func _detail_label(detail_id: String) -> String:
 	return detail_id.capitalize()
 
 
+func _detail_item_data(item: Variant) -> Dictionary:
+	if item is Dictionary:
+		var item_data := item as Dictionary
+		var item_label := String(item_data.get("label", item_data.get("id", "Entry")))
+		return {
+			"id": String(item_data.get("id", item_label)),
+			"label": item_label,
+		}
+
+	var item_label := String(item)
+	return {
+		"id": item_label,
+		"label": item_label,
+	}
+
+
+func _creature_detail_content() -> Dictionary:
+	if not CREATURE_DETAIL_ENTRIES.has(_selected_creature_id):
+		_selected_creature_id = String(CREATURE_ENTRY_ORDER[0])
+
+	var selected_entry := CREATURE_DETAIL_ENTRIES[_selected_creature_id] as Dictionary
+	var selected_label := String(selected_entry.get("label", "Creature"))
+	var items: Array = []
+	for creature_id in CREATURE_ENTRY_ORDER:
+		if not CREATURE_DETAIL_ENTRIES.has(creature_id):
+			continue
+
+		var entry := CREATURE_DETAIL_ENTRIES[creature_id] as Dictionary
+		items.append({
+			"id": String(creature_id),
+			"label": String(entry.get("label", creature_id)),
+		})
+
+	return {
+		"title": "Creatures",
+		"left_title": "Known Creatures",
+		"items": items,
+		"selected": selected_label,
+		"creature_id": _selected_creature_id,
+		"vulnerabilities": selected_entry.get("vulnerabilities", []),
+		"right_title": String(selected_entry.get("right_title", selected_label)),
+		"description": String(selected_entry.get("description", "Creature details will appear here.")),
+	}
+
+
+func _crafting_detail_content() -> Dictionary:
+	var recipes := CraftingRecipeCatalogScript.create_recipes()
+	var recipe_lookup := {}
+	var items: Array = []
+	for recipe in recipes:
+		var recipe_data := recipe as Dictionary
+		var recipe_id := String(recipe_data.get("id", ""))
+		if recipe_id.is_empty():
+			continue
+
+		recipe_lookup[recipe_id] = recipe_data
+		items.append({
+			"id": recipe_id,
+			"label": "%s - %s" % [
+				String(recipe_data.get("category", "Crafting")),
+				String(recipe_data.get("label", recipe_id)),
+			],
+		})
+
+	if items.is_empty():
+		return {
+			"title": "Crafting",
+			"left_title": "Craftable Items",
+			"items": [],
+			"selected": "",
+			"right_title": "Crafting",
+			"description": "No craftable prototype items are registered yet.",
+		}
+
+	if not recipe_lookup.has(_selected_crafting_recipe_id):
+		var first_item := items[0] as Dictionary
+		_selected_crafting_recipe_id = String(first_item.get("id", ""))
+
+	var selected_recipe := recipe_lookup[_selected_crafting_recipe_id] as Dictionary
+	var selected_label := String(selected_recipe.get("label", "Recipe"))
+	return {
+		"title": "Crafting",
+		"left_title": "Craftable Items",
+		"items": items,
+		"selected": "%s - %s" % [
+			String(selected_recipe.get("category", "Crafting")),
+			selected_label,
+		],
+		"center_title": "Ingredients",
+		"center_hint": String(selected_recipe.get("station_name", "Crafting Station")),
+		"output_text": "x%d %s" % [
+			maxi(int(selected_recipe.get("output_quantity", 1)), 1),
+			selected_label,
+		],
+		"ingredients": selected_recipe.get("ingredients", []),
+		"right_title": selected_label,
+		"description": _crafting_detail_description(selected_recipe),
+	}
+
+
+func _crafting_detail_description(recipe: Dictionary) -> String:
+	var lines := PackedStringArray()
+	lines.append(String(recipe.get("lore", "Crafting lore will appear here.")).strip_edges())
+	lines.append("")
+	lines.append("Station: %s" % String(recipe.get("station_name", "Crafting Station")))
+	lines.append("Tier: %s" % String(recipe.get("tier_roman", recipe.get("tier", ""))))
+	lines.append("")
+	lines.append(String(recipe.get("description", "")).strip_edges())
+	return "\n".join(lines)
+
+
 func _detail_content(detail_id: String) -> Dictionary:
+	if detail_id == "creatures":
+		return _creature_detail_content()
+	if detail_id == "crafting":
+		return _crafting_detail_content()
+	if detail_id == "inventory":
+		return _inventory_detail_content()
+	if detail_id == "character":
+		return _character_detail_content()
+
 	var content := DETAIL_CONTENT.get(detail_id, {}) as Dictionary
 	if content.is_empty():
 		return {

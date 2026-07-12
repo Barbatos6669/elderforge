@@ -1,4 +1,4 @@
-## Toggleable inventory window for the current local prototype.
+## Retired prototype inventory window kept as reference during the UI migration.
 ##
 ## This script owns presentation state only: window visibility, selected slot UI,
 ## drag/drop forwarding, and details rendering. `PlayerInventory` owns item and
@@ -21,8 +21,6 @@ const LOOT_DRAG_TYPE := "elderforge_loot_item"
 @export var inventory_path: NodePath
 ## Optional player stats node. Playable scenes point this at Player/Stats.
 @export var stats_path: NodePath
-## Keyboard key used to open and close the inventory.
-@export var toggle_key: Key = KEY_I
 ## Number of visible inventory slots.
 @export_range(1, MAX_VISIBLE_SLOTS, 1) var slot_count: int = MAX_VISIBLE_SLOTS
 ## Number of columns used by the slot grid.
@@ -74,16 +72,6 @@ func _ready() -> void:
 	_refresh_all_slots()
 	_refresh_stats()
 	_select_first_filled_slot()
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	var key_event := event as InputEventKey
-	if key_event == null:
-		return
-
-	if key_event.pressed and not key_event.echo and key_event.keycode == toggle_key:
-		toggle()
-		get_viewport().set_input_as_handled()
 
 
 ## Opens the inventory window.

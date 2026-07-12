@@ -63,9 +63,7 @@ func _init() -> void:
 ## Returns one recipe per tool family per available tier.
 func get_refining_recipes() -> Array:
 	var recipes := []
-	var first_tier := clampi(min_recipe_tier, 1, 8)
-	var last_tier := clampi(max_recipe_tier, first_tier, 8)
-	for tier in range(first_tier, last_tier + 1):
+	for tier in _available_recipe_tiers():
 		for tool_prefix in tool_item_id_prefixes:
 			var tool_id := String(tool_prefix)
 			if tool_id.is_empty():
@@ -82,6 +80,7 @@ func _build_tool_recipe(tool_prefix: String, tier: int) -> Dictionary:
 		"station_type": station_type,
 		"tier": tier,
 		"tier_roman": tier_roman,
+		"service_level": service_level,
 		"recipe_label": "Tier %s %s" % [tier_roman, _tool_label(tool_prefix)],
 		"action_text": "Craft",
 		"inputs": _build_tool_inputs(tool_prefix, tier),

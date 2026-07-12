@@ -14,9 +14,9 @@ Files:
 
 Related scenes:
 
-- `scenes/gathering/trees/SilverneedlePineT1.tscn`: T1 Oak Tree node. It yields
-  `timber_t1`, which displays as `Oak Wood I`. The file still uses the older
-  temporary tree model until an oak source asset replaces it.
+- `scenes/gathering/trees/OakTreeT1.tscn`: T1 Oak Tree node. It yields
+  `timber_t1`, which displays as `Oak Wood I`, and currently uses the nature
+  pack `CommonTree_1` art with alpha-cut leaf cards.
 - `scenes/gathering/rocks/MoonchalkRockT1.tscn`: T1 Clay Deposit node. It yields
   `stone_t1`, which displays as `Clay I`, and swaps to placeholder rubble when
   depleted.
@@ -25,8 +25,9 @@ Related scenes:
 
 Related art:
 
-- `assets/trees/Silverneedle_Pine_T_var2.glb`: temporary tree model with
-  `Full_Tree`, `Pine_leaves`, `De_Render`, and `Trunk` mesh pieces.
+- `assets/Nature Pack/CommonTree_1.gltf`: current T1 Oak/Common Tree visual.
+  The prefab wraps it with alpha-cut leaves, a gameplay collider, selection,
+  hover feedback, wind sway, and a simple depleted stump.
 - `assets/Rocks/Moonchalk_Var1.glb`: temporary rock model used by the T1 Clay
   Deposit resource.
 
@@ -50,17 +51,14 @@ GDScript notes:
   over time. The current T1 tree and T1 rock restore 1 tick every 30 seconds.
 - `replenish_gather_tick()` adds one missing tick, updates visuals, and enables
   selection again if the resource was depleted.
-- `active_visuals_path` and `depleted_visuals_path` are still available for
-  simple scenes. The T1 Oak Tree uses `GatherableResourceModelState` instead
-  because active and depleted mesh pieces live inside one imported `.glb`.
-- `active_mesh_names` are shown while the resource can be gathered.
-- `depleted_mesh_names` are shown after the resource reaches 0 gather ticks.
-- `disabled_mesh_names` keeps unused imported helper meshes hidden without
-  deleting them from the source GLB.
+- `active_visuals_path` and `depleted_visuals_path` toggle the current T1 Oak
+  Tree between the full CommonTree visual and a simple stump.
+- `active_mesh_names`, `depleted_mesh_names`, and `disabled_mesh_names` are
+  still available when an imported model contains separate active/depleted mesh
+  pieces.
 - Player visibility is intentionally separate from gathering state. The T1 Oak
-  Tree uses `OccludableVisual3D` to pixel-fade only `Pine_leaves` when they
-  block the player. Use the same pattern later for roofs, canopies, or tall
-  props.
+  Tree uses `OccludableVisual3D` to fade the CommonTree model when it blocks the
+  player. Use the same pattern later for roofs, canopies, or tall props.
 - Gatherable scenes should have a separate `StaticBody3D` trunk/rock collider on
   the resource obstacle layer. Keep it close to the solid shape; the larger
   `Selectable` area is only for clicking and hover.

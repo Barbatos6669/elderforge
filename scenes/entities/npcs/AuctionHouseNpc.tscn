@@ -1,0 +1,67 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/economy/auction_house_npc_3d.gd" id="1_auctioneer"]
+[ext_resource type="Script" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
+[ext_resource type="Script" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="3_selection"]
+[ext_resource type="PackedScene" path="res://scenes/entities/npcs/ServiceNpcVisual.tscn" id="4_service_npc"]
+[ext_resource type="Script" path="res://scripts/entities/npc/service_npc_ambient_wander_3d.gd" id="5_ambient"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.35
+height = 1.8
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_selectable"]
+radius = 0.65
+height = 2.1
+
+[node name="AuctionHouseNpc" type="Node3D"]
+script = ExtResource("1_auctioneer")
+display_name = "Auctioneer"
+interaction_radius = 1.0
+interaction_half_extents = Vector2(0.35, 0.35)
+interaction_anchor_path = NodePath("Visuals")
+
+[node name="Visuals" type="Node3D" parent="."]
+
+[node name="ServiceNpcVisual" parent="Visuals" instance=ExtResource("4_service_npc")]
+body_type = "female"
+skin_color = Color(0.56, 0.40, 0.30, 1)
+hair_style = "buns"
+hair_color = Color(0.09, 0.06, 0.035, 1)
+outfit_style = "starter_peasant"
+outfit_fallback_color = Color(0.20, 0.14, 0.08, 1)
+outfit_tint = Color(0.95, 0.74, 0.34, 1)
+
+[node name="AmbientWander" type="Node" parent="."]
+script = ExtResource("5_ambient")
+wander_radius = 0.55
+move_speed = 0.42
+
+[node name="Body" type="StaticBody3D" parent="."]
+collision_layer = 2
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="Selectable" type="Area3D" parent="."]
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("2_selectable")
+display_name = "Auctioneer"
+relationship = 2
+neutral_color = Color(1, 0.8, 0.28, 1)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+shape = SubResource("CapsuleShape3D_selectable")
+
+[node name="SelectedRing" type="MeshInstance3D" parent="."]
+script = ExtResource("3_selection")
+ring_radius = 0.78
+ring_width = 0.06
+ring_y_offset = 0.055
+ring_color = Color(1, 0.8, 0.28, 1)
+fill_color = Color(1, 0.8, 0.28, 0.13)
+fill_selection_color_mix = 0.2

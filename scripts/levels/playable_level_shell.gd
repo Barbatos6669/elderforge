@@ -9,13 +9,18 @@ extends Node3D
 
 ## Root-child nodes that should not exist in a command-line dedicated server.
 @export var dedicated_server_client_only_paths: Array[NodePath] = [
+	NodePath("SceneToonMaterialPass"),
 	NodePath("InventoryPanel"),
 	NodePath("PlayerStatusHud"),
+	NodePath("WorldTimeHud"),
+	NodePath("HudMap"),
 	NodePath("DeathMessageHud"),
 	NodePath("RefiningPanel"),
+	NodePath("ServiceNpcDialogPanel"),
+	NodePath("AuctionHousePanel"),
 	NodePath("LootPanel"),
 	NodePath("ChatPanel"),
-	NodePath("TopRightHudMenu"),
+	NodePath("MasterMenu"),
 ]
 
 

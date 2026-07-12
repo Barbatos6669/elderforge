@@ -1,39 +1,49 @@
-[gd_scene format=3 uid="uid://bg4arns7dr5d4"]
+[gd_scene load_steps=8 format=3 uid="uid://bg4arns7dr5d4"]
 
 [ext_resource type="Script" uid="uid://c11s0eq5k2747" path="res://scripts/refining/refining_station_3d.gd" id="1_station"]
 [ext_resource type="Script" uid="uid://br3ubcjkrdw57" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
-[ext_resource type="PackedScene" uid="uid://bjny6f2sw0fsk" path="res://assets/Buildings/Refining/Pit_Saw_Station.glb" id="3_5ix4y"]
 [ext_resource type="Script" uid="uid://i4o11j0hk5eg" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="3_selection"]
-[ext_resource type="Script" uid="uid://deovgvj3mxpf5" path="res://scripts/refining/refining_station_tier_visuals.gd" id="4_tier_visuals"]
+[ext_resource type="PackedScene" path="res://scenes/entities/npcs/ServiceNpcVisual.tscn" id="4_service_npc"]
+[ext_resource type="Script" path="res://scripts/entities/npc/service_npc_ambient_wander_3d.gd" id="5_ambient"]
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
-size = Vector3(3.8, 1.2, 3.8)
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.35
+height = 1.8
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_selectable"]
-size = Vector3(4.8, 2.5, 4.8)
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_selectable"]
+radius = 0.65
+height = 2.1
 
 [node name="SawmillT1" type="Node3D" unique_id=464019287]
 script = ExtResource("1_station")
 display_name = "Sawmill"
 station_type = "sawmill"
+service_level = 1
 input_quantity = 4
+interaction_half_extents = Vector2(0.35, 0.35)
+interaction_anchor_path = NodePath("Visuals")
 
 [node name="Visuals" type="Node3D" parent="." unique_id=1597300680]
 
-[node name="TierVisuals" type="Node3D" parent="Visuals" unique_id=386093255]
-script = ExtResource("4_tier_visuals")
-accent_color = Color(0.71, 0.56, 0.33, 1)
+[node name="ServiceNpcVisual" parent="Visuals" unique_id=63010240 instance=ExtResource("4_service_npc")]
+skin_color = Color(0.62, 0.47, 0.32, 1)
+hair_style = "short"
+hair_color = Color(0.19, 0.11, 0.05, 1)
+outfit_fallback_color = Color(0.49, 0.34, 0.19, 1)
+outfit_tint = Color(0.88, 0.78, 0.58, 1)
 
-[node name="Pit_Saw_Station" parent="Visuals" unique_id=63010240 instance=ExtResource("3_5ix4y")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.05046034, -0.1430664, -0.022475839)
+[node name="AmbientWander" type="Node" parent="." unique_id=1852860272]
+script = ExtResource("5_ambient")
+wander_radius = 0.85
+move_speed = 0.5
 
 [node name="Body" type="StaticBody3D" parent="." unique_id=312521065]
 collision_layer = 2
 collision_mask = 0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Body" unique_id=30591951]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
-shape = SubResource("BoxShape3D_body")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_body")
 
 [node name="Selectable" type="Area3D" parent="." unique_id=498447376]
 collision_layer = 8
@@ -44,13 +54,13 @@ relationship = 2
 neutral_color = Color(1, 0.8, 0.28, 1)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable" unique_id=958636212]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
-shape = SubResource("BoxShape3D_selectable")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+shape = SubResource("CapsuleShape3D_selectable")
 
 [node name="SelectedRing" type="MeshInstance3D" parent="." unique_id=376953270]
 script = ExtResource("3_selection")
-ring_radius = 2.2
-ring_width = 0.1
+ring_radius = 0.75
+ring_width = 0.06
 ring_y_offset = 0.055
 ring_color = Color(1, 0.8, 0.28, 1)
 fill_color = Color(1, 0.8, 0.28, 0.13)

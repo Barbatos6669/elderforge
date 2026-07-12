@@ -1,6 +1,6 @@
 # Loot UI
 
-`loot_panel.gd` is the first-pass reward window. It opens for a `LootContainer3D`, draws currency and item rows, moves rewards into the node in group `player_inventory`, and asks `InventoryPanel` to sit beside it while looting.
+`loot_panel.gd` is the first-pass reward window. It opens for a `LootContainer3D`, draws currency and item rows, and moves rewards into the node in group `player_inventory`.
 
 `loot_item_row.gd` is the drag source for one loot row. It builds the drag payload through `LootPanel`, then the inventory slot accepts that payload and pulls the item from the loot container.
 

@@ -3,6 +3,16 @@
 This is the short navigation page for the current prototype. Use it when the
 project feels too big and you just need the next file to open.
 
+## Project Memory
+
+Read these first when coming back after a break:
+
+| Doc | Use It For |
+| --- | --- |
+| `docs/PROJECT_STATE.md` | Current playable state, active systems, risks, and verification habits |
+| `docs/DECISIONS.md` | Architecture and product decisions we should keep respecting |
+| `docs/NEXT_TASK.md` | The next handoff task and files most likely to matter |
+
 ## Run The Game
 
 Godot currently starts here:
@@ -36,7 +46,7 @@ map-specific things you place by hand.
 | Change inventory UI | `scripts/ui/inventory/inventory_panel.gd` |
 | Change gathering behavior | `scripts/player/gathering/player_gathering.gd` |
 | Change resource node behavior | `scripts/gathering/gatherable_resource_3d.gd` |
-| Edit the T1 tree prefab | `scenes/gathering/trees/SilverneedlePineT1.tscn` |
+| Edit the T1 tree prefab | `scenes/gathering/trees/OakTreeT1.tscn` |
 | Change auto attack | `scripts/player/combat/player_auto_attack.gd` |
 | Change player stats | `scripts/player/stats/player_stats.gd` |
 

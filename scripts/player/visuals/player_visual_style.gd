@@ -7,20 +7,6 @@
 class_name PlayerVisualStyle
 extends Node
 
-const MALE_BODY_SCENE_PATH := "res://assets/characters/universal_base_character_package/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Male_FullBody.gltf"
-const FEMALE_BODY_SCENE_PATH := "res://assets/characters/universal_base_character_package/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Female_FullBody.gltf"
-const BODY_SCENE_META_KEY := &"appearance_body_scene_path"
-const MODEL_ROOT_NAME := "BaseCharacter"
-const SKELETON_PATH := NodePath("Armature/Skeleton3D")
-
-const HAIR_SCENE_PATHS := {
-	"short": "res://assets/characters/universal_base_character_package/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_SimpleParted.gltf",
-	"buzzed": "res://assets/characters/universal_base_character_package/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Buzzed.gltf",
-	"buzzed_female": "res://assets/characters/universal_base_character_package/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_BuzzedFemale.gltf",
-	"long": "res://assets/characters/universal_base_character_package/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Long.gltf",
-	"buns": "res://assets/characters/universal_base_character_package/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Buns.gltf",
-}
-
 ## Root node of the visible imported character model.
 @export var model_root_path: NodePath = NodePath("../Visuals/BaseCharacter")
 ## Local player instances can pull their look from PrototypeAuthSession.
@@ -33,17 +19,23 @@ const HAIR_SCENE_PATHS := {
 @export var hair_color: Color = Color(0.16, 0.11, 0.08, 1.0)
 ## Imported Universal Base Character hairstyle to show on the player.
 @export_enum("none", "buzzed", "short", "long", "buns") var hair_style := "short"
+## Rigged outfit to bind to the current body skeleton.
+@export_enum("none", "starter_peasant", "ranger") var outfit_style := "starter_peasant"
 ## Eye material color.
 @export var eye_color: Color = Color(0.95, 0.88, 0.58, 1.0)
+## Character material style used by the player and remote player visuals.
+@export_enum("experimental_shader", "standard_toon") var material_style := CharacterToonMaterials.STYLE_EXPERIMENTAL_SHADER
 ## Fine-tune imported hair after it is instanced.
 @export var hair_position_offset := Vector3.ZERO
 @export var hair_rotation_degrees_offset := Vector3.ZERO
 @export var hair_scale_multiplier := Vector3.ONE
 
-var _body_material: StandardMaterial3D
-var _hair_material: StandardMaterial3D
-var _eye_material: StandardMaterial3D
+var _body_material: Material
+var _head_only_body_material: Material
+var _hair_material: Material
+var _eye_material: Material
 var _hair_root: Node3D
+var _outfit_root: Node3D
 
 
 func _ready() -> void:
@@ -54,17 +46,20 @@ func _ready() -> void:
 
 ## Applies appearance data loaded from the auth session or network state.
 func apply_appearance(appearance: Dictionary) -> void:
-	var next_body_type := _sanitize_body_type(String(appearance.get("body_type", body_type)))
+	var next_body_type := CharacterAppearanceAssets.sanitize_body_type(String(appearance.get("body_type", body_type)))
 	var next_body_color := _appearance_color(appearance.get("skin_color", body_color), body_color)
-	var next_hair_style := _sanitize_hair_style(String(appearance.get("hair_style", hair_style)))
+	var next_hair_style := CharacterAppearanceAssets.sanitize_hair_style(String(appearance.get("hair_style", hair_style)))
 	var next_hair_color := _appearance_color(appearance.get("hair_color", hair_color), hair_color)
+	var next_outfit_style := CharacterAppearanceAssets.sanitize_outfit_style(String(appearance.get("outfit_style", outfit_style)))
 	if (
 		body_type == next_body_type
 		and _colors_match(body_color, next_body_color)
 		and hair_style == next_hair_style
 		and _colors_match(hair_color, next_hair_color)
+		and outfit_style == next_outfit_style
 		and _current_model_matches_body(next_body_type)
 		and (hair_style == "none" or (_hair_root != null and is_instance_valid(_hair_root)))
+		and (outfit_style == "none" or (_outfit_root != null and is_instance_valid(_outfit_root)))
 	):
 		return
 
@@ -72,16 +67,18 @@ func apply_appearance(appearance: Dictionary) -> void:
 	body_color = next_body_color
 	hair_style = next_hair_style
 	hair_color = next_hair_color
+	outfit_style = next_outfit_style
 	_apply_style()
 
 
 ## Returns compact appearance data safe to include in prototype multiplayer state.
 func get_network_appearance() -> Dictionary:
 	return {
-		"body_type": _sanitize_body_type(body_type),
+		"body_type": CharacterAppearanceAssets.sanitize_body_type(body_type),
 		"skin_color": _sanitize_color(body_color).to_html(true),
-		"hair_style": _sanitize_hair_style(hair_style),
+		"hair_style": CharacterAppearanceAssets.sanitize_hair_style(hair_style),
 		"hair_color": _sanitize_color(hair_color).to_html(true),
+		"outfit_style": CharacterAppearanceAssets.sanitize_outfit_style(outfit_style),
 	}
 
 
@@ -95,22 +92,28 @@ func _apply_style() -> void:
 		return
 
 	_body_material = _create_toon_material(_body_color_for_preset())
-	_hair_material = _create_toon_material(_sanitize_color(hair_color))
-	_hair_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_head_only_body_material = CharacterToonMaterials.make_head_only_character_material(
+		_body_color_for_preset(),
+		material_style,
+		CharacterAppearanceAssets.head_only_clip_min_y(body_type)
+	)
+	_hair_material = _create_toon_material(_sanitize_color(hair_color), true)
 	_eye_material = _create_toon_material(eye_color)
 
 	_apply_to_meshes(model_root)
+	_rebuild_outfit_scene(model_root)
+	_sync_base_body_mesh_visibility(model_root)
 	_rebuild_hair_scene(model_root)
 	_refresh_material_dependents()
 
 
 func _ensure_body_scene() -> Node3D:
 	var model_root := get_node_or_null(model_root_path) as Node3D
-	var scene_path := _body_scene_path_for_type(body_type)
+	var scene_path := CharacterAppearanceAssets.body_scene_path(body_type)
 	if scene_path.is_empty():
 		return model_root
 	if model_root != null and _model_matches_scene_path(model_root, scene_path):
-		model_root.set_meta(BODY_SCENE_META_KEY, scene_path)
+		model_root.set_meta(CharacterAppearanceAssets.BODY_SCENE_META_KEY, scene_path)
 		return model_root
 
 	if not ResourceLoader.exists(scene_path):
@@ -123,8 +126,8 @@ func _ensure_body_scene() -> Node3D:
 		push_warning("Character body scene root must be Node3D: %s" % scene_path)
 		return model_root
 
-	next_model.name = MODEL_ROOT_NAME
-	next_model.set_meta(BODY_SCENE_META_KEY, scene_path)
+	next_model.name = CharacterAppearanceAssets.MODEL_ROOT_NAME
+	next_model.set_meta(CharacterAppearanceAssets.BODY_SCENE_META_KEY, scene_path)
 
 	if model_root == null:
 		var visuals := get_node_or_null("../Visuals") as Node3D
@@ -152,23 +155,20 @@ func _ensure_body_scene() -> Node3D:
 
 	_attach_preserved_sockets(next_model, preserved_sockets)
 	_hair_root = null
+	_outfit_root = null
 	_refresh_model_dependents()
 	return next_model
 
 
 func _current_model_matches_body(next_body_type: String) -> bool:
 	var model_root := get_node_or_null(model_root_path) as Node3D
-	return model_root != null and _model_matches_scene_path(model_root, _body_scene_path_for_type(next_body_type))
+	return model_root != null and _model_matches_scene_path(model_root, CharacterAppearanceAssets.body_scene_path(next_body_type))
 
 
 func _model_matches_scene_path(model_root: Node3D, scene_path: String) -> bool:
-	if String(model_root.get_meta(BODY_SCENE_META_KEY, "")) == scene_path:
+	if String(model_root.get_meta(CharacterAppearanceAssets.BODY_SCENE_META_KEY, "")) == scene_path:
 		return true
 	return String(model_root.scene_file_path) == scene_path
-
-
-func _body_scene_path_for_type(next_body_type: String) -> String:
-	return FEMALE_BODY_SCENE_PATH if _sanitize_body_type(next_body_type) == "female" else MALE_BODY_SCENE_PATH
 
 
 func _detach_preserved_sockets(model_root: Node) -> Dictionary:
@@ -191,9 +191,9 @@ func _detach_preserved_sockets(model_root: Node) -> Dictionary:
 
 
 func _attach_preserved_sockets(model_root: Node3D, sockets: Dictionary) -> void:
-	var skeleton := model_root.get_node_or_null(SKELETON_PATH) as Skeleton3D
+	var skeleton := model_root.get_node_or_null(CharacterAppearanceAssets.SKELETON_PATH) as Skeleton3D
 	if skeleton == null:
-		push_warning("Character body is missing skeleton path %s." % SKELETON_PATH)
+		push_warning("Character body is missing skeleton path %s." % CharacterAppearanceAssets.SKELETON_PATH)
 		return
 
 	for socket_name in sockets.keys():
@@ -224,7 +224,7 @@ func _refresh_material_dependents() -> void:
 
 
 func _apply_to_meshes(node: Node) -> void:
-	if node.name in ["MainHandAttachment", "HairAttachment"]:
+	if node.name in ["MainHandAttachment", "HairAttachment", "AppearanceHair", "AppearanceOutfit"]:
 		return
 
 	if node is MeshInstance3D:
@@ -242,7 +242,7 @@ func _apply_to_mesh_instance(mesh_instance: MeshInstance3D) -> void:
 		mesh_instance.set_surface_override_material(surface_index, material)
 
 
-func _material_for_mesh(mesh_instance: MeshInstance3D) -> StandardMaterial3D:
+func _material_for_mesh(mesh_instance: MeshInstance3D) -> Material:
 	var mesh_name := mesh_instance.name.to_lower()
 	if mesh_name.contains("eye"):
 		return _eye_material
@@ -252,14 +252,39 @@ func _material_for_mesh(mesh_instance: MeshInstance3D) -> StandardMaterial3D:
 	return _body_material
 
 
-func _create_toon_material(color: Color) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = color
-	material.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
-	material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
-	material.roughness = 1.0
-	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	return material
+func _sync_base_body_mesh_visibility(model_root: Node) -> void:
+	var has_outfit := _outfit_root != null and is_instance_valid(_outfit_root)
+	for mesh_instance in CharacterRigAttachment.collect_mesh_instances(model_root):
+		if _is_runtime_attachment_mesh(mesh_instance):
+			continue
+
+		if CharacterAppearanceAssets.is_full_body_base_mesh(mesh_instance):
+			mesh_instance.visible = true
+			_apply_material_to_mesh(mesh_instance, _head_only_body_material if has_outfit else _body_material)
+		elif CharacterAppearanceAssets.is_base_body_mesh(mesh_instance):
+			mesh_instance.visible = not has_outfit
+
+
+func _is_runtime_attachment_mesh(mesh_instance: MeshInstance3D) -> bool:
+	if mesh_instance == null:
+		return false
+
+	return (
+		(_hair_root != null and is_instance_valid(_hair_root) and _hair_root.is_ancestor_of(mesh_instance))
+		or (_outfit_root != null and is_instance_valid(_outfit_root) and _outfit_root.is_ancestor_of(mesh_instance))
+	)
+
+
+func _create_toon_material(color: Color, cull_disabled := false) -> Material:
+	return CharacterToonMaterials.make_character_material(color, material_style, cull_disabled)
+
+
+func _apply_material_to_mesh(mesh_instance: MeshInstance3D, material: Material) -> void:
+	if mesh_instance.mesh == null or material == null:
+		return
+
+	for surface_index in range(mesh_instance.mesh.get_surface_count()):
+		mesh_instance.set_surface_override_material(surface_index, material)
 
 
 func _apply_auth_session_appearance() -> void:
@@ -271,10 +296,11 @@ func _apply_auth_session_appearance() -> void:
 		return
 
 	var appearance: Dictionary = auth_session.call("get_character_appearance")
-	body_type = _sanitize_body_type(String(appearance.get("body_type", body_type)))
+	body_type = CharacterAppearanceAssets.sanitize_body_type(String(appearance.get("body_type", body_type)))
 	body_color = _appearance_color(appearance.get("skin_color", body_color), body_color)
-	hair_style = _sanitize_hair_style(String(appearance.get("hair_style", hair_style)))
+	hair_style = CharacterAppearanceAssets.sanitize_hair_style(String(appearance.get("hair_style", hair_style)))
 	hair_color = _appearance_color(appearance.get("hair_color", hair_color), hair_color)
+	outfit_style = CharacterAppearanceAssets.sanitize_outfit_style(String(appearance.get("outfit_style", outfit_style)))
 
 
 func _is_local_player_visual() -> bool:
@@ -290,6 +316,51 @@ func _body_color_for_preset() -> Color:
 	return _sanitize_color(body_color)
 
 
+func _rebuild_outfit_scene(model_root: Node) -> void:
+	if _outfit_root != null and is_instance_valid(_outfit_root):
+		_outfit_root.queue_free()
+		_outfit_root = null
+
+	if outfit_style == "none":
+		return
+
+	var target_skeleton := model_root.get_node_or_null(CharacterAppearanceAssets.SKELETON_PATH) as Skeleton3D
+	if target_skeleton == null:
+		push_warning("Character body is missing skeleton path %s for outfit binding." % CharacterAppearanceAssets.SKELETON_PATH)
+		return
+
+	var scene_path := CharacterAppearanceAssets.outfit_scene_path(outfit_style, body_type)
+	_outfit_root = CharacterRigAttachment.bind_scene_to_skeleton(scene_path, target_skeleton, "AppearanceOutfit", "outfit")
+	if _outfit_root == null:
+		return
+
+	for mesh_instance in CharacterRigAttachment.collect_mesh_instances(_outfit_root):
+		_apply_outfit_materials(mesh_instance)
+
+
+func _apply_outfit_materials(mesh_instance: MeshInstance3D) -> void:
+	if mesh_instance.mesh == null:
+		return
+
+	for surface_index in range(mesh_instance.mesh.get_surface_count()):
+		var source_material := mesh_instance.get_surface_override_material(surface_index)
+		if source_material == null:
+			source_material = mesh_instance.mesh.surface_get_material(surface_index)
+
+		var material := _body_material if CharacterAppearanceAssets.is_skin_material(source_material) else _make_outfit_material(source_material)
+		mesh_instance.set_surface_override_material(surface_index, material)
+
+	mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+
+func _make_outfit_material(source_material: Material) -> Material:
+	return CharacterToonMaterials.make_textured_character_material(
+		source_material,
+		Color(0.52, 0.39, 0.24, 1.0),
+		material_style
+	)
+
+
 func _rebuild_hair_scene(model_root: Node) -> void:
 	if _hair_root != null and is_instance_valid(_hair_root):
 		_hair_root.queue_free()
@@ -298,66 +369,18 @@ func _rebuild_hair_scene(model_root: Node) -> void:
 	if hair_style == "none":
 		return
 
-	var target_skeleton := model_root.get_node_or_null(SKELETON_PATH) as Skeleton3D
+	var target_skeleton := model_root.get_node_or_null(CharacterAppearanceAssets.SKELETON_PATH) as Skeleton3D
 	if target_skeleton == null:
-		push_warning("Character body is missing skeleton path %s for hair binding." % SKELETON_PATH)
+		push_warning("Character body is missing skeleton path %s for hair binding." % CharacterAppearanceAssets.SKELETON_PATH)
 		return
 
-	var scene_path := _hair_scene_path_for_style()
-	if scene_path.is_empty():
+	var scene_path := CharacterAppearanceAssets.hair_scene_path(hair_style, body_type)
+	_hair_root = CharacterRigAttachment.bind_scene_to_skeleton(scene_path, target_skeleton, "AppearanceHair", "hair")
+	if _hair_root == null:
 		return
 
-	var scene := ResourceLoader.load(scene_path) as PackedScene
-	if scene == null:
-		push_warning("Could not load hair scene: %s" % scene_path)
-		return
-
-	var imported_root := scene.instantiate() as Node3D
-	if imported_root == null:
-		return
-
-	var root := Node3D.new()
-	root.name = "AppearanceHair"
-	target_skeleton.add_child(root, true)
-	root.add_child(imported_root, true)
-	_hair_root = root
-
-	var hair_meshes := _collect_mesh_instances(imported_root)
-	for mesh_instance in hair_meshes:
-		var source_transform := mesh_instance.transform
-		var source_parent := mesh_instance.get_parent()
-		if source_parent != null:
-			source_parent.remove_child(mesh_instance)
-		mesh_instance.owner = null
-		root.add_child(mesh_instance, true)
-		mesh_instance.transform = source_transform
-		mesh_instance.skeleton = mesh_instance.get_path_to(target_skeleton)
-		_apply_hair_materials(mesh_instance)
-
-	imported_root.queue_free()
-	_apply_hair_attachment_tuning(root)
-
-
-func _hair_scene_path_for_style() -> String:
-	var style := _sanitize_hair_style(hair_style)
-	if style == "buzzed" and body_type == "female":
-		return String(HAIR_SCENE_PATHS.get("buzzed_female", ""))
-
-	return String(HAIR_SCENE_PATHS.get(style, ""))
-
-
-func _collect_mesh_instances(node: Node) -> Array[MeshInstance3D]:
-	var meshes: Array[MeshInstance3D] = []
-	_collect_mesh_instances_recursive(node, meshes)
-	return meshes
-
-
-func _collect_mesh_instances_recursive(node: Node, meshes: Array[MeshInstance3D]) -> void:
-	if node is MeshInstance3D:
-		meshes.append(node as MeshInstance3D)
-
-	for child in node.get_children():
-		_collect_mesh_instances_recursive(child, meshes)
+	_apply_hair_materials(_hair_root)
+	_apply_hair_attachment_tuning(_hair_root)
 
 
 func _apply_hair_attachment_tuning(hair_root: Node3D) -> void:
@@ -403,18 +426,6 @@ func _appearance_color(value: Variant, fallback: Color) -> Color:
 			return _sanitize_color(Color.html(text))
 
 	return _sanitize_color(fallback)
-
-
-func _sanitize_body_type(value: String) -> String:
-	return "female" if value.strip_edges().to_lower() == "female" else "male"
-
-
-func _sanitize_hair_style(value: String) -> String:
-	var normalized := value.strip_edges().to_lower()
-	if normalized in ["none", "buzzed", "short", "long", "buns"]:
-		return normalized
-
-	return "short"
 
 
 func _sanitize_color(color: Color) -> Color:

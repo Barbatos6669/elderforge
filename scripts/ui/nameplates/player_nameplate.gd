@@ -194,7 +194,7 @@ func _create_viewport_renderer() -> void:
 	_viewport.name = "NameplateViewport"
 	_viewport.transparent_bg = true
 	_viewport.disable_3d = true
-	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS if Engine.is_editor_hint() else SubViewport.UPDATE_ONCE
 	add_child(_viewport)
 
 	_root = Control.new()
@@ -405,11 +405,19 @@ func _rebuild() -> void:
 		_register_center_row(_add_guild_line(content_origin + guild_line_offset))
 	_register_center_row(_add_status_bars(content_origin + status_bars_offset))
 	_fit_and_center_contents()
+	_request_viewport_render()
 
 
 func _clear_root() -> void:
 	for child in _root.get_children():
 		child.free()
+
+
+func _request_viewport_render() -> void:
+	if _viewport == null or Engine.is_editor_hint():
+		return
+
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 
 
 func _display_name() -> String:

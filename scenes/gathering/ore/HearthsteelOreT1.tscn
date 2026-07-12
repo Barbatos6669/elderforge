@@ -1,18 +1,12 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://cf3rajigm3ka8"]
 
-[ext_resource type="Script" path="res://scripts/gathering/gatherable_resource_3d.gd" id="1_gatherable"]
-[ext_resource type="PackedScene" path="res://assets/metal_veins/Hearthsteel_var1.glb" id="2_ore_model"]
-[ext_resource type="Script" path="res://scripts/interaction/selection/selectable_3d.gd" id="3_selectable"]
-[ext_resource type="Script" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="4_hover"]
-[ext_resource type="Script" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="5_selection"]
-[ext_resource type="Texture2D" path="res://assets/ui/cursors/gather_tool_cursor.png" id="6_gather_cursor"]
-[ext_resource type="Texture2D" path="res://assets/ui/cursors/depleted_resource_cursor.png" id="7_depleted_cursor"]
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
-size = Vector3(0.72, 0.46, 0.66)
-
-[sub_resource type="SphereShape3D" id="SphereShape3D_selectable"]
-radius = 0.7
+[ext_resource type="Script" uid="uid://c7onhc7t0w5tj" path="res://scripts/gathering/gatherable_resource_3d.gd" id="1_gatherable"]
+[ext_resource type="PackedScene" uid="uid://sqofggkteg0s" path="res://assets/Props/OreVein.glb" id="2_e6n1m"]
+[ext_resource type="Script" uid="uid://br3ubcjkrdw57" path="res://scripts/interaction/selection/selectable_3d.gd" id="3_selectable"]
+[ext_resource type="Script" uid="uid://cbxs8002i2pvm" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="4_hover"]
+[ext_resource type="Script" uid="uid://i4o11j0hk5eg" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="5_selection"]
+[ext_resource type="Texture2D" uid="uid://e6dikk8cx8dp" path="res://assets/ui/cursors/gather_tool_cursor.png" id="6_gather_cursor"]
+[ext_resource type="Texture2D" uid="uid://cili1xiu4osa1" path="res://assets/ui/cursors/depleted_resource_cursor.png" id="7_depleted_cursor"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_depleted"]
 albedo_color = Color(0.36, 0.34, 0.32, 1)
@@ -30,49 +24,49 @@ size = Vector3(0.32, 0.13, 0.24)
 material = SubResource("StandardMaterial3D_depleted")
 size = Vector3(0.25, 0.1, 0.2)
 
-[node name="IronOreT1" type="Node3D"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
+size = Vector3(0.72, 0.46, 0.66)
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_selectable"]
+radius = 0.7
+
+[node name="IronOreT1" type="Node3D" unique_id=1869373476]
 script = ExtResource("1_gatherable")
 display_name = "Iron Ore"
 resource_family_id = "ore"
 yield_item_id = "ore_t1"
-tier = 1
-yield_quantity = 1
-max_gather_ticks = 3
-gather_duration = 2.0
-active_visuals_path = NodePath("Visuals/Active")
-depleted_visuals_path = NodePath("Visuals/Depleted")
 
-[node name="Visuals" type="Node3D" parent="."]
+[node name="Visuals" type="Node3D" parent="." unique_id=143375456]
 
-[node name="Active" type="Node3D" parent="Visuals"]
+[node name="Active" type="Node3D" parent="Visuals" unique_id=1529234256]
 
-[node name="OreModel" parent="Visuals/Active" instance=ExtResource("2_ore_model")]
-transform = Transform3D(0.34, 0, 0, 0, 0.34, 0, 0, 0, 0.34, 0, 0, 0)
+[node name="OreVein" parent="Visuals/Active" unique_id=643239184 instance=ExtResource("2_e6n1m")]
+transform = Transform3D(0.285, 0, 0, 0, 0.285, 0, 0, 0, 0.285, 0.010246456, 0.04679808, -0.040085316)
 
-[node name="Depleted" type="Node3D" parent="Visuals"]
+[node name="Depleted" type="Node3D" parent="Visuals" unique_id=1125897359]
 visible = false
 
-[node name="Rubble1" type="MeshInstance3D" parent="Visuals/Depleted"]
+[node name="Rubble1" type="MeshInstance3D" parent="Visuals/Depleted" unique_id=1468623873]
 transform = Transform3D(0.906308, 0, -0.422618, 0, 1, 0, 0.422618, 0, 0.906308, -0.12, 0.08, 0.04)
 mesh = SubResource("BoxMesh_depleted_1")
 
-[node name="Rubble2" type="MeshInstance3D" parent="Visuals/Depleted"]
+[node name="Rubble2" type="MeshInstance3D" parent="Visuals/Depleted" unique_id=249320375]
 transform = Transform3D(0.766044, 0, 0.642788, 0, 1, 0, -0.642788, 0, 0.766044, 0.28, 0.065, -0.12)
 mesh = SubResource("BoxMesh_depleted_2")
 
-[node name="Rubble3" type="MeshInstance3D" parent="Visuals/Depleted"]
+[node name="Rubble3" type="MeshInstance3D" parent="Visuals/Depleted" unique_id=1400125406]
 transform = Transform3D(0.422618, 0, -0.906308, 0, 1, 0, 0.906308, 0, 0.422618, -0.3, 0.05, 0.2)
 mesh = SubResource("BoxMesh_depleted_3")
 
-[node name="Body" type="StaticBody3D" parent="."]
+[node name="Body" type="StaticBody3D" parent="." unique_id=619221708]
 collision_layer = 2
 collision_mask = 0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Body"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Body" unique_id=404732144]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.23, 0)
 shape = SubResource("BoxShape3D_body")
 
-[node name="Selectable" type="Area3D" parent="."]
+[node name="Selectable" type="Area3D" parent="." unique_id=1758209775]
 collision_layer = 8
 collision_mask = 0
 script = ExtResource("3_selectable")
@@ -80,11 +74,11 @@ display_name = "Iron Ore"
 relationship = 2
 neutral_color = Color(0.64, 0.7, 0.76, 1)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable" unique_id=1854559656]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.34, 0)
 shape = SubResource("SphereShape3D_selectable")
 
-[node name="HoverFeedback" type="MeshInstance3D" parent="."]
+[node name="HoverFeedback" type="MeshInstance3D" parent="." unique_id=55515183]
 script = ExtResource("4_hover")
 visuals_path = NodePath("../Visuals")
 screen_hover_padding_pixels = 8.0
@@ -98,7 +92,7 @@ hover_cursor_hotspot = Vector2(12, 12)
 unavailable_hover_cursor_texture = ExtResource("7_depleted_cursor")
 unavailable_hover_cursor_hotspot = Vector2(12, 12)
 
-[node name="SelectedRing" type="MeshInstance3D" parent="."]
+[node name="SelectedRing" type="MeshInstance3D" parent="." unique_id=935334192]
 script = ExtResource("5_selection")
 ring_radius = 0.76
 ring_width = 0.08

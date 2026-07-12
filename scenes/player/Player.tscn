@@ -31,6 +31,7 @@
 [ext_resource type="Script" path="res://scripts/player/lifecycle/player_respawn.gd" id="30_respawn"]
 [ext_resource type="Script" path="res://scripts/player/visuals/player_occlusion_silhouette.gd" id="31_occlusion_silhouette"]
 [ext_resource type="Script" path="res://scripts/player/visuals/player_visual_style.gd" id="32_visual_style"]
+[ext_resource type="Script" path="res://scripts/stats/forged_trait_loadout.gd" id="33_forged_traits"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -60,6 +61,9 @@ script = ExtResource("21_gathering")
 
 [node name="Stats" type="Node" parent="." unique_id=1261507381]
 script = ExtResource("14_stats")
+
+[node name="ForgedTraits" type="Node" parent="Stats"]
+script = ExtResource("33_forged_traits")
 
 [node name="Mana" type="Node" parent="."]
 script = ExtResource("29_resource_pool")

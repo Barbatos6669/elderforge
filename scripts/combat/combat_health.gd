@@ -92,6 +92,14 @@ func set_current_health(value: float, emit_damage: bool = false) -> void:
 		defeated.emit()
 
 
+## Updates maximum health while keeping current health valid.
+func set_max_health(value: float, should_fill := false) -> void:
+	max_health = maxf(value, 0.0)
+	current_health = max_health if should_fill else clampf(current_health, 0.0, max_health)
+	_is_defeated = current_health <= 0.0
+	_emit_health_changed()
+
+
 ## Restores this health pool to full health.
 func reset_to_full() -> void:
 	set_current_health(max_health)

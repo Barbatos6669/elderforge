@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/npc/service_npc_dialog_panel.gd" id="1_dialog"]
+
+[node name="ServiceNpcDialogPanel" type="CanvasLayer"]
+layer = 24
+script = ExtResource("1_dialog")

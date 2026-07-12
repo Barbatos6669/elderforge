@@ -6,18 +6,8 @@
 class_name CharacterAppearancePreview
 extends Control
 
-const MALE_BODY_SCENE_PATH := "res://assets/characters/universal_base_character_package/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Male_FullBody.gltf"
-const FEMALE_BODY_SCENE_PATH := "res://assets/characters/universal_base_character_package/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Female_FullBody.gltf"
 const IDLE_ANIMATION_SCENE_PATH := "res://assets/animations/universal_animation_library_1/UAL1_Standard.glb"
 const IDLE_ANIMATION_NAME := &"Idle"
-
-const HAIR_SCENE_PATHS := {
-	"short": "res://assets/characters/universal_base_character_package/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_SimpleParted.gltf",
-	"buzzed": "res://assets/characters/universal_base_character_package/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Buzzed.gltf",
-	"buzzed_female": "res://assets/characters/universal_base_character_package/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_BuzzedFemale.gltf",
-	"long": "res://assets/characters/universal_base_character_package/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Long.gltf",
-	"buns": "res://assets/characters/universal_base_character_package/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_Buns.gltf",
-}
 
 @export_range(0.0, 1.0, 0.01) var zoom_ratio := 0.35:
 	set(value):
@@ -28,12 +18,14 @@ var body_type := "male"
 var skin_color := Color(0.74, 0.86, 0.92, 1.0)
 var hair_style := "short"
 var hair_color := Color(0.16, 0.11, 0.08, 1.0)
+var outfit_style := "starter_peasant"
 
 var _viewport_container: SubViewportContainer
 var _viewport: SubViewport
 var _world_root: Node3D
 var _pivot: Node3D
 var _character_root: Node3D
+var _outfit_root: Node3D
 var _camera: Camera3D
 var _animation_player: AnimationPlayer
 var _yaw_degrees := 20.0
@@ -74,8 +66,8 @@ func set_appearance(
 	new_hair_style: String,
 	new_hair_color: Color
 ) -> void:
-	var next_body_type := _sanitize_body_type(new_body_type)
-	var next_hair_style := _sanitize_hair_style(new_hair_style)
+	var next_body_type := CharacterAppearanceAssets.sanitize_body_type(new_body_type)
+	var next_hair_style := CharacterAppearanceAssets.sanitize_hair_style(new_hair_style)
 	var should_rebuild := next_body_type != body_type or next_hair_style != hair_style
 	body_type = next_body_type
 	skin_color = _sanitize_color(new_skin_color)
@@ -188,8 +180,9 @@ func _rebuild_character() -> void:
 		_pivot.remove_child(_character_root)
 		_character_root.queue_free()
 		_character_root = null
+		_outfit_root = null
 
-	var body_scene_path := _body_scene_path()
+	var body_scene_path := CharacterAppearanceAssets.body_scene_path(body_type)
 	if body_scene_path.is_empty() or not ResourceLoader.exists(body_scene_path):
 		push_warning("Missing preview body scene: %s" % body_scene_path)
 		return
@@ -202,6 +195,8 @@ func _rebuild_character() -> void:
 	_character_root.name = "PreviewCharacter"
 	_pivot.add_child(_character_root, true)
 	_apply_current_materials()
+	_add_outfit()
+	_sync_base_body_mesh_visibility()
 	_add_hair()
 	_setup_idle_animation()
 
@@ -210,54 +205,47 @@ func _add_hair() -> void:
 	if _character_root == null or hair_style == "none":
 		return
 
-	var target_skeleton := _character_root.get_node_or_null("Armature/Skeleton3D") as Skeleton3D
+	var target_skeleton := _character_root.get_node_or_null(CharacterAppearanceAssets.SKELETON_PATH) as Skeleton3D
 	if target_skeleton == null:
-		push_warning("Preview character is missing Armature/Skeleton3D for hair binding.")
+		push_warning("Preview character is missing %s for hair binding." % CharacterAppearanceAssets.SKELETON_PATH)
 		return
 
-	var hair_scene_path := _hair_scene_path()
-	if hair_scene_path.is_empty() or not ResourceLoader.exists(hair_scene_path):
+	var hair_scene_path := CharacterAppearanceAssets.hair_scene_path(hair_style, body_type)
+	var hair_root := CharacterRigAttachment.bind_scene_to_skeleton(
+		hair_scene_path,
+		target_skeleton,
+		"PreviewHair",
+		"preview hair"
+	)
+	if hair_root == null:
 		return
 
-	var hair_scene := load(hair_scene_path) as PackedScene
-	var imported_root := hair_scene.instantiate() as Node3D if hair_scene != null else null
-	if imported_root == null:
-		return
-
-	var hair_root := Node3D.new()
-	hair_root.name = "PreviewHair"
-	target_skeleton.add_child(hair_root, true)
-	hair_root.add_child(imported_root, true)
-
-	var hair_material := _make_toon_material(hair_color)
-	hair_material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	var hair_meshes := _collect_mesh_instances(imported_root)
-	for mesh_instance in hair_meshes:
-		var source_transform := mesh_instance.transform
-		var source_parent := mesh_instance.get_parent()
-		if source_parent != null:
-			source_parent.remove_child(mesh_instance)
-		mesh_instance.owner = null
-		hair_root.add_child(mesh_instance, true)
-		mesh_instance.transform = source_transform
-		mesh_instance.skeleton = mesh_instance.get_path_to(target_skeleton)
+	var hair_material := _make_toon_material(hair_color, true)
+	for mesh_instance in CharacterRigAttachment.collect_mesh_instances(hair_root):
 		_apply_material_to_mesh(mesh_instance, hair_material)
 
-	imported_root.queue_free()
 
+func _add_outfit() -> void:
+	if _character_root == null or outfit_style == "none":
+		return
 
-func _collect_mesh_instances(node: Node) -> Array[MeshInstance3D]:
-	var meshes: Array[MeshInstance3D] = []
-	_collect_mesh_instances_recursive(node, meshes)
-	return meshes
+	var target_skeleton := _character_root.get_node_or_null(CharacterAppearanceAssets.SKELETON_PATH) as Skeleton3D
+	if target_skeleton == null:
+		push_warning("Preview character is missing %s for outfit binding." % CharacterAppearanceAssets.SKELETON_PATH)
+		return
 
+	var outfit_scene_path := CharacterAppearanceAssets.outfit_scene_path(outfit_style, body_type)
+	_outfit_root = CharacterRigAttachment.bind_scene_to_skeleton(
+		outfit_scene_path,
+		target_skeleton,
+		"PreviewOutfit",
+		"preview outfit"
+	)
+	if _outfit_root == null:
+		return
 
-func _collect_mesh_instances_recursive(node: Node, meshes: Array[MeshInstance3D]) -> void:
-	if node is MeshInstance3D:
-		meshes.append(node as MeshInstance3D)
-
-	for child in node.get_children():
-		_collect_mesh_instances_recursive(child, meshes)
+	for mesh_instance in CharacterRigAttachment.collect_mesh_instances(_outfit_root):
+		_apply_outfit_materials(mesh_instance)
 
 
 func _setup_idle_animation() -> void:
@@ -319,14 +307,18 @@ func _apply_current_materials() -> void:
 	var hair_material := _make_toon_material(hair_color)
 	var eye_material := _make_toon_material(Color(0.95, 0.88, 0.58, 1.0))
 	_apply_character_materials(_character_root, body_material, hair_material, eye_material)
+	_refresh_outfit_materials()
 
 
 func _apply_character_materials(
 	node: Node,
-	body_material: StandardMaterial3D,
-	hair_material: StandardMaterial3D,
-	eye_material: StandardMaterial3D
+	body_material: Material,
+	hair_material: Material,
+	eye_material: Material
 ) -> void:
+	if node.name == "PreviewOutfit":
+		return
+
 	if node is MeshInstance3D:
 		var mesh_instance := node as MeshInstance3D
 		var material := body_material
@@ -341,21 +333,72 @@ func _apply_character_materials(
 		_apply_character_materials(child, body_material, hair_material, eye_material)
 
 
-func _apply_material_to_mesh(mesh_instance: MeshInstance3D, material: StandardMaterial3D) -> void:
+func _sync_base_body_mesh_visibility() -> void:
+	if _character_root == null:
+		return
+
+	var has_outfit := _outfit_root != null and is_instance_valid(_outfit_root)
+	var head_only_material := CharacterToonMaterials.make_head_only_character_material(
+		skin_color,
+		CharacterToonMaterials.STYLE_EXPERIMENTAL_SHADER,
+		CharacterAppearanceAssets.head_only_clip_min_y(body_type)
+	)
+	for mesh_instance in CharacterRigAttachment.collect_mesh_instances(_character_root):
+		if _is_preview_attachment_mesh(mesh_instance):
+			continue
+
+		if CharacterAppearanceAssets.is_full_body_base_mesh(mesh_instance):
+			mesh_instance.visible = true
+			_apply_material_to_mesh(mesh_instance, head_only_material if has_outfit else _make_toon_material(skin_color))
+		elif CharacterAppearanceAssets.is_base_body_mesh(mesh_instance):
+			mesh_instance.visible = not has_outfit
+
+
+func _is_preview_attachment_mesh(mesh_instance: MeshInstance3D) -> bool:
+	if mesh_instance == null:
+		return false
+
+	return _outfit_root != null and is_instance_valid(_outfit_root) and _outfit_root.is_ancestor_of(mesh_instance)
+
+
+func _refresh_outfit_materials() -> void:
+	if _outfit_root == null or not is_instance_valid(_outfit_root):
+		return
+
+	for mesh_instance in CharacterRigAttachment.collect_mesh_instances(_outfit_root):
+		_apply_outfit_materials(mesh_instance)
+
+
+func _apply_outfit_materials(mesh_instance: MeshInstance3D) -> void:
+	if mesh_instance.mesh == null:
+		return
+
+	var body_material := _make_toon_material(skin_color)
+	for surface_index in range(mesh_instance.mesh.get_surface_count()):
+		var source_material := mesh_instance.mesh.surface_get_material(surface_index)
+		var material := body_material if CharacterAppearanceAssets.is_skin_material(source_material) else _make_outfit_material(source_material)
+		mesh_instance.set_surface_override_material(surface_index, material)
+
+	mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+
+func _make_outfit_material(source_material: Material) -> Material:
+	return CharacterToonMaterials.make_textured_character_material(
+		source_material,
+		Color(0.52, 0.39, 0.24, 1.0),
+		CharacterToonMaterials.STYLE_EXPERIMENTAL_SHADER
+	)
+
+
+func _apply_material_to_mesh(mesh_instance: MeshInstance3D, material: Material) -> void:
 	var surface_count := mesh_instance.mesh.get_surface_count() if mesh_instance.mesh != null else 0
 	for surface_index in range(surface_count):
 		mesh_instance.set_surface_override_material(surface_index, material)
 	mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
 
-func _make_toon_material(color: Color) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = _sanitize_color(color)
-	material.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
-	material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
-	material.roughness = 1.0
-	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	return material
+func _make_toon_material(color: Color, cull_disabled := false) -> Material:
+	return CharacterToonMaterials.make_character_material(color, CharacterToonMaterials.STYLE_EXPERIMENTAL_SHADER, cull_disabled)
 
 
 func _make_floor_material() -> StandardMaterial3D:
@@ -373,27 +416,6 @@ func _update_camera() -> void:
 	var distance := lerpf(3.6, 1.75, zoom_ratio)
 	_camera.position = Vector3(0.0, 1.12, distance)
 	_camera.look_at(Vector3(0.0, 0.95, 0.0), Vector3.UP)
-
-
-func _body_scene_path() -> String:
-	return FEMALE_BODY_SCENE_PATH if body_type == "female" else MALE_BODY_SCENE_PATH
-
-
-func _hair_scene_path() -> String:
-	if hair_style == "buzzed" and body_type == "female":
-		return String(HAIR_SCENE_PATHS.get("buzzed_female", ""))
-	return String(HAIR_SCENE_PATHS.get(hair_style, ""))
-
-
-func _sanitize_body_type(value: String) -> String:
-	return "female" if value.strip_edges().to_lower() == "female" else "male"
-
-
-func _sanitize_hair_style(value: String) -> String:
-	var normalized := value.strip_edges().to_lower()
-	if normalized in ["none", "buzzed", "short", "long", "buns"]:
-		return normalized
-	return "short"
 
 
 func _sanitize_color(color: Color) -> Color:

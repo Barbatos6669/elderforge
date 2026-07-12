@@ -1,0 +1,125 @@
+[gd_scene format=3 uid="uid://c05ku23moqgxa"]
+
+[ext_resource type="Script" uid="uid://c7onhc7t0w5tj" path="res://scripts/gathering/gatherable_resource_3d.gd" id="1_gatherable"]
+[ext_resource type="PackedScene" uid="uid://r52uhg2me6ms" path="res://assets/Nature Pack/CommonTree_1.gltf" id="2_common_tree"]
+[ext_resource type="Script" uid="uid://br3ubcjkrdw57" path="res://scripts/interaction/selection/selectable_3d.gd" id="3_selectable"]
+[ext_resource type="Script" uid="uid://cbxs8002i2pvm" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="4_hover"]
+[ext_resource type="Script" uid="uid://i4o11j0hk5eg" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="5_selection"]
+[ext_resource type="Texture2D" uid="uid://e6dikk8cx8dp" path="res://assets/ui/cursors/gather_tool_cursor.png" id="6_gather_cursor"]
+[ext_resource type="Texture2D" uid="uid://cili1xiu4osa1" path="res://assets/ui/cursors/depleted_resource_cursor.png" id="7_depleted_cursor"]
+[ext_resource type="Script" path="res://scripts/visuals/wind_sway_3d.gd" id="8_wind_sway"]
+[ext_resource type="Script" path="res://scripts/visuals/occludable_visual_3d.gd" id="9_occludable_visual"]
+[ext_resource type="Script" uid="uid://cxrkfwc34byfj" path="res://scripts/visuals/alpha_cutout_material_3d.gd" id="10_alpha_cutout"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_trunk_body"]
+height = 2.5
+radius = 0.38
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_stump"]
+diffuse_mode = 3
+specular_mode = 0
+albedo_color = Color(0.47, 0.27, 0.13, 1)
+roughness = 1.0
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_stump"]
+material = SubResource("StandardMaterial3D_stump")
+top_radius = 0.34
+bottom_radius = 0.45
+height = 1.05
+radial_segments = 8
+rings = 1
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_selectable"]
+height = 5.8
+radius = 1.55
+
+[node name="OakTreeT1" type="Node3D" unique_id=306857052]
+script = ExtResource("1_gatherable")
+display_name = "Oak Tree"
+active_visuals_path = NodePath("Visuals/Active")
+depleted_visuals_path = NodePath("Visuals/Depleted")
+
+[node name="PlayerOcclusionVisual" type="Node" parent="."]
+script = ExtResource("9_occludable_visual")
+occlusion_enabled = false
+drives_player_silhouette = false
+model_root_path = NodePath("../Visuals/Active/CommonTreeModel")
+target_mesh_names = PackedStringArray("CommonTree_1")
+occluded_visibility = 0.2
+hide_seconds = 0.65
+show_seconds = 0.45
+use_pixel_dither = false
+alpha_scissor_threshold = 0.2
+occluder_anchor_height = 2.2
+screen_radius_pixels = 130.0
+screen_column_half_width_pixels = 300.0
+world_column_half_width = 6.0
+world_max_behind_distance = 26.0
+
+[node name="LeafAlphaCutout" type="Node" parent="."]
+script = ExtResource("10_alpha_cutout")
+model_root_path = NodePath("../Visuals/Active/CommonTreeModel")
+mesh_names = PackedStringArray("CommonTree_1")
+material_name_fragments = PackedStringArray("Leaves")
+alpha_scissor_threshold = 0.2
+
+[node name="Visuals" type="Node3D" parent="." unique_id=608158643]
+
+[node name="Active" type="Node3D" parent="Visuals"]
+script = ExtResource("8_wind_sway")
+sway_degrees = 0.75
+sway_speed = 0.65
+cross_sway_multiplier = 0.35
+
+[node name="CommonTreeModel" parent="Visuals/Active" instance=ExtResource("2_common_tree")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0.18, 0)
+
+[node name="Depleted" type="Node3D" parent="Visuals"]
+visible = false
+
+[node name="Stump" type="MeshInstance3D" parent="Visuals/Depleted"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.525, 0)
+cast_shadow = 1
+mesh = SubResource("CylinderMesh_stump")
+
+[node name="Body" type="StaticBody3D" parent="." unique_id=1794917967]
+collision_layer = 2
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Body" unique_id=1577881605]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
+shape = SubResource("CylinderShape3D_trunk_body")
+
+[node name="Selectable" type="Area3D" parent="." unique_id=1389434347]
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("3_selectable")
+display_name = "Oak Tree"
+relationship = 2
+neutral_color = Color(0.72, 0.86, 0.92, 1)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable" unique_id=1036711006]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.9, 0)
+shape = SubResource("CylinderShape3D_selectable")
+
+[node name="HoverFeedback" type="MeshInstance3D" parent="." unique_id=1862510409]
+script = ExtResource("4_hover")
+screen_hover_padding_pixels = 8.0
+screen_body_line_radius_pixels = 58.0
+screen_body_line_height = 5.2
+hover_collision_mask = 8
+ring_radius = 0.9
+ring_y_offset = 0.045
+hover_cursor_texture = ExtResource("6_gather_cursor")
+hover_cursor_hotspot = Vector2(12, 12)
+unavailable_hover_cursor_texture = ExtResource("7_depleted_cursor")
+unavailable_hover_cursor_hotspot = Vector2(12, 12)
+
+[node name="SelectedRing" type="MeshInstance3D" parent="." unique_id=1830760507]
+script = ExtResource("5_selection")
+ring_radius = 0.94
+ring_width = 0.08
+ring_y_offset = 0.045
+ring_color = Color(0.72, 0.86, 0.92, 1)
+fill_color = Color(0.72, 0.86, 0.92, 0.16)
+fill_selection_color_mix = 0.2

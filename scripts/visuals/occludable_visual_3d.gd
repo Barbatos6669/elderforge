@@ -43,6 +43,10 @@ const PLAYER_OCCLUSION_SOURCE_GROUP := "player_occlusion_sources"
 @export var show_while_occluded_mesh_names: PackedStringArray = PackedStringArray()
 
 @export_group("Detection")
+## Limits the expensive screen/depth occlusion test rate. Fade animation still updates smoothly.
+@export_range(1.0, 60.0, 1.0) var occlusion_check_hz := 12.0
+## Skips player-occlusion checks when the player is far away from this visual.
+@export_range(0.0, 300.0, 1.0, "suffix:m") var max_occlusion_check_distance := 55.0
 ## Vertical anchor used when projecting this object to screen space.
 @export_range(0.0, 20.0, 0.1) var occluder_anchor_height := 2.35
 ## Vertical anchor used when projecting the player to screen space.
@@ -68,22 +72,29 @@ var _primary_occlusion_materials: Array[ShaderMaterial] = []
 var _hide_while_occluded_meshes: Array[MeshInstance3D] = []
 var _show_while_occluded_meshes: Array[MeshInstance3D] = []
 var _tracked_player: Node3D
+var _occlusion_check_elapsed := 0.0
+var _last_applied_visibility := -1.0
+var _last_mesh_swap_state := false
 
 
 func _ready() -> void:
+	if not occlusion_enabled:
+		return
+
 	if drives_player_silhouette:
 		add_to_group(PLAYER_OCCLUSION_SOURCE_GROUP)
+	_occlusion_check_elapsed = randf_range(0.0, _occlusion_check_interval())
 	call_deferred("_setup_occlusion_materials")
 
 
 func _process(delta: float) -> void:
 	if not occlusion_enabled or _is_parent_resource_depleted():
-		_is_currently_occluding = false
-		_behind_distance = 0.0
-		_target_visibility = 1.0
+		_set_occlusion_state(false)
 	else:
-		_is_currently_occluding = _is_occluding_player()
-		_target_visibility = occluded_visibility if _is_currently_occluding else 1.0
+		_occlusion_check_elapsed += maxf(delta, 0.0)
+		if _occlusion_check_elapsed >= _occlusion_check_interval():
+			_occlusion_check_elapsed = 0.0
+			_set_occlusion_state(_is_occluding_player())
 
 	_apply_mesh_swap(_is_currently_occluding)
 	_update_visibility(delta)
@@ -115,8 +126,8 @@ func _setup_occlusion_materials() -> void:
 		if not show_while_occluded_lookup.is_empty() and show_while_occluded_lookup.has(mesh_name):
 			_show_while_occluded_meshes.append(mesh_instance)
 
-	_apply_visibility(_current_visibility)
-	_apply_mesh_swap(false)
+	_apply_visibility(_current_visibility, true)
+	_apply_mesh_swap(false, true)
 
 
 func _apply_to_mesh(mesh_instance: MeshInstance3D) -> void:
@@ -170,14 +181,16 @@ func _update_visibility(delta: float) -> void:
 	var previous_visibility := _current_visibility
 	var step := maxf(delta, 0.0) / maxf(duration, 0.01)
 	_current_visibility = move_toward(_current_visibility, _target_visibility, step)
-	if not is_equal_approx(previous_visibility, _current_visibility):
-		_apply_visibility(_current_visibility)
-	else:
+	if absf(previous_visibility - _current_visibility) > 0.001:
 		_apply_visibility(_current_visibility)
 
 
-func _apply_visibility(visibility: float) -> void:
+func _apply_visibility(visibility: float, force: bool = false) -> void:
 	var safe_visibility := clampf(visibility, 0.0, 1.0)
+	if not force and absf(safe_visibility - _last_applied_visibility) <= 0.001:
+		return
+
+	_last_applied_visibility = safe_visibility
 	for material in _primary_occlusion_materials:
 		if material == null:
 			continue
@@ -188,8 +201,12 @@ func _apply_visibility(visibility: float) -> void:
 		material.set_shader_parameter("pixel_scale", pixel_scale)
 
 
-func _apply_mesh_swap(is_occluded: bool) -> void:
+func _apply_mesh_swap(is_occluded: bool, force: bool = false) -> void:
 	var should_swap := is_occluded and not _is_parent_resource_depleted()
+	if not force and should_swap == _last_mesh_swap_state:
+		return
+
+	_last_mesh_swap_state = should_swap
 	for mesh_instance in _hide_while_occluded_meshes:
 		if mesh_instance == null or not is_instance_valid(mesh_instance):
 			continue
@@ -212,6 +229,12 @@ func _is_occluding_player() -> bool:
 	if occluder == null or player == null or camera == null:
 		_behind_distance = 0.0
 		return false
+
+	if max_occlusion_check_distance > 0.0:
+		var max_distance_squared := max_occlusion_check_distance * max_occlusion_check_distance
+		if occluder.global_position.distance_squared_to(player.global_position) > max_distance_squared:
+			_behind_distance = 0.0
+			return false
 
 	var camera_forward := -camera.global_transform.basis.z.normalized()
 	var occluder_depth := (occluder.global_position - camera.global_position).dot(camera_forward)
@@ -272,6 +295,17 @@ func _is_player_inside_world_occlusion_column(
 	var side_axis := Vector3(-ground_forward.z, 0.0, ground_forward.x)
 	var lateral_distance := absf(to_player.dot(side_axis))
 	return lateral_distance <= world_column_half_width
+
+
+func _set_occlusion_state(is_occluding: bool) -> void:
+	_is_currently_occluding = is_occluding
+	_target_visibility = occluded_visibility if _is_currently_occluding else 1.0
+	if not _is_currently_occluding:
+		_behind_distance = 0.0
+
+
+func _occlusion_check_interval() -> float:
+	return 1.0 / maxf(occlusion_check_hz, 1.0)
 
 
 func _get_model_root() -> Node:

@@ -3,6 +3,8 @@
 Project automation lives here.
 
 - `art/`: lightweight image/texture generation helpers.
+- `blender/`: optional Blender-side material, shader, and mesh-generation
+  helpers for asset work.
 - `build_windows_playtest.ps1`: exports the Windows playtest build, writes the
   server config, creates the version manifest, and packages the auto-updating
   playtest client.

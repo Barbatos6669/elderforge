@@ -26,7 +26,7 @@ Use `CODEBASE_GUIDE.md` for the longer learning walkthrough.
 | `assets/animations/universal_animation_library_1/` | Shared animation pack 1. |
 | `assets/animations/universal_animation_library_2/` | Shared animation pack 2. |
 | `assets/animations/source/` | Editable Blender source files for the animation packs. |
-| `assets/trees/` | Project-owned tree models. The current starter tree art still uses the old Silverneedle filename while gameplay labels it as Oak Tree. |
+| `assets/Nature Pack/CommonTree_1.gltf` | Current T1 Oak/Common Tree visual used by the gatherable starter tree prefab. |
 
 Broad imported model/source packs were removed. Future world props, resources,
 equipment, and buildings should be rebuilt as project-owned assets or
@@ -55,7 +55,7 @@ Godot-native prototypes.
 | `scripts/player/combat/player_auto_attack.gd` | Prototype auto-attack flow for hostile targets. |
 | `scripts/player/channeling/player_channeling.gd` | Generic timed-action state for gathering and future spell casts. |
 | `scripts/player/gathering/player_gathering.gd` | Player-side gathering approach, channel start, and reward handoff. |
-| `scenes/gathering/trees/SilverneedlePineT1.tscn` | First gatherable T1 Oak Tree prefab; filename still reflects old placeholder art. |
+| `scenes/gathering/trees/OakTreeT1.tscn` | First gatherable T1 Oak Tree prefab. |
 
 ## Core Systems
 

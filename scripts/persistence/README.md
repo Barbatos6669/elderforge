@@ -7,8 +7,8 @@ Files:
 - `player_database.gd`: file-backed player database autoload. It stores player
   records in `user://player_database.json` with account name, display name,
   password hash for the prototype sign-in flow, server-local join order,
-  appearance, inventory snapshots, stat snapshots, and last-position space for
-  later.
+  appearance, inventory snapshots, base stat snapshots, Forged Trait progression
+  snapshots, and last-position space for later.
 - `json_player_database_backend.gd`: active storage backend for the current
   playtest. It reads and writes the whole player database snapshot as JSON.
 - `sqlite_player_database_backend.gd`: dormant backend slot for the next
@@ -23,6 +23,9 @@ How to use it:
   gameplay scripts.
 - Store compact snapshots, not live scene nodes. Inventory uses
   `PlayerInventory.get_network_snapshot()` and `apply_network_snapshot()`.
+- Store base stats and progression separately. Player stat persistence keeps
+  long-term base values, while Forged Trait persistence stores level, XP,
+  unspent points, purchased ranks, and active trait ids.
 - Treat the method names as the future service boundary. If we replace JSON
   with SQLite or a web database, most gameplay scripts should not need to move.
 - Keep backend-specific code in backend scripts. Gameplay should call

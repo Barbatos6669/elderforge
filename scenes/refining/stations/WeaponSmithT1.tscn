@@ -3,90 +3,49 @@
 [ext_resource type="Script" path="res://scripts/refining/weapon_smith_station_3d.gd" id="1_station"]
 [ext_resource type="Script" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
 [ext_resource type="Script" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="3_selection"]
-[ext_resource type="Script" path="res://scripts/refining/refining_station_tier_visuals.gd" id="4_tier_visuals"]
+[ext_resource type="PackedScene" path="res://scenes/entities/npcs/ServiceNpcVisual.tscn" id="4_service_npc"]
+[ext_resource type="Script" path="res://scripts/entities/npc/service_npc_ambient_wander_3d.gd" id="5_ambient"]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_base"]
-albedo_color = Color(0.16, 0.14, 0.13, 1)
-roughness = 0.88
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.35
+height = 1.8
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wood"]
-albedo_color = Color(0.43, 0.24, 0.12, 1)
-roughness = 0.74
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_metal"]
-albedo_color = Color(0.62, 0.62, 0.58, 1)
-metallic = 0.35
-roughness = 0.42
-
-[sub_resource type="BoxMesh" id="BoxMesh_base"]
-material = SubResource("StandardMaterial3D_base")
-size = Vector3(3.8, 0.35, 3.8)
-
-[sub_resource type="BoxMesh" id="BoxMesh_bench"]
-material = SubResource("StandardMaterial3D_wood")
-size = Vector3(3.0, 0.36, 1.25)
-
-[sub_resource type="BoxMesh" id="BoxMesh_anvil"]
-material = SubResource("StandardMaterial3D_metal")
-size = Vector3(1.15, 0.42, 0.54)
-
-[sub_resource type="BoxMesh" id="BoxMesh_sword"]
-material = SubResource("StandardMaterial3D_metal")
-size = Vector3(0.16, 0.12, 1.75)
-
-[sub_resource type="BoxMesh" id="BoxMesh_hilt"]
-material = SubResource("StandardMaterial3D_wood")
-size = Vector3(0.58, 0.14, 0.14)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
-size = Vector3(3.8, 1.35, 3.8)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_selectable"]
-size = Vector3(4.8, 2.5, 4.8)
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_selectable"]
+radius = 0.65
+height = 2.1
 
 [node name="WeaponSmithT1" type="Node3D"]
 script = ExtResource("1_station")
 display_name = "Weapon Smith"
 station_type = "weapon_smith"
+service_level = 1
 seconds_per_action = 1.0
 interaction_radius = 1.0
-interaction_half_extents = Vector2(1.9, 1.9)
+interaction_half_extents = Vector2(0.35, 0.35)
+interaction_anchor_path = NodePath("Visuals")
 
 [node name="Visuals" type="Node3D" parent="."]
 
-[node name="Base" type="MeshInstance3D" parent="Visuals"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.175, 0)
-mesh = SubResource("BoxMesh_base")
+[node name="ServiceNpcVisual" parent="Visuals" instance=ExtResource("4_service_npc")]
+skin_color = Color(0.48, 0.34, 0.25, 1)
+hair_style = "buzzed"
+hair_color = Color(0.035, 0.03, 0.025, 1)
+outfit_style = "ranger"
+outfit_fallback_color = Color(0.30, 0.24, 0.20, 1)
+outfit_tint = Color(0.76, 0.68, 0.62, 1)
 
-[node name="Bench" type="MeshInstance3D" parent="Visuals"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
-mesh = SubResource("BoxMesh_bench")
-
-[node name="Anvil" type="MeshInstance3D" parent="Visuals"]
-transform = Transform3D(0.984808, 0, 0.173648, 0, 1, 0, -0.173648, 0, 0.984808, -0.62, 1.0, 0.06)
-mesh = SubResource("BoxMesh_anvil")
-
-[node name="SwordBlade" type="MeshInstance3D" parent="Visuals"]
-transform = Transform3D(0.258819, 0, -0.965926, 0, 1, 0, 0.965926, 0, 0.258819, 0.65, 1.02, -0.08)
-mesh = SubResource("BoxMesh_sword")
-
-[node name="SwordHilt" type="MeshInstance3D" parent="Visuals"]
-transform = Transform3D(0.258819, 0, -0.965926, 0, 1, 0, 0.965926, 0, 0.258819, -0.12, 1.03, 0.13)
-mesh = SubResource("BoxMesh_hilt")
-
-[node name="TierVisuals" type="Node3D" parent="Visuals"]
-script = ExtResource("4_tier_visuals")
-family_style = "toolmaker"
-visual_tier = 1
-accent_color = Color(0.62, 0.62, 0.58, 1)
+[node name="AmbientWander" type="Node" parent="."]
+script = ExtResource("5_ambient")
+wander_radius = 0.65
+move_speed = 0.42
 
 [node name="Body" type="StaticBody3D" parent="."]
 collision_layer = 2
 collision_mask = 0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Body"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.675, 0)
-shape = SubResource("BoxShape3D_body")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_body")
 
 [node name="Selectable" type="Area3D" parent="."]
 collision_layer = 8
@@ -97,13 +56,13 @@ relationship = 2
 neutral_color = Color(1, 0.8, 0.28, 1)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
-shape = SubResource("BoxShape3D_selectable")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+shape = SubResource("CapsuleShape3D_selectable")
 
 [node name="SelectedRing" type="MeshInstance3D" parent="."]
 script = ExtResource("3_selection")
-ring_radius = 2.2
-ring_width = 0.1
+ring_radius = 0.75
+ring_width = 0.06
 ring_y_offset = 0.055
 ring_color = Color(1, 0.8, 0.28, 1)
 fill_color = Color(1, 0.8, 0.28, 0.13)

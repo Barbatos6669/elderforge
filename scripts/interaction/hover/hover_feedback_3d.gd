@@ -16,6 +16,10 @@ const CursorOverrideScript := preload("res://scripts/interaction/cursor/cursor_o
 @export var force_hover: bool = false
 
 @export_group("Hover Detection")
+## Limits expensive screen projection/raycast hover tests per object.
+@export_range(1.0, 60.0, 1.0) var hover_check_hz: float = 18.0
+## Skips hover math when this object is far from the active camera.
+@export_range(0.0, 300.0, 1.0, "suffix:m") var max_hover_check_distance: float = 95.0
 ## Tests whether the cursor is inside the projected visual mesh bounds.
 @export var use_screen_bounds_hover: bool = true
 ## Extra pixels added around the projected mesh bounds.
@@ -76,6 +80,8 @@ var _is_hovered := false
 var _is_ring_visible := false
 var _ring_material: StandardMaterial3D
 var _runtime_highlight_material: Material
+var _hover_check_elapsed := 0.0
+var _cached_should_hover := false
 
 
 func _ready() -> void:
@@ -87,13 +93,19 @@ func _ready() -> void:
 	_apply_feedback_color(_get_feedback_color())
 	_set_hovered(false)
 	_set_ring_visible(false)
+	_hover_check_elapsed = randf_range(0.0, _hover_check_interval())
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if _mesh_instances.is_empty():
 		_collect_visual_meshes()
 
-	var should_hover := force_hover or _is_mouse_hovering()
+	_hover_check_elapsed += maxf(delta, 0.0)
+	if force_hover or _hover_check_elapsed >= _hover_check_interval():
+		_hover_check_elapsed = 0.0
+		_cached_should_hover = force_hover or _is_mouse_hovering()
+
+	var should_hover := _cached_should_hover
 	var should_show_ring := (
 		(show_ring_on_hover and should_hover)
 		or (show_ring_when_selected and _is_target_selected())
@@ -182,6 +194,11 @@ func _is_mouse_hovering() -> bool:
 	var camera := viewport.get_camera_3d()
 	if camera == null:
 		return false
+
+	if max_hover_check_distance > 0.0:
+		var distance_squared := camera.global_position.distance_squared_to(_body_origin())
+		if distance_squared > max_hover_check_distance * max_hover_check_distance:
+			return false
 
 	if use_screen_bounds_hover and _is_mouse_inside_projected_visual_bounds(viewport, camera):
 		return true
@@ -474,3 +491,7 @@ func _build_ring_material() -> StandardMaterial3D:
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	return material
+
+
+func _hover_check_interval() -> float:
+	return 1.0 / maxf(hover_check_hz, 1.0)

@@ -8,9 +8,10 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/refining/RefiningPanel.tscn" id="6_refining_panel"]
 [ext_resource type="PackedScene" path="res://scenes/ui/loot/LootPanel.tscn" id="7_loot_panel"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/PlayerStatusHud.tscn" id="8_player_status_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud/HudMap.tscn" id="8_hud_map"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud/WorldTimeHud.tscn" id="8_world_time_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/DeathMessageHud.tscn" id="9_death_message_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/chat/ChatPanel.tscn" id="9_chat_panel"]
-[ext_resource type="PackedScene" path="res://scenes/ui/hud/TopRightHudMenu.tscn" id="10_top_right_hud_menu"]
 [ext_resource type="PackedScene" path="res://scenes/levels/lighting/BasicLevelLighting.tscn" id="10_basic_lighting"]
 [ext_resource type="PackedScene" path="res://scenes/ui/menu/MasterMenu.tscn" id="11_master_menu"]
 [ext_resource type="PackedScene" path="res://scenes/levels/atmosphere/AtmosphereField.tscn" id="12_atmosphere"]
@@ -19,6 +20,10 @@
 [ext_resource type="Script" path="res://scripts/auth/play_session_name_applier.gd" id="17_play_session_name_applier"]
 [ext_resource type="Script" path="res://scripts/levels/playable_level_shell.gd" id="18_level_shell"]
 [ext_resource type="Shader" path="res://assets/materials/world/painted_ground.gdshader" id="19_ground_shader"]
+[ext_resource type="Script" path="res://scripts/visuals/scene_toon_material_pass.gd" id="20_scene_toon_pass"]
+[ext_resource type="Script" path="res://scripts/levels/day_night_cycle_3d.gd" id="21_day_night_cycle"]
+[ext_resource type="PackedScene" path="res://scenes/ui/npc/ServiceNpcDialogPanel.tscn" id="22_service_dialog"]
+[ext_resource type="PackedScene" path="res://scenes/ui/auction/AuctionHousePanel.tscn" id="23_auction_panel"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_level"]
 sky_top_color = Color(0.018, 0.034, 0.058, 1)
@@ -47,7 +52,7 @@ tonemap_mode = 4
 tonemap_exposure = 1.16
 tonemap_white = 5.5
 tonemap_agx_contrast = 0.92
-ssao_enabled = true
+ssao_enabled = false
 ssao_radius = 2.35
 ssao_intensity = 1.18
 ssao_power = 1.42
@@ -101,6 +106,9 @@ size = Vector3(1, 1, 102)
 
 [node name="PlayableLevelShell" type="Node3D" unique_id=1479522124]
 script = ExtResource("18_level_shell")
+
+[node name="SceneToonMaterialPass" type="Node" parent="."]
+script = ExtResource("20_scene_toon_pass")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=180484009]
 environment = SubResource("Environment_level")
@@ -187,6 +195,9 @@ spawn_id = "playable_level_spawn"
 
 [node name="BasicLevelLighting" parent="World/LevelContent/Lighting" unique_id=1141792879 instance=ExtResource("10_basic_lighting")]
 
+[node name="DayNightCycle" type="Node" parent="World/LevelContent/Lighting"]
+script = ExtResource("21_day_night_cycle")
+
 [node name="AtmosphereField" parent="World/LevelContent/Lighting" unique_id=821394689 instance=ExtResource("12_atmosphere")]
 visible = false
 
@@ -206,10 +217,21 @@ player_name = "Player"
 health_path = NodePath("../World/Player/Health")
 mana_path = NodePath("../World/Player/Mana")
 
+[node name="WorldTimeHud" parent="." instance=ExtResource("8_world_time_hud")]
+
+[node name="HudMap" parent="." instance=ExtResource("8_hud_map")]
+player_path = NodePath("../World/Player")
+stations_path = NodePath("../World/LevelContent/Stations")
+
 [node name="DeathMessageHud" parent="." unique_id=1555227386 instance=ExtResource("9_death_message_hud")]
 respawn_path = NodePath("../World/Player/Respawn")
 
 [node name="RefiningPanel" parent="." unique_id=1260117451 instance=ExtResource("6_refining_panel")]
+inventory_path = NodePath("../PlayerInventory")
+
+[node name="ServiceNpcDialogPanel" parent="." instance=ExtResource("22_service_dialog")]
+
+[node name="AuctionHousePanel" parent="." instance=ExtResource("23_auction_panel")]
 inventory_path = NodePath("../PlayerInventory")
 
 [node name="LootPanel" parent="." unique_id=200748585 instance=ExtResource("7_loot_panel")]
@@ -219,12 +241,7 @@ inventory_panel_path = NodePath("../InventoryPanel")
 [node name="ChatPanel" parent="." instance=ExtResource("9_chat_panel")]
 network_manager_path = NodePath("../Network")
 
-[node name="TopRightHudMenu" parent="." instance=ExtResource("10_top_right_hud_menu")]
-inventory_panel_path = NodePath("../InventoryPanel")
-master_menu_path = NodePath("../MasterMenu")
-
 [node name="MasterMenu" parent="." instance=ExtResource("11_master_menu")]
-inventory_panel_path = NodePath("../InventoryPanel")
 inventory_path = NodePath("../PlayerInventory")
 stats_path = NodePath("../World/Player/Stats")
 

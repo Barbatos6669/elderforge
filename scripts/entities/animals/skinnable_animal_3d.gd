@@ -15,6 +15,8 @@ signal respawned
 @export_group("Components")
 ## Health component on the parent animal.
 @export var health_path: NodePath = NodePath("../Health")
+## Optional shared stat component. When present, it overrides local health/move exports.
+@export var stats_path: NodePath = NodePath("../Stats")
 ## Selectable area that player targeting clicks.
 @export var selectable_path: NodePath = NodePath("../Selectable")
 ## Animation bridge for idle, walk, and death playback.
@@ -66,6 +68,7 @@ signal respawned
 
 var _body: CharacterBody3D
 var _health: Node
+var _stats: Node
 var _selectable: Node
 var _animation: Node
 var _visuals: Node3D
@@ -95,6 +98,7 @@ func _ready() -> void:
 	_original_collision_layer = _body.collision_layer
 	_original_collision_mask = _body.collision_mask
 	_health = get_node_or_null(health_path)
+	_stats = get_node_or_null(stats_path)
 	_selectable = get_node_or_null(selectable_path)
 	_animation = get_node_or_null(animation_path)
 	_visuals = get_node_or_null(visuals_path) as Node3D
@@ -104,6 +108,8 @@ func _ready() -> void:
 
 	if _health != null and _health.has_signal("defeated"):
 		_health.defeated.connect(_on_defeated)
+	_connect_stats_signals()
+	_sync_health_stats(true)
 
 	_apply_alive_state()
 
@@ -290,9 +296,10 @@ func _update_wander(delta: float) -> void:
 		return
 
 	var direction := _direction_to(_wander_destination)
-	_body.velocity.x = direction.x * movement_speed
+	var speed := _movement_speed()
+	_body.velocity.x = direction.x * speed
 	_body.velocity.y = 0.0
-	_body.velocity.z = direction.z * movement_speed
+	_body.velocity.z = direction.z * speed
 	_body.move_and_slide()
 	_face_direction(direction, delta)
 	_set_moving_animation(true)
@@ -382,6 +389,46 @@ func _apply_alive_state() -> void:
 	_set_selectable_state(true, alive_relationship)
 	if _selectable != null:
 		_selectable.set("display_name", display_name)
+
+
+func _connect_stats_signals() -> void:
+	if _stats == null or not _stats.has_signal("stat_changed"):
+		return
+
+	var callable := Callable(self, "_on_stat_changed")
+	if not _stats.is_connected("stat_changed", callable):
+		_stats.connect("stat_changed", callable)
+
+
+func _on_stat_changed(stat_id: StringName, _value: float) -> void:
+	match stat_id:
+		&"max_health", &"health_regeneration":
+			_sync_health_stats(false)
+
+
+func _sync_health_stats(should_fill := false) -> void:
+	if _health == null:
+		return
+
+	var max_health := _stat_value(&"max_health", float(_health.get("max_health")))
+	if _health.has_method("set_max_health"):
+		_health.call("set_max_health", max_health, should_fill)
+	else:
+		_health.set("max_health", max_health)
+	_health.set("health_regeneration_per_second", maxf(_stat_value(&"health_regeneration", 0.0), 0.0))
+
+
+func _movement_speed() -> float:
+	return maxf(_stat_value(&"move_speed", movement_speed), 0.0)
+
+
+func _stat_value(stat_id: StringName, fallback: float) -> float:
+	if _stats != null and _stats.has_method("get_stat"):
+		var value := float(_stats.call("get_stat", stat_id))
+		if value > 0.0:
+			return value
+
+	return fallback
 
 
 func _set_selectable_state(selection_enabled: bool, relationship: int) -> void:

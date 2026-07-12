@@ -1,116 +1,80 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://dxhreqaffm2p3"]
 
-[ext_resource type="Script" path="res://scripts/gathering/gatherable_resource_3d.gd" id="1_gatherable"]
-[ext_resource type="Script" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
-[ext_resource type="Script" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="3_hover"]
-[ext_resource type="Script" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="4_selection"]
-[ext_resource type="Texture2D" path="res://assets/ui/cursors/gather_tool_cursor.png" id="5_gather_cursor"]
-[ext_resource type="Texture2D" path="res://assets/ui/cursors/depleted_resource_cursor.png" id="6_depleted_cursor"]
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_stem"]
-albedo_color = Color(0.42, 0.26, 0.12, 1)
-roughness = 0.86
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_leaf"]
-albedo_color = Color(0.32, 0.54, 0.28, 1)
-roughness = 0.88
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_cotton"]
-albedo_color = Color(0.94, 0.9, 0.82, 1)
-roughness = 0.95
+[ext_resource type="Script" uid="uid://c7onhc7t0w5tj" path="res://scripts/gathering/gatherable_resource_3d.gd" id="1_gatherable"]
+[ext_resource type="Script" uid="uid://br3ubcjkrdw57" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
+[ext_resource type="Script" uid="uid://cbxs8002i2pvm" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="3_hover"]
+[ext_resource type="Script" uid="uid://i4o11j0hk5eg" path="res://scripts/interaction/selection/selection_feedback_3d.gd" id="4_selection"]
+[ext_resource type="Texture2D" uid="uid://e6dikk8cx8dp" path="res://assets/ui/cursors/gather_tool_cursor.png" id="5_gather_cursor"]
+[ext_resource type="Texture2D" uid="uid://cili1xiu4osa1" path="res://assets/ui/cursors/depleted_resource_cursor.png" id="6_depleted_cursor"]
+[ext_resource type="PackedScene" uid="uid://ds343n1xhnycm" path="res://assets/Nature Pack/Bush_Common_Flowers.gltf" id="7_flower_bush"]
+[ext_resource type="Script" uid="uid://cxdcpjlol4poi" path="res://scripts/visuals/wind_sway_3d.gd" id="8_wind_sway"]
+[ext_resource type="Script" uid="uid://cxrkfwc34byfj" path="res://scripts/visuals/alpha_cutout_material_3d.gd" id="9_alpha_cutout"]
+[ext_resource type="Script" uid="uid://b6ww170rx0pd" path="res://scripts/visuals/material_color_override_3d.gd" id="10_flower_color"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_depleted"]
 albedo_color = Color(0.31, 0.22, 0.12, 1)
 roughness = 0.96
 
-[sub_resource type="CylinderMesh" id="CylinderMesh_stem"]
-material = SubResource("StandardMaterial3D_stem")
-top_radius = 0.045
-bottom_radius = 0.065
-height = 0.9
-radial_segments = 7
-
-[sub_resource type="SphereMesh" id="SphereMesh_cotton"]
-material = SubResource("StandardMaterial3D_cotton")
-radius = 0.18
-height = 0.25
-radial_segments = 8
-rings = 4
-
-[sub_resource type="BoxMesh" id="BoxMesh_leaf"]
-material = SubResource("StandardMaterial3D_leaf")
-size = Vector3(0.48, 0.05, 0.18)
-
 [sub_resource type="CylinderMesh" id="CylinderMesh_depleted_stem"]
 material = SubResource("StandardMaterial3D_depleted")
-top_radius = 0.06
-bottom_radius = 0.08
-height = 0.28
+top_radius = 0.18
+bottom_radius = 0.28
+height = 0.32
 radial_segments = 7
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_body"]
-height = 0.7
-radius = 0.32
+height = 0.72
+radius = 0.24
 
-[sub_resource type="SphereShape3D" id="SphereShape3D_selectable"]
-radius = 0.82
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_selectable"]
+height = 1.5
+radius = 0.9
 
-[node name="CrudeCottonT1" type="Node3D"]
+[node name="CrudeCottonT1" type="Node3D" unique_id=1662217890]
 script = ExtResource("1_gatherable")
 display_name = "Crude Cotton"
 resource_family_id = "cotton"
 yield_item_id = "cotton_t1"
-tier = 1
-yield_quantity = 1
-max_gather_ticks = 3
-gather_duration = 2.0
-active_visuals_path = NodePath("Visuals/Active")
-depleted_visuals_path = NodePath("Visuals/Depleted")
 
-[node name="Visuals" type="Node3D" parent="."]
+[node name="FoliageAlphaCutout" type="Node" parent="." unique_id=1413983562]
+script = ExtResource("9_alpha_cutout")
+model_root_path = NodePath("../Visuals/Active/BushCommonFlowersModel")
+material_name_fragments = PackedStringArray("Leaves", "Flowers")
+alpha_scissor_threshold = 0.2
 
-[node name="Active" type="Node3D" parent="Visuals"]
+[node name="WhiteFlowerColor" type="Node" parent="." unique_id=293422981]
+script = ExtResource("10_flower_color")
+model_root_path = NodePath("../Visuals/Active/BushCommonFlowersModel")
+material_name_fragments = PackedStringArray("Flowers")
+albedo_color = Color(0.96, 0.94, 0.86, 1)
 
-[node name="Stem" type="MeshInstance3D" parent="Visuals/Active"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
-mesh = SubResource("CylinderMesh_stem")
+[node name="Visuals" type="Node3D" parent="." unique_id=249819179]
 
-[node name="LeafA" type="MeshInstance3D" parent="Visuals/Active"]
-transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -0.2, 0.42, 0.02)
-mesh = SubResource("BoxMesh_leaf")
+[node name="Active" type="Node3D" parent="Visuals" unique_id=429441938]
+script = ExtResource("8_wind_sway")
+sway_degrees = 0.45
+sway_speed = 0.8
+cross_sway_multiplier = 0.25
 
-[node name="LeafB" type="MeshInstance3D" parent="Visuals/Active"]
-transform = Transform3D(0.5, 0, 0.866025, 0, 1, 0, -0.866025, 0, 0.5, 0.22, 0.32, -0.04)
-mesh = SubResource("BoxMesh_leaf")
+[node name="BushCommonFlowersModel" parent="Visuals/Active" unique_id=1616902011 instance=ExtResource("7_flower_bush")]
+transform = Transform3D(0.735, 0, 0, 0, 0.735, 0, 0, 0, 0.735, 0, -0.001417324, 0)
 
-[node name="CottonBollA" type="MeshInstance3D" parent="Visuals/Active"]
-transform = Transform3D(1.05, 0, 0, 0, 1.05, 0, 0, 0, 1.05, -0.12, 0.92, 0.03)
-mesh = SubResource("SphereMesh_cotton")
-
-[node name="CottonBollB" type="MeshInstance3D" parent="Visuals/Active"]
-transform = Transform3D(0.88, 0, 0, 0, 0.88, 0, 0, 0, 0.88, 0.15, 0.82, -0.08)
-mesh = SubResource("SphereMesh_cotton")
-
-[node name="CottonBollC" type="MeshInstance3D" parent="Visuals/Active"]
-transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0.05, 1.05, 0.08)
-mesh = SubResource("SphereMesh_cotton")
-
-[node name="Depleted" type="Node3D" parent="Visuals"]
+[node name="Depleted" type="Node3D" parent="Visuals" unique_id=760818863]
 visible = false
 
-[node name="CutStem" type="MeshInstance3D" parent="Visuals/Depleted"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.14, 0)
+[node name="CutStem" type="MeshInstance3D" parent="Visuals/Depleted" unique_id=412155284]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.16, 0)
 mesh = SubResource("CylinderMesh_depleted_stem")
 
-[node name="Body" type="StaticBody3D" parent="."]
+[node name="Body" type="StaticBody3D" parent="." unique_id=1189198480]
 collision_layer = 2
 collision_mask = 0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Body"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 0)
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Body" unique_id=547015586]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.36, 0)
 shape = SubResource("CylinderShape3D_body")
 
-[node name="Selectable" type="Area3D" parent="."]
+[node name="Selectable" type="Area3D" parent="." unique_id=650437876]
 collision_layer = 8
 collision_mask = 0
 script = ExtResource("2_selectable")
@@ -118,27 +82,27 @@ display_name = "Crude Cotton"
 relationship = 2
 neutral_color = Color(0.86, 0.94, 0.72, 1)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.52, 0)
-shape = SubResource("SphereShape3D_selectable")
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Selectable" unique_id=1034720536]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
+shape = SubResource("CylinderShape3D_selectable")
 
-[node name="HoverFeedback" type="MeshInstance3D" parent="."]
+[node name="HoverFeedback" type="MeshInstance3D" parent="." unique_id=1941908036]
 script = ExtResource("3_hover")
 visuals_path = NodePath("../Visuals")
 screen_hover_padding_pixels = 8.0
-screen_body_line_radius_pixels = 34.0
-screen_body_line_height = 1.15
+screen_body_line_radius_pixels = 48.0
+screen_body_line_height = 1.45
 hover_collision_mask = 8
-ring_radius = 0.48
+ring_radius = 0.76
 ring_y_offset = 0.045
 hover_cursor_texture = ExtResource("5_gather_cursor")
 hover_cursor_hotspot = Vector2(12, 12)
 unavailable_hover_cursor_texture = ExtResource("6_depleted_cursor")
 unavailable_hover_cursor_hotspot = Vector2(12, 12)
 
-[node name="SelectedRing" type="MeshInstance3D" parent="."]
+[node name="SelectedRing" type="MeshInstance3D" parent="." unique_id=133701918]
 script = ExtResource("4_selection")
-ring_radius = 0.54
+ring_radius = 0.82
 ring_width = 0.07
 ring_y_offset = 0.045
 ring_color = Color(0.86, 0.94, 0.72, 1)

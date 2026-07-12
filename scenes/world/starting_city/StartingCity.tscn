@@ -1,19 +1,23 @@
 [gd_scene format=3 uid="uid://lp4h4gfnqdij"]
 
 [ext_resource type="PackedScene" uid="uid://eyv46h3mu4rj" path="res://scenes/levels/PlayableLevelShell.tscn" id="1_shell"]
-[ext_resource type="PackedScene" uid="uid://c05ku23moqgxa" path="res://scenes/gathering/trees/SilverneedlePineT1.tscn" id="2_tree"]
+[ext_resource type="PackedScene" uid="uid://c05ku23moqgxa" path="res://scenes/gathering/trees/OakTreeT1.tscn" id="2_tree"]
 [ext_resource type="PackedScene" uid="uid://dg0xw3b0kmoon" path="res://scenes/gathering/rocks/MoonchalkRockT1.tscn" id="3_rock"]
+[ext_resource type="PackedScene" uid="uid://tayn83glc7l6" path="res://assets/Buildings/WoodBeam.glb" id="3_t6ixe"]
 [ext_resource type="PackedScene" path="res://scenes/entities/EnemyMob.tscn" id="4_6leb0"]
-[ext_resource type="PackedScene" path="res://scenes/gathering/ore/HearthsteelOreT1.tscn" id="4_ore"]
-[ext_resource type="PackedScene" path="res://scenes/gathering/fiber/CrudeCottonT1.tscn" id="5_fiber"]
-[ext_resource type="PackedScene" uid="uid://bg4arns7dr5d4" path="res://scenes/refining/stations/SawmillT1.tscn" id="6_sawmill"]
-[ext_resource type="PackedScene" uid="uid://qjki8e5o3muf" path="res://scenes/refining/stations/StonecutterT1.tscn" id="7_stonecutter"]
-[ext_resource type="PackedScene" uid="uid://dnl0e3eytgq8w" path="res://scenes/refining/stations/SmelterT1.tscn" id="8_smelter"]
-[ext_resource type="PackedScene" uid="uid://bbco8r6fbtl35" path="res://Meshy_AI_Nordic_Hill_Tile_Low__0709205455_texture.glb" id="9_e3dah"]
-[ext_resource type="PackedScene" path="res://scenes/refining/stations/LoomT1.tscn" id="9_loom"]
-[ext_resource type="PackedScene" path="res://scenes/refining/stations/ToolMakerT1.tscn" id="10_toolmaker"]
-[ext_resource type="PackedScene" path="res://scenes/refining/stations/WeaponSmithT1.tscn" id="11_weapon_smith"]
-[ext_resource type="PackedScene" path="res://scenes/entities/animals/Rat.tscn" id="12_rat"]
+[ext_resource type="PackedScene" uid="uid://cf3rajigm3ka8" path="res://scenes/gathering/ore/HearthsteelOreT1.tscn" id="4_ore"]
+[ext_resource type="PackedScene" uid="uid://dxhreqaffm2p3" path="res://scenes/gathering/fiber/CrudeCottonT1.tscn" id="5_fiber"]
+[ext_resource type="PackedScene" uid="uid://dy18745hb6k7q" path="res://assets/Buildings/Door.glb" id="15_2icb5"]
+[ext_resource type="PackedScene" uid="uid://bc1syr83y3w7m" path="res://assets/Buildings/StoneBrickWall.glb" id="16_1nmru"]
+[ext_resource type="PackedScene" uid="uid://deurhr3kludw1" path="res://assets/Buildings/WoodBeam_Horizontal.glb" id="18_b3taj"]
+[ext_resource type="PackedScene" path="res://scenes/entities/animals/Rat.tscn" id="animal_rat"]
+[ext_resource type="PackedScene" path="res://scenes/entities/npcs/AuctionHouseNpc.tscn" id="station_auction_house"]
+[ext_resource type="PackedScene" path="res://scenes/refining/stations/LoomT1.tscn" id="station_loom"]
+[ext_resource type="PackedScene" uid="uid://bg4arns7dr5d4" path="res://scenes/refining/stations/SawmillT1.tscn" id="station_sawmill"]
+[ext_resource type="PackedScene" uid="uid://dnl0e3eytgq8w" path="res://scenes/refining/stations/SmelterT1.tscn" id="station_smelter"]
+[ext_resource type="PackedScene" uid="uid://qjki8e5o3muf" path="res://scenes/refining/stations/StonecutterT1.tscn" id="station_stonecutter"]
+[ext_resource type="PackedScene" path="res://scenes/refining/stations/ToolMakerT1.tscn" id="station_toolmaker"]
+[ext_resource type="PackedScene" path="res://scenes/refining/stations/WeaponSmithT1.tscn" id="station_weapon_smith"]
 
 [node name="StartingCity" unique_id=575234451 instance=ExtResource("1_shell")]
 
@@ -21,10 +25,10 @@
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -41.009888, 0.00950967, 31.547379)
 
 [node name="EnemyMob2" parent="World/Ground" parent_id_path=PackedInt32Array(265774923) index="3" unique_id=59900968 instance=ExtResource("4_6leb0")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -44.70459, 0.00963174, -1.6906586)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -38.70459, 0.00963174, -1.6906586)
 
 [node name="EnemyMob3" parent="World/Ground" parent_id_path=PackedInt32Array(265774923) index="4" unique_id=1794801258 instance=ExtResource("4_6leb0")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -46.01294, 0.00950967, -45.412247)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40.01294, 0.00950967, -20.412247)
 
 [node name="EnemyMob4" parent="World/Ground" parent_id_path=PackedInt32Array(265774923) index="5" unique_id=1236731351 instance=ExtResource("4_6leb0")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16.450684, 0.00950967, -28.930069)
@@ -53,6 +57,18 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.4488525, 0.00950967, 42.57
 [node name="EnemyMob12" parent="World/Ground" parent_id_path=PackedInt32Array(265774923) index="13" unique_id=560085266 instance=ExtResource("4_6leb0")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.870117, 0.00950967, 28.325165)
 
+[node name="WoodBeam" parent="World/Ground" parent_id_path=PackedInt32Array(265774923) index="14" unique_id=1435516128 instance=ExtResource("3_t6ixe")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0, -2)
+
+[node name="WoodBeam2" parent="World/Ground" parent_id_path=PackedInt32Array(265774923) index="15" unique_id=165933124 instance=ExtResource("3_t6ixe")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, -2)
+
+[node name="WoodBeam3" parent="World/Ground" parent_id_path=PackedInt32Array(265774923) index="16" unique_id=1044019674 instance=ExtResource("3_t6ixe")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, -2)
+
+[node name="WoodBeam4" parent="World/Ground" parent_id_path=PackedInt32Array(265774923) index="17" unique_id=384281239 instance=ExtResource("3_t6ixe")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, -2)
+
 [node name="PlayerSpawn" parent="World" parent_id_path=PackedInt32Array(1649046816) index="3" unique_id=601006216]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0606551, 2)
 spawn_id = "starting_city_demo_spawn"
@@ -60,35 +76,32 @@ spawn_id = "starting_city_demo_spawn"
 [node name="Player" parent="World" parent_id_path=PackedInt32Array(1649046816) index="4" unique_id=650309786]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0861249, 2)
 
-[node name="SawmillT1" parent="World/LevelContent/Stations" parent_id_path=PackedInt32Array(699704035) index="0" unique_id=1889904659 instance=ExtResource("6_sawmill")]
+[node name="SawmillT1" parent="World/LevelContent/Stations" parent_id_path=PackedInt32Array(699704035) index="0" unique_id=1889904659 instance=ExtResource("station_sawmill")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.878489, 0, -3.9157748)
 
-[node name="StonecutterT1" parent="World/LevelContent/Stations" parent_id_path=PackedInt32Array(699704035) index="1" unique_id=1584947180 instance=ExtResource("7_stonecutter")]
+[node name="StonecutterT1" parent="World/LevelContent/Stations" parent_id_path=PackedInt32Array(699704035) index="1" unique_id=1584947180 instance=ExtResource("station_stonecutter")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, -12)
 
-[node name="SmelterT1" parent="World/LevelContent/Stations" parent_id_path=PackedInt32Array(699704035) index="2" unique_id=701439093 instance=ExtResource("8_smelter")]
+[node name="SmelterT1" parent="World/LevelContent/Stations" parent_id_path=PackedInt32Array(699704035) index="2" unique_id=701439093 instance=ExtResource("station_smelter")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, -12)
 
-[node name="LoomT1" parent="World/LevelContent/Stations" parent_id_path=PackedInt32Array(699704035) index="3" unique_id=936098442 instance=ExtResource("9_loom")]
+[node name="LoomT1" parent="World/LevelContent/Stations" parent_id_path=PackedInt32Array(699704035) index="3" unique_id=936098442 instance=ExtResource("station_loom")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, -12)
 
-[node name="ToolMakerT1" parent="World/LevelContent/Stations" parent_id_path=PackedInt32Array(699704035) index="4" unique_id=1658103308 instance=ExtResource("10_toolmaker")]
+[node name="ToolMakerT1" parent="World/LevelContent/Stations" parent_id_path=PackedInt32Array(699704035) index="4" unique_id=1658103308 instance=ExtResource("station_toolmaker")]
 transform = Transform3D(1.0000002, 0, 0, 0, 1, 0, 0, 0, 1.0000002, -8, 0, 8)
 
-[node name="WeaponSmithT1" parent="World/LevelContent/Stations" parent_id_path=PackedInt32Array(699704035) index="5" unique_id=793726139 instance=ExtResource("11_weapon_smith")]
+[node name="WeaponSmithT1" parent="World/LevelContent/Stations" parent_id_path=PackedInt32Array(699704035) index="5" unique_id=793726139 instance=ExtResource("station_weapon_smith")]
 transform = Transform3D(1.0000002, 0, 0, 0, 1, 0, 0, 0, 1.0000002, 8, 0, 8)
 
-[node name="Meshy_AI_Nordic_Hill_Tile_Low__0709205455_texture2" parent="World/LevelContent/Stations" parent_id_path=PackedInt32Array(699704035) index="6" unique_id=1810255052 instance=ExtResource("9_e3dah")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24.997952, 0.38029897, -9.096348)
-
-[node name="Meshy_AI_Nordic_Hill_Tile_Low__0709205455_texture" parent="World/LevelContent/Stations" parent_id_path=PackedInt32Array(699704035) index="7" unique_id=973735909 instance=ExtResource("9_e3dah")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -23.458668, 0.39378107, -9.063608)
+[node name="AuctionHouseNpc" parent="World/LevelContent/Stations" parent_id_path=PackedInt32Array(699704035) index="6" unique_id=65006136 instance=ExtResource("station_auction_house")]
+transform = Transform3D(1.0000002, 0, 0, 0, 1, 0, 0, 0, 1.0000002, 0, 0, 13)
 
 [node name="OakTreeT1A" parent="World/LevelContent/Resources" parent_id_path=PackedInt32Array(1565661383) index="0" unique_id=1749685938 instance=ExtResource("2_tree")]
-transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -40, 0, -35)
+transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -31.33975, 0, -30)
 
 [node name="OakTreeT1B" parent="World/LevelContent/Resources" parent_id_path=PackedInt32Array(1565661383) index="1" unique_id=2066524366 instance=ExtResource("2_tree")]
-transform = Transform3D(0.642788, 0, 0.766044, 0, 1, 0, -0.766044, 0, 0.642788, -31, 0, -42)
+transform = Transform3D(0.642788, 0, 0.766044, 0, 1, 0, -0.766044, 0, 0.642788, -11.8489, 0, -25.9303)
 
 [node name="OakTreeT1C" parent="World/LevelContent/Resources" parent_id_path=PackedInt32Array(1565661383) index="2" unique_id=1546654914 instance=ExtResource("2_tree")]
 transform = Transform3D(0.984808, 0, -0.173648, 0, 1, 0, 0.173648, 0, 0.984808, -43, 0, -14)
@@ -115,7 +128,7 @@ transform = Transform3D(0.573576, 0, -0.819152, 0, 1, 0, 0.819152, 0, 0.573576, 
 transform = Transform3D(0.996195, 0, 0.087156, 0, 1, 0, -0.087156, 0, 0.996195, 44, 0, 36)
 
 [node name="ClayDepositT1A" parent="World/LevelContent/Resources" parent_id_path=PackedInt32Array(1565661383) index="10" unique_id=2111401573 instance=ExtResource("3_rock")]
-transform = Transform3D(0.965926, 0, -0.258819, 0, 1, 0, 0.258819, 0, 0.965926, -18, 0, -43)
+transform = Transform3D(0.965926, 0, -0.258819, 0, 1, 0, 0.258819, 0, 0.965926, 9.045927, 0, -35.753067)
 
 [node name="ClayDepositT1B" parent="World/LevelContent/Resources" parent_id_path=PackedInt32Array(1565661383) index="11" unique_id=1136435987 instance=ExtResource("3_rock")]
 transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, -44, 0, 4)
@@ -136,7 +149,7 @@ transform = Transform3D(0.996195, 0, -0.087156, 0, 1, 0, 0.087156, 0, 0.996195, 
 transform = Transform3D(0.984808, 0, -0.173648, 0, 1, 0, 0.173648, 0, 0.984808, -7, 0, -42)
 
 [node name="IronOreT1B" parent="World/LevelContent/Resources" parent_id_path=PackedInt32Array(1565661383) index="17" unique_id=395954916 instance=ExtResource("4_ore")]
-transform = Transform3D(0.573576, 0, 0.819152, 0, 1, 0, -0.819152, 0, 0.573576, -45, 0, -24)
+transform = Transform3D(0.573576, 0, 0.819152, 0, 1, 0, -0.819152, 0, 0.573576, -36.80848, 0, -18.26424)
 
 [node name="IronOreT1C" parent="World/LevelContent/Resources" parent_id_path=PackedInt32Array(1565661383) index="18" unique_id=1057261561 instance=ExtResource("4_ore")]
 transform = Transform3D(0.906308, 0, 0.422618, 0, 1, 0, -0.422618, 0, 0.906308, -23, 0, 43)
@@ -181,7 +194,7 @@ transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 
 transform = Transform3D(0.866025, 0, 0.5, 0, 1, 0, -0.5, 0, 0.866025, -44, 0, 12)
 
 [node name="OakTreeT1M" parent="World/LevelContent/Resources" parent_id_path=PackedInt32Array(1565661383) index="32" unique_id=2090713724 instance=ExtResource("2_tree")]
-transform = Transform3D(0.939693, 0, -0.34202, 0, 1, 0, 0.34202, 0, 0.939693, -20, 0, -44)
+transform = Transform3D(0.939693, 0, -0.34202, 0, 1, 0, 0.34202, 0, 0.939693, -4.025219, 0, -38.18566)
 
 [node name="OakTreeT1N" parent="World/LevelContent/Resources" parent_id_path=PackedInt32Array(1565661383) index="33" unique_id=1886542375 instance=ExtResource("2_tree")]
 transform = Transform3D(0.573576, 0, 0.819152, 0, 1, 0, -0.819152, 0, 0.573576, -12, 0, 44)
@@ -199,7 +212,7 @@ transform = Transform3D(0.906308, 0, 0.422618, 0, 1, 0, -0.422618, 0, 0.906308, 
 transform = Transform3D(0.984808, 0, 0.173648, 0, 1, 0, -0.173648, 0, 0.984808, 36, 0, 44)
 
 [node name="ClayDepositT1G" parent="World/LevelContent/Resources" parent_id_path=PackedInt32Array(1565661383) index="38" unique_id=1173083265 instance=ExtResource("3_rock")]
-transform = Transform3D(0.819152, 0, -0.573576, 0, 1, 0, 0.573576, 0, 0.819152, -32, 0, -44)
+transform = Transform3D(0.819152, 0, -0.573576, 0, 1, 0, 0.573576, 0, 0.819152, -13.978657, 0, -31.381329)
 
 [node name="ClayDepositT1H" parent="World/LevelContent/Resources" parent_id_path=PackedInt32Array(1565661383) index="39" unique_id=51036130 instance=ExtResource("3_rock")]
 transform = Transform3D(0.573576, 0, 0.819152, 0, 1, 0, -0.819152, 0, 0.573576, -44, 0, 28)
@@ -217,7 +230,7 @@ transform = Transform3D(0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, 0.965926, 
 transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, 20, 0, 32)
 
 [node name="IronOreT1G" parent="World/LevelContent/Resources" parent_id_path=PackedInt32Array(1565661383) index="44" unique_id=1275279186 instance=ExtResource("4_ore")]
-transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, -44, 0, -40)
+transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, -31.272074, 0, -27.272074)
 
 [node name="IronOreT1H" parent="World/LevelContent/Resources" parent_id_path=PackedInt32Array(1565661383) index="45" unique_id=1783822722 instance=ExtResource("4_ore")]
 transform = Transform3D(0.939693, 0, -0.34202, 0, 1, 0, 0.34202, 0, 0.939693, -36, 0, -8)
@@ -235,7 +248,7 @@ transform = Transform3D(0.642788, 0, 0.766044, 0, 1, 0, -0.766044, 0, 0.642788, 
 transform = Transform3D(0.984808, 0, -0.173648, 0, 1, 0, 0.173648, 0, 0.984808, 36, 0, 28)
 
 [node name="CrudeCottonT1I" parent="World/LevelContent/Resources" parent_id_path=PackedInt32Array(1565661383) index="50" unique_id=324520774 instance=ExtResource("5_fiber")]
-transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -44, 0, -28)
+transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -38.80385, 0, -25)
 
 [node name="CrudeCottonT1J" parent="World/LevelContent/Resources" parent_id_path=PackedInt32Array(1565661383) index="51" unique_id=435420714 instance=ExtResource("5_fiber")]
 transform = Transform3D(0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, 0.965926, -32, 0, -12)
@@ -258,5 +271,221 @@ transform = Transform3D(0.996195, 0, -0.087156, 0, 1, 0, 0.087156, 0, 0.996195, 
 [node name="CrudeCottonT1P" parent="World/LevelContent/Resources" parent_id_path=PackedInt32Array(1565661383) index="57" unique_id=709064611 instance=ExtResource("5_fiber")]
 transform = Transform3D(0.642788, 0, 0.766044, 0, 1, 0, -0.766044, 0, 0.642788, 40, 0, 20)
 
-[node name="RatT1A" parent="World/LevelContent/Mobs" parent_id_path=PackedInt32Array(1514346223) index="0" unique_id=297574917 instance=ExtResource("12_rat")]
+[node name="RatT1A" parent="World/LevelContent/Mobs" parent_id_path=PackedInt32Array(1514346223) index="0" unique_id=297574917 instance=ExtResource("animal_rat")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0.04, 16)
+
+[node name="Door" parent="." index="15" unique_id=621796744 instance=ExtResource("15_2icb5")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -2)
+
+[node name="StoneBrickWall" parent="." index="16" unique_id=1212217202 instance=ExtResource("16_1nmru")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -2)
+
+[node name="StoneBrickWall2" parent="." index="17" unique_id=244677399 instance=ExtResource("16_1nmru")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -2)
+
+[node name="WoodBeam_Horizontal" parent="." index="18" unique_id=423922084 instance=ExtResource("18_b3taj")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -2)
+
+[node name="WoodBeam_Horizontal2" parent="." index="19" unique_id=151794046 instance=ExtResource("18_b3taj")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -2)
+
+[node name="WoodBeam_Horizontal3" parent="." index="20" unique_id=86363399 instance=ExtResource("18_b3taj")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -2)
+
+[node name="CrudeCottonT1" parent="." index="22" unique_id=1662217890 instance=ExtResource("5_fiber")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, 3)
+
+[node name="CrudeCottonT2" parent="." index="23" unique_id=1944738861 instance=ExtResource("5_fiber")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 6)
+
+[node name="CrudeCottonT3" parent="." index="24" unique_id=1783809937 instance=ExtResource("5_fiber")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, 4)
+
+[node name="CrudeCottonT4" parent="." index="25" unique_id=2052403124 instance=ExtResource("5_fiber")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0, -1)
+
+[node name="CrudeCottonT5" parent="." index="26" unique_id=678042234 instance=ExtResource("5_fiber")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, 7)
+
+[node name="IronOreT1" parent="." index="27" unique_id=1869373476 instance=ExtResource("4_ore")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -33, 0, 5)
+
+[node name="IronOreT2" parent="." index="28" unique_id=765943200 instance=ExtResource("4_ore")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, 9)
+
+[node name="IronOreT3" parent="." index="29" unique_id=1332880117 instance=ExtResource("4_ore")]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 24, 0, 11)
+
+[node name="IronOreT4" parent="." index="30" unique_id=2113456722 instance=ExtResource("4_ore")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 23, 0, 12)
+
+[node name="IronOreT5" parent="." index="31" unique_id=1566946723 instance=ExtResource("4_ore")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 10)
+
+[node name="OakTreeT1" parent="." index="32" unique_id=306857052 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 0, 22)
+
+[node name="OakTreeT2" parent="." index="33" unique_id=1227618873 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 0, 21)
+
+[node name="OakTreeT3" parent="." index="34" unique_id=620472366 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, 0, 34)
+
+[node name="OakTreeT4" parent="." index="35" unique_id=1426864160 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0, 19)
+
+[node name="OakTreeT5" parent="." index="36" unique_id=682691397 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 32, 0, -4)
+
+[node name="OakTreeT6" parent="." index="37" unique_id=1868274325 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33, 0, 5)
+
+[node name="OakTreeT7" parent="." index="38" unique_id=819140747 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 0, -10)
+
+[node name="OakTreeT8" parent="." index="39" unique_id=1328068497 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 29, 0, -18)
+
+[node name="OakTreeT9" parent="." index="40" unique_id=1240470783 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 23, 0, -25)
+
+[node name="OakTreeT10" parent="." index="41" unique_id=894473095 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 0, -33)
+
+[node name="OakTreeT11" parent="." index="42" unique_id=811636079 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -37, 0, -42)
+
+[node name="OakTreeT12" parent="." index="43" unique_id=791314298 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -29, 0, -10)
+
+[node name="OakTreeT13" parent="." index="44" unique_id=2117085197 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 32)
+
+[node name="OakTreeT14" parent="." index="45" unique_id=2060320133 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, 37)
+
+[node name="OakTreeT15" parent="." index="46" unique_id=1922682786 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 41)
+
+[node name="OakTreeT16" parent="." index="47" unique_id=1865197201 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, -31)
+
+[node name="OakTreeT17" parent="." index="48" unique_id=1801863165 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, -38)
+
+[node name="OakTreeT18" parent="." index="49" unique_id=1669729219 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, -35)
+
+[node name="OakTreeT19" parent="." index="50" unique_id=66375458 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 39, 0, -14)
+
+[node name="OakTreeT20" parent="." index="51" unique_id=543105237 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0, -44)
+
+[node name="OakTreeT21" parent="." index="52" unique_id=1845373355 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -29, 0, -40)
+
+[node name="OakTreeT22" parent="." index="53" unique_id=56179033 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -28, 0, -19)
+
+[node name="OakTreeT23" parent="." index="54" unique_id=1441301995 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 0, -35)
+
+[node name="OakTreeT24" parent="." index="55" unique_id=2074888792 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 37, 0, 38)
+
+[node name="OakTreeT25" parent="." index="56" unique_id=762985638 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -41, 0, 39)
+
+[node name="OakTreeT26" parent="." index="57" unique_id=73015912 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -23, 0, 29)
+
+[node name="OakTreeT27" parent="." index="58" unique_id=270050917 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 0, 50)
+
+[node name="OakTreeT28" parent="." index="59" unique_id=67862335 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -26, 0, 48)
+
+[node name="OakTreeT29" parent="." index="60" unique_id=1039653446 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -34, 0, 44)
+
+[node name="OakTreeT30" parent="." index="61" unique_id=1892177592 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -34, 0, 26)
+
+[node name="OakTreeT31" parent="." index="62" unique_id=91691781 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, -44)
+
+[node name="ClayDepositT1" parent="." index="63" unique_id=499969534 instance=ExtResource("3_rock")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45, 0, -21)
+
+[node name="ClayDepositT2" parent="." index="64" unique_id=1520683196 instance=ExtResource("3_rock")]
+transform = Transform3D(0.8660254, 0, 0.5, 0, 1, 0, -0.5, 0, 0.8660254, 37, 0, -44)
+
+[node name="ClayDepositT3" parent="." index="65" unique_id=996637392 instance=ExtResource("3_rock")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 0, -41)
+
+[node name="IronOreT6" parent="." index="66" unique_id=1302062195 instance=ExtResource("4_ore")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48, 0, -9)
+
+[node name="IronOreT7" parent="." index="67" unique_id=695743728 instance=ExtResource("4_ore")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 49, 0, -27)
+
+[node name="IronOreT8" parent="." index="68" unique_id=121476955 instance=ExtResource("4_ore")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 49, 0, -30)
+
+[node name="IronOreT9" parent="." index="69" unique_id=1611123375 instance=ExtResource("4_ore")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48, 0, -48)
+
+[node name="IronOreT10" parent="." index="70" unique_id=1686071559 instance=ExtResource("4_ore")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48, 0, -44)
+
+[node name="IronOreT11" parent="." index="71" unique_id=956554890 instance=ExtResource("4_ore")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48, 0, -39)
+
+[node name="OakTreeT32" parent="." index="72" unique_id=613030581 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 0, -16)
+
+[node name="OakTreeT33" parent="." index="73" unique_id=762227132 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0, -17)
+
+[node name="OakTreeT34" parent="." index="74" unique_id=804037973 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -21)
+
+[node name="OakTreeT35" parent="." index="75" unique_id=481365721 instance=ExtResource("2_tree")]
+transform = Transform3D(-0.25881904, 0, -0.9659258, 0, 1, 0, 0.9659258, 0, -0.25881904, 20, 0, -11)
+
+[node name="OakTreeT36" parent="." index="76" unique_id=1370081053 instance=ExtResource("2_tree")]
+transform = Transform3D(0.8660254, 0, -0.5, 0, 1, 0, 0.5, 0, 0.8660254, 22, 0, -2)
+
+[node name="OakTreeT37" parent="." index="77" unique_id=62090307 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 0, -16)
+
+[node name="OakTreeT38" parent="." index="78" unique_id=1428282076 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 0, 6)
+
+[node name="OakTreeT39" parent="." index="79" unique_id=790548124 instance=ExtResource("2_tree")]
+transform = Transform3D(0.25881907, 0, -0.9659258, 0, 1, 0, 0.9659258, 0, 0.25881907, 28, 0, -4)
+
+[node name="OakTreeT40" parent="." index="80" unique_id=113804671 instance=ExtResource("2_tree")]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 18, 0, 2)
+
+[node name="OakTreeT41" parent="." index="81" unique_id=1695963785 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 0, -11)
+
+[node name="OakTreeT42" parent="." index="82" unique_id=1899919712 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, 14)
+
+[node name="OakTreeT43" parent="." index="83" unique_id=1775526621 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 23)
+
+[node name="OakTreeT44" parent="." index="84" unique_id=453871784 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, 27)
+
+[node name="OakTreeT45" parent="." index="85" unique_id=1840860204 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 0, 16)
+
+[node name="OakTreeT46" parent="." index="86" unique_id=1136514657 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 0, -1)
+
+[node name="OakTreeT47" parent="." index="87" unique_id=1898148974 instance=ExtResource("2_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -27, 0, -13)

@@ -13,7 +13,7 @@ const SQLitePlayerDatabaseBackendScript := preload("res://scripts/persistence/sq
 const DATABASE_PATH := "user://player_database.json"
 const SQLITE_DATABASE_PATH := "user://elderforge_players.sqlite3"
 const MIGRATIONS_PATH := "res://data/migrations"
-const SCHEMA_VERSION := 3
+const SCHEMA_VERSION := 4
 const DEFAULT_WORLD_ID := "main"
 const DEFAULT_ZONE_ID := "starting_city"
 const MAX_ACCOUNT_NAME_LENGTH := 48
@@ -106,6 +106,7 @@ func create_player(
 		"characters": characters,
 		"inventory": {},
 		"stats": {},
+		"progression": {},
 		"item_transactions": [],
 		"last_position": {},
 		"created_at_unix": now,
@@ -361,6 +362,33 @@ func has_player_stats(account_name: String) -> bool:
 	return stats is Dictionary and not (stats as Dictionary).is_empty()
 
 
+func set_player_progression(account_name: String, progression_snapshot: Dictionary) -> bool:
+	var key := normalize_account_name(account_name)
+	if key.is_empty() or not _players().has(key):
+		return false
+
+	var record: Dictionary = _players()[key]
+	record["progression"] = sanitize_progression_snapshot(progression_snapshot)
+	record["updated_at_unix"] = _now_unix()
+	_players()[key] = record
+	_save_database()
+	return true
+
+
+func get_player_progression(account_name: String) -> Dictionary:
+	var record := get_player(account_name)
+	return sanitize_progression_snapshot(record.get("progression", {}))
+
+
+func has_player_progression(account_name: String) -> bool:
+	var record := get_player(account_name)
+	if record.is_empty():
+		return false
+
+	var progression: Variant = record.get("progression", {})
+	return progression is Dictionary and not (progression as Dictionary).is_empty()
+
+
 func record_item_transaction(
 	account_name: String,
 	transaction_type: String,
@@ -502,6 +530,41 @@ func sanitize_inventory_snapshot(snapshot: Variant) -> Dictionary:
 	}
 
 
+func sanitize_progression_snapshot(snapshot: Variant) -> Dictionary:
+	if not (snapshot is Dictionary):
+		return _empty_progression_snapshot()
+
+	var data := snapshot as Dictionary
+	var purchased_traits := {}
+	var raw_purchased: Variant = data.get("purchased_traits", {})
+	if raw_purchased is Dictionary:
+		for raw_trait_id in (raw_purchased as Dictionary).keys():
+			var trait_id := String(raw_trait_id).strip_edges()
+			if trait_id.is_empty():
+				continue
+			var rank := clampi(int((raw_purchased as Dictionary)[raw_trait_id]), 0, 100)
+			if rank > 0:
+				purchased_traits[trait_id] = rank
+
+	var active_traits: Array[String] = []
+	var raw_active: Variant = data.get("active_traits", [])
+	if raw_active is Array:
+		for raw_trait_id in raw_active:
+			var trait_id := String(raw_trait_id).strip_edges()
+			if trait_id.is_empty() or active_traits.has(trait_id):
+				continue
+			active_traits.append(trait_id)
+
+	return {
+		"character_level": clampi(int(data.get("character_level", 1)), 1, 100),
+		"current_xp": clampi(int(data.get("current_xp", 0)), 0, 999999999),
+		"total_xp": clampi(int(data.get("total_xp", 0)), 0, 999999999),
+		"unspent_trait_points": clampi(int(data.get("unspent_trait_points", 0)), 0, 9999),
+		"purchased_traits": purchased_traits,
+		"active_traits": active_traits,
+	}
+
+
 func _sanitize_stack(raw_stack: Variant) -> Dictionary:
 	if not (raw_stack is Dictionary):
 		return {}
@@ -528,6 +591,17 @@ func _empty_inventory_snapshot() -> Dictionary:
 		"gold": 0,
 		"slots": slots,
 		"equipped_slots": {},
+	}
+
+
+func _empty_progression_snapshot() -> Dictionary:
+	return {
+		"character_level": 1,
+		"current_xp": 0,
+		"total_xp": 0,
+		"unspent_trait_points": 0,
+		"purchased_traits": {},
+		"active_traits": [],
 	}
 
 
@@ -783,6 +857,8 @@ func _normalize_database_shape() -> void:
 			record["inventory"] = {}
 		if not record.has("stats"):
 			record["stats"] = {}
+		if not record.has("progression"):
+			record["progression"] = {}
 		if not record.has("last_position"):
 			record["last_position"] = {}
 		if not record.has("item_transactions") or not (record["item_transactions"] is Array):
