@@ -7,7 +7,7 @@ param(
 	[string]$PlaytestCodeHash = $env:ELDERFORGE_PLAYTEST_CODE_HASH,
 	[string]$StatusUrl = $env:ELDERFORGE_PLAYTEST_STATUS_URL,
 	[string]$Repository = "Barbatos6669/elderforge",
-	[string]$ReleaseTag = "playtest-2026-07-08",
+	[string]$ReleaseTag = "playtest-2026-07-10",
 	[switch]$MaintenanceMode,
 	[string]$MaintenanceMessage = "Server maintenance is active. Please update and try again soon."
 )

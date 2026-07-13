@@ -9,8 +9,8 @@ param(
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
-$DefaultVersionUrl = "https://github.com/Barbatos6669/elderforge/releases/download/playtest-2026-07-08/Elderforge_Windows_Playtest.version.json"
-$DefaultPackageUrl = "https://github.com/Barbatos6669/elderforge/releases/download/playtest-2026-07-08/Elderforge_Windows_Playtest.zip"
+$DefaultVersionUrl = "https://github.com/Barbatos6669/elderforge/releases/download/playtest-2026-07-10/Elderforge_Windows_Playtest.version.json"
+$DefaultPackageUrl = "https://github.com/Barbatos6669/elderforge/releases/download/playtest-2026-07-10/Elderforge_Windows_Playtest.zip"
 $DefaultStatusUrl = "http://20.253.172.141:24567/status"
 $DefaultGameExe = "Elderforge_Playtest.exe"
 $LauncherHeroImage = Join-Path $PSScriptRoot "launcher_art\elderforge_playtest_banner.png"
