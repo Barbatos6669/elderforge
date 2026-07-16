@@ -26,8 +26,8 @@ Files:
   hover-tooltip entry point.
 - `ability_tooltip_panel.gd`: reusable spell hint panel with semantic tags,
   structured effects, description, energy cost, cast time, range, and cooldown.
-  `WeaponAbilityHud` owns it inside the middle-center grid cell so native
-  viewport tooltip placement cannot overlap neighboring HUD zones.
+  `WeaponAbilityHud` anchors it from the middle-center grid cell but sizes it
+  against the viewport so long spell details can wrap instead of clipping.
 - `world_time_hud.gd`: compact top-right UTC world clock for shared MMO-facing
   schedules.
 - `hud_profile_portrait.gd`: code-drawn placeholder portrait used by the status

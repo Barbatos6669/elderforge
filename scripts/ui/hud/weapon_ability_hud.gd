@@ -18,6 +18,7 @@ const AbilitySlots := preload(
 const Q_SLOT := &"q"
 const SLOT_IDS := AbilitySlots.HUD_SLOT_IDS
 const SLOT_KEY_HINTS := AbilitySlots.KEY_HINT_BY_SLOT
+const HINT_VIEWPORT_MARGIN := Vector2(12.0, 12.0)
 
 ## PlayerWeaponAbilities component to observe.
 @export var ability_component_path: NodePath
@@ -81,6 +82,9 @@ func _build_hint_layer() -> void:
 	_hint_root.name = "AbilityHintRoot"
 	_hint_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	HudGrid.apply_zone(_hint_root, HudGrid.Zone.MIDDLE_CENTER)
+	# The middle-center zone still anchors the hint, but long spell details need
+	# room to grow beyond the narrow center column.
+	_hint_root.clip_contents = false
 	_hint_root.resized.connect(_layout_hint_panel)
 	add_child(_hint_root)
 
@@ -152,13 +156,28 @@ func _layout_hint_panel() -> void:
 	if available.x <= 0.0 or available.y <= 0.0:
 		return
 
+	var viewport_size := _hint_root.get_viewport_rect().size
+	var max_width := maxf(viewport_size.x - HINT_VIEWPORT_MARGIN.x * 2.0, 1.0)
+	var max_height := maxf(viewport_size.y - HINT_VIEWPORT_MARGIN.y * 2.0, 1.0)
 	var minimum := _hint_panel.get_combined_minimum_size()
 	var panel_size := Vector2(
-		minf(AbilityTooltipPanelScript.TOOLTIP_WIDTH, available.x),
-		minf(minimum.y, available.y)
+		minf(AbilityTooltipPanelScript.TOOLTIP_WIDTH, max_width),
+		minf(minimum.y, max_height)
 	)
-	_hint_panel.position = (available - panel_size) * 0.5
+	var panel_position := (available - panel_size) * 0.5
+	var root_position := _hint_root.global_position
+	var min_position := HINT_VIEWPORT_MARGIN - root_position
+	var max_position := viewport_size - HINT_VIEWPORT_MARGIN - panel_size - root_position
+	panel_position.x = _clamp_hint_axis(panel_position.x, min_position.x, max_position.x)
+	panel_position.y = _clamp_hint_axis(panel_position.y, min_position.y, max_position.y)
+	_hint_panel.position = panel_position
 	_hint_panel.size = panel_size
+
+
+func _clamp_hint_axis(value: float, minimum: float, maximum: float) -> float:
+	if maximum < minimum:
+		return (minimum + maximum) * 0.5
+	return clampf(value, minimum, maximum)
 
 
 func _on_ability_hint_requested(definition: Resource) -> void:
