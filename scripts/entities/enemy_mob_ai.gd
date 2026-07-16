@@ -50,6 +50,8 @@ signal respawned
 @export var resource_pool_path: NodePath = NodePath("../Mana")
 ## Optional debug ring that visualizes `aggro_radius`.
 @export var debug_aggro_zone_path: NodePath = NodePath("../DebugAggroZone")
+## Optional debug ring that visualizes the home-centered de-aggro/leash radius.
+@export var debug_deaggro_zone_path: NodePath = NodePath("../DebugLeashZone")
 
 @export_group("Aggro")
 ## Distance from the mob where players first pull aggro.
@@ -60,6 +62,8 @@ signal respawned
 @export_range(0.05, 2.0, 0.01) var home_arrival_distance := 0.18
 ## Shows the aggro radius as a debug ground ring.
 @export var debug_show_aggro_zone := false
+## Shows the home-centered de-aggro/leash radius as a debug ground ring.
+@export var debug_show_deaggro_zone := false
 
 @export_group("Movement")
 @export_range(0.1, 12.0, 0.1) var movement_speed := 3.2
@@ -115,6 +119,7 @@ var _loot_dropper: Node
 var _equipment_loadout: Node
 var _resource_pool: Node
 var _debug_aggro_zone: Node
+var _debug_deaggro_zone: Node
 var _target: Node3D
 var _collision_shapes: Array[CollisionShape3D] = []
 var _home_position := Vector3.ZERO
@@ -163,6 +168,7 @@ func _ready() -> void:
 	_equipment_loadout = get_node_or_null(equipment_loadout_path)
 	_resource_pool = get_node_or_null(resource_pool_path)
 	_debug_aggro_zone = get_node_or_null(debug_aggro_zone_path)
+	_debug_deaggro_zone = get_node_or_null(debug_deaggro_zone_path)
 	_collect_collision_shapes(_body)
 
 	if _health != null and _health.has_signal("defeated"):
@@ -173,11 +179,11 @@ func _ready() -> void:
 	_refresh_equipped_abilities(true)
 	_connect_stats_signals()
 	_sync_health_stats(true)
-	_sync_debug_aggro_zone(true)
+	_sync_debug_zones(true)
 
 
 func _process(_delta: float) -> void:
-	_sync_debug_aggro_zone()
+	_sync_debug_zones()
 
 
 func _physics_process(delta: float) -> void:
@@ -411,7 +417,7 @@ func _respawn() -> void:
 	_cooldown_remaining = 0.0
 	_reset_active_ability_state()
 	_is_respawning = false
-	_sync_debug_aggro_zone(true)
+	_sync_debug_zones(true)
 	respawned.emit()
 
 
@@ -431,7 +437,7 @@ func apply_network_alive_state() -> void:
 		_animation.call("reset_animation_state")
 	_cooldown_remaining = 0.0
 	_reset_active_ability_state()
-	_sync_debug_aggro_zone(true)
+	_sync_debug_zones(true)
 	respawned.emit()
 
 
@@ -1144,7 +1150,7 @@ func _set_defeated_state(is_defeated: bool, should_hide_body: bool = true) -> vo
 		_selectable.set("selection_enabled", not is_defeated)
 		if is_defeated and _selectable.has_method("set_selected"):
 			_selectable.call("set_selected", false)
-	_sync_debug_aggro_zone(true)
+	_sync_debug_zones(true)
 
 
 func _play_death_animation() -> float:
@@ -1252,31 +1258,71 @@ func _set_moving_animation(is_moving: bool) -> void:
 		_animation.call("set_moving", is_moving)
 
 
-func _sync_debug_aggro_zone(force_refresh := false) -> void:
-	if _debug_aggro_zone == null and not debug_aggro_zone_path.is_empty():
-		_debug_aggro_zone = get_node_or_null(debug_aggro_zone_path)
-	if _debug_aggro_zone == null:
+func _sync_debug_zones(force_refresh := false) -> void:
+	var mob_world_center := Vector3.ZERO
+	if _body != null:
+		mob_world_center = _body.global_position
+	elif get_parent() is Node3D:
+		mob_world_center = (get_parent() as Node3D).global_position
+
+	_sync_debug_radius_zone(
+		&"_debug_aggro_zone",
+		debug_aggro_zone_path,
+		aggro_radius,
+		debug_show_aggro_zone,
+		mob_world_center,
+		true,
+		force_refresh
+	)
+	_sync_debug_radius_zone(
+		&"_debug_deaggro_zone",
+		debug_deaggro_zone_path,
+		leash_radius,
+		debug_show_deaggro_zone,
+		_home_position,
+		true,
+		force_refresh
+	)
+
+
+func _sync_debug_radius_zone(
+	cache_property: StringName,
+	zone_path: NodePath,
+	radius: float,
+	should_be_enabled: bool,
+	world_center: Vector3,
+	uses_world_center: bool,
+	force_refresh := false
+) -> void:
+	var zone := get(cache_property) as Node
+	if zone == null and not zone_path.is_empty():
+		zone = get_node_or_null(zone_path)
+		set(cache_property, zone)
+	if zone == null:
 		return
 
 	if (
-		_debug_aggro_zone.has_method("set_radius")
+		zone.has_method("set_radius")
 		and (
 			force_refresh
-			or not _debug_aggro_zone.has_method("get_radius")
-			or not is_equal_approx(float(_debug_aggro_zone.call("get_radius")), aggro_radius)
+			or not zone.has_method("get_radius")
+			or not is_equal_approx(float(zone.call("get_radius")), radius)
 		)
 	):
-		_debug_aggro_zone.call("set_radius", aggro_radius)
+		zone.call("set_radius", radius)
+
+	if uses_world_center and zone.has_method("set_world_center"):
+		zone.call("set_world_center", world_center)
 
 	var should_show := (
-		debug_show_aggro_zone
+		should_be_enabled
 		and not _is_respawning
 		and not _is_self_defeated()
 	)
-	if _debug_aggro_zone.has_method("set_debug_visible"):
-		_debug_aggro_zone.call("set_debug_visible", should_show)
+	if zone.has_method("set_debug_visible"):
+		zone.call("set_debug_visible", should_show)
 	else:
-		_debug_aggro_zone.visible = should_show
+		zone.visible = should_show
 
 
 func _connect_stats_signals() -> void:

@@ -10,7 +10,7 @@ Files:
 - `isometric_grid.gd`: draws the isometric reference grid used in the main test
   scene.
 - `mob_aggro_zone_debug_3d.gd`: debug-only ground ring synced by `EnemyMobAI`
-  to visualize a mob's aggro radius.
+  to visualize mob aggro and de-aggro/leash radii.
 
 Related scene:
 

@@ -71,6 +71,12 @@ ring_color = Color(1, 0.08, 0.06, 1)
 [node name="DebugAggroZone" type="MeshInstance3D" parent="."]
 script = ExtResource("24_aggro_zone")
 
+[node name="DebugLeashZone" type="MeshInstance3D" parent="."]
+script = ExtResource("24_aggro_zone")
+ring_width = 0.1
+ring_color = Color(0.1, 0.55, 1, 0.82)
+fill_color = Color(0.1, 0.45, 1, 0.045)
+
 [node name="Health" type="Node" parent="."]
 script = ExtResource("6_health")
 max_health = 1200.0

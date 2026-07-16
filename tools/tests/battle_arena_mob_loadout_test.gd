@@ -49,7 +49,7 @@ func _run_test() -> void:
 			return
 		if not _has_player_base_stats(raider, raider_name):
 			return
-		if not _has_debug_aggro_zone(raider, raider_name):
+		if not _has_debug_combat_zones(raider, raider_name):
 			return
 
 	var expected_item_ids := PackedStringArray([
@@ -167,31 +167,80 @@ func _has_player_base_stats(raider: Node, raider_name: String) -> bool:
 	return true
 
 
-func _has_debug_aggro_zone(raider: Node, raider_name: String) -> bool:
+func _has_debug_combat_zones(raider: Node, raider_name: String) -> bool:
 	var ai := raider.get_node_or_null("AI")
 	var aggro_zone := raider.get_node_or_null("DebugAggroZone")
-	if ai == null or aggro_zone == null:
-		_fail("%s should include AI and DebugAggroZone nodes." % raider_name)
+	var deaggro_zone := raider.get_node_or_null("DebugLeashZone")
+	var raider_3d := raider as Node3D
+	var aggro_zone_3d := aggro_zone as Node3D
+	var deaggro_zone_3d := deaggro_zone as Node3D
+	if ai == null or aggro_zone == null or deaggro_zone == null:
+		_fail("%s should include AI, DebugAggroZone, and DebugLeashZone nodes." % raider_name)
 		return false
-	if not aggro_zone.has_method("get_radius"):
-		_fail("%s DebugAggroZone should expose its radius for tests." % raider_name)
-		return false
-	if not bool(ai.get("debug_show_aggro_zone")):
-		_fail("%s should enable its debug aggro zone in the battle arena." % raider_name)
-		return false
-	if not bool(aggro_zone.get("visible")):
-		_fail("%s debug aggro zone should be visible." % raider_name)
+	if raider_3d == null or aggro_zone_3d == null or deaggro_zone_3d == null:
+		_fail("%s debug combat zones should be 3D nodes." % raider_name)
 		return false
 
-	var expected_radius := float(ai.get("aggro_radius"))
-	var actual_radius := float(aggro_zone.call("get_radius"))
+	if not _has_debug_radius_zone(
+		aggro_zone,
+		ai,
+		"aggro",
+		"debug_show_aggro_zone",
+		"aggro_radius",
+		raider_name
+	):
+		return false
+	if not _has_debug_radius_zone(
+		deaggro_zone,
+		ai,
+		"de-aggro",
+		"debug_show_deaggro_zone",
+		"leash_radius",
+		raider_name
+	):
+		return false
+
+	var expected_center := raider_3d.global_position
+	if _horizontal_distance(aggro_zone_3d.global_position, expected_center) > 0.05:
+		_fail("%s debug aggro zone should be centered on the mob." % raider_name)
+		return false
+	if _horizontal_distance(deaggro_zone_3d.global_position, expected_center) > 0.05:
+		_fail("%s debug de-aggro zone should be centered on the mob home point." % raider_name)
+		return false
+	return true
+
+
+func _has_debug_radius_zone(
+	zone: Node,
+	ai: Node,
+	zone_label: String,
+	enabled_property: String,
+	radius_property: String,
+	raider_name: String
+) -> bool:
+	if not zone.has_method("get_radius"):
+		_fail("%s debug %s zone should expose its radius for tests." % [raider_name, zone_label])
+		return false
+	if not bool(ai.get(enabled_property)):
+		_fail("%s should enable its debug %s zone in the battle arena." % [raider_name, zone_label])
+		return false
+	if not bool(zone.get("visible")):
+		_fail("%s debug %s zone should be visible." % [raider_name, zone_label])
+		return false
+
+	var expected_radius := float(ai.get(radius_property))
+	var actual_radius := float(zone.call("get_radius"))
 	if not is_equal_approx(actual_radius, expected_radius):
 		_fail(
-			"%s debug aggro zone radius should be %.2f, found %.2f."
-			% [raider_name, expected_radius, actual_radius]
+			"%s debug %s zone radius should be %.2f, found %.2f."
+			% [raider_name, zone_label, expected_radius, actual_radius]
 		)
 		return false
 	return true
+
+
+func _horizontal_distance(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x, a.z).distance_to(Vector2(b.x, b.z))
 
 
 func _expected_player_stat(stat_id: StringName) -> float:

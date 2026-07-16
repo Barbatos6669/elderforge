@@ -1,4 +1,4 @@
-## Debug-only ground ring showing a mob's aggro radius.
+## Debug-only ground ring showing a mob's combat radius.
 class_name MobAggroZoneDebug3D
 extends MeshInstance3D
 
@@ -12,6 +12,7 @@ var _radius := 0.0
 
 
 func _ready() -> void:
+	top_level = true
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	position = Vector3(position.x, ground_offset, position.z)
 	visible = false
@@ -36,6 +37,10 @@ func set_debug_visible(value: bool) -> void:
 
 func is_debug_visible() -> bool:
 	return visible
+
+
+func set_world_center(world_position: Vector3) -> void:
+	global_position = Vector3(world_position.x, world_position.y + ground_offset, world_position.z)
 
 
 func _rebuild_mesh() -> void:

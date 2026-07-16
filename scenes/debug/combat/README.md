@@ -21,8 +21,8 @@ project's main scene.
 - The side `Ability Raider` equips the starter sword, chest, helmet, and boots
   with player-base stats so mob equipment abilities can be tested in a live
   fight.
-- Orange debug rings around hostiles show each mob's aggro radius for combat
-  tuning.
+- Orange debug rings around hostiles show each mob's aggro radius, and blue
+  rings show the home-centered de-aggro/leash radius for combat tuning.
 - Hostiles have a short five-second respawn and produce no loot, keeping the
   arena reusable and uncluttered.
 
