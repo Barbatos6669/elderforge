@@ -106,6 +106,7 @@ func _test_helmet_shield_is_used_defensively() -> bool:
 	var mob_data := _spawn_mob(fixture, PackedStringArray(["leather_helmet_t1"]), 60.0, 60.0)
 	var ai := mob_data["ai"] as EnemyMobAI
 	var health := mob_data["health"] as CombatHealth
+	var bubble := mob_data["bubble"] as Node3D
 	var mana := mob_data["mana"] as ResourcePool
 	await process_frame
 	health.set_current_health(60.0)
@@ -121,6 +122,15 @@ func _test_helmet_shield_is_used_defensively() -> bool:
 		return false
 	if not is_equal_approx(health.get_absorb_shield_current(), 834.0):
 		_fail("Mob Energizing Shield should use the item-authored shield amount.")
+		return false
+	if bubble == null or not bubble.has_method("is_active") or not bool(bubble.call("is_active")):
+		_fail("Mob Energizing Shield should show the absorb shield bubble.")
+		return false
+	if (
+		not bubble.has_method("get_active_protection_mode")
+		or String(bubble.call("get_active_protection_mode")) != "absorb_shield"
+	):
+		_fail("Mob Energizing Shield should show absorb-shield bubble mode.")
 		return false
 	if not is_equal_approx(mana.current_resource, 75.0):
 		_fail("Mob Energizing Shield should restore 25% of missing energy.")
@@ -157,6 +167,12 @@ func _test_boots_roll_repositions_mob() -> bool:
 		return false
 	if bubble == null or not bubble.has_method("is_active") or not bool(bubble.call("is_active")):
 		_fail("Mob boots ability should show the damage-immunity bubble during the roll.")
+		return false
+	if (
+		not bubble.has_method("get_active_protection_mode")
+		or String(bubble.call("get_active_protection_mode")) != "damage_immunity"
+	):
+		_fail("Mob boots ability should show damage-immunity bubble mode.")
 		return false
 	if ai.get_ability_cooldown_remaining(&"f") <= 0.0:
 		_fail("Mob boots ability should start cooldown.")

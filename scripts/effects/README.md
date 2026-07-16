@@ -15,7 +15,8 @@ Files:
   ability wind-ups and movement paths.
 - `damage_immunity_bubble_3d.gd`: listens to `CombatHealth` and displays a
   lightweight shield sphere while timed damage immunity or a finite absorb
-  shield is active.
+  shield is active. Dodge immunity uses the blue bubble; absorb shields such as
+  Energizing Shield use the gold bubble.
 - `channel_aura_3d.gd`: mirrors one ability-specific `PlayerChanneling`
   context with a soft ground glow and lightweight upward motes.
 

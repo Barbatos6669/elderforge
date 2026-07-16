@@ -108,6 +108,12 @@ func _run_test() -> void:
 	if not health.has_absorb_shield() or not bool(shield.call("is_active")):
 		_fail("Energizing Shield should immediately activate an absorb shield and bubble.")
 		return
+	if (
+		not shield.has_method("get_active_protection_mode")
+		or String(shield.call("get_active_protection_mode")) != "absorb_shield"
+	):
+		_fail("Energizing Shield should show absorb-shield bubble mode.")
+		return
 	if not is_equal_approx(health.get_absorb_shield_current(), 834.0):
 		_fail("Energizing Shield should grant exactly 834 shield.")
 		return

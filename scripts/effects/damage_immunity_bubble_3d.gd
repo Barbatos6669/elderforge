@@ -18,11 +18,14 @@ const BUBBLE_SHADER := preload(
 @export_range(0.2, 8.0, 0.05) var bubble_height := 2.05
 ## Height of the bubble's center above the character's feet.
 @export_range(-2.0, 5.0, 0.05) var vertical_offset := 1.0
-@export var shield_color := Color(0.28, 0.76, 1.0, 1.0)
+@export var damage_immunity_color := Color(0.28, 0.76, 1.0, 1.0)
+@export var absorb_shield_color := Color(1.0, 0.86, 0.24, 1.0)
 
 var _health: CombatHealth
 var _shield_mesh: MeshInstance3D
+var _bubble_material: ShaderMaterial
 var _activation_tween: Tween
+var _active_protection_mode := &""
 
 
 func _ready() -> void:
@@ -48,11 +51,17 @@ func is_active() -> bool:
 	return visible
 
 
+func get_active_protection_mode() -> StringName:
+	return _active_protection_mode
+
+
 func set_active(is_active: bool) -> void:
 	if _activation_tween != null and _activation_tween.is_valid():
 		_activation_tween.kill()
 
 	visible = is_active
+	if not is_active:
+		_active_protection_mode = &""
 	if not is_active or not is_inside_tree():
 		scale = Vector3.ONE
 		return
@@ -79,27 +88,42 @@ func _build_visual() -> void:
 	_shield_mesh.position = Vector3(0.0, vertical_offset, 0.0)
 	_shield_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
-	var material := ShaderMaterial.new()
-	material.shader = BUBBLE_SHADER
-	material.set_shader_parameter("shield_color", shield_color)
-	_shield_mesh.material_override = material
+	_bubble_material = ShaderMaterial.new()
+	_bubble_material.shader = BUBBLE_SHADER
+	_shield_mesh.material_override = _bubble_material
+	_set_bubble_color(damage_immunity_color)
 
 
 func _on_damage_immunity_changed(is_active: bool, _remaining_seconds: float) -> void:
 	if is_active:
-		set_active(true)
+		_refresh_active()
 	else:
 		_refresh_active()
 
 
 func _on_absorb_shield_changed(current_shield: float, _max_shield: float, _remaining_seconds: float) -> void:
-	set_active(current_shield > 0.0 or _health.is_damage_immune())
+	_refresh_active()
 
 
 func _refresh_active() -> void:
+	var has_damage_immunity := _health != null and _health.is_damage_immune()
 	var has_absorb_shield := (
 		_health != null
 		and _health.has_method("has_absorb_shield")
 		and bool(_health.call("has_absorb_shield"))
 	)
-	set_active(_health != null and (_health.is_damage_immune() or has_absorb_shield))
+	if has_absorb_shield:
+		_active_protection_mode = &"absorb_shield"
+		_set_bubble_color(absorb_shield_color)
+		set_active(true)
+	elif has_damage_immunity:
+		_active_protection_mode = &"damage_immunity"
+		_set_bubble_color(damage_immunity_color)
+		set_active(true)
+	else:
+		set_active(false)
+
+
+func _set_bubble_color(color: Color) -> void:
+	if _bubble_material != null:
+		_bubble_material.set_shader_parameter("shield_color", color)
