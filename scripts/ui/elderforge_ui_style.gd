@@ -117,6 +117,21 @@ static func death_panel_style() -> StyleBoxFlat:
 	return style_box(Color(0.035, 0.025, 0.025, 0.88), Color(0.55, 0.08, 0.06, 1.0), 2, 5)
 
 
+static func ability_tooltip_style() -> StyleBoxFlat:
+	var style := style_box(Color(0.035, 0.038, 0.035, 0.96), Color(0.74, 0.58, 0.25, 0.90), 1, 5)
+	style.shadow_color = Color(0.0, 0.0, 0.0, 0.55)
+	style.shadow_size = 8
+	return style
+
+
+static func ability_tooltip_tag_style(accent: Color) -> StyleBoxFlat:
+	return style_box(Color(accent.r, accent.g, accent.b, 0.12), Color(accent.r, accent.g, accent.b, 0.62), 1, 3)
+
+
+static func ability_tooltip_effect_style(accent: Color) -> StyleBoxFlat:
+	return style_box(Color(0.02, 0.024, 0.024, 0.58), Color(accent.r, accent.g, accent.b, 0.38), 1, 3)
+
+
 static func label_primary(label: Label, font_size: int, outline_size: int = 0) -> void:
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", COLOR_TEXT_PRIMARY)
