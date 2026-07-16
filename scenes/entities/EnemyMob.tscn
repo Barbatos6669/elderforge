@@ -69,8 +69,9 @@ ring_color = Color(1, 0.08, 0.06, 1)
 
 [node name="Health" type="Node" parent="."]
 script = ExtResource("6_health")
-max_health = 120.0
-current_health = 120.0
+max_health = 1200.0
+current_health = 1200.0
+health_regeneration_per_second = 10.0
 
 [node name="Mana" type="Node" parent="."]
 script = ExtResource("20_resource_pool")
@@ -89,10 +90,11 @@ persist_to_player_database = false
 
 [node name="Stats" type="Node" parent="."]
 script = ExtResource("17_entity_stats")
-max_health = 120.0
-auto_attack_damage = 8.0
-auto_attack_speed = 0.75
-move_speed = 2.6
+max_health = 1200.0
+health_regeneration = 10.0
+auto_attack_damage = 20.0
+auto_attack_speed = 1.0
+move_speed = 3.2
 
 [node name="TraitAllocator" type="Node" parent="."]
 script = ExtResource("19_trait_allocator")

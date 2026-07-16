@@ -56,7 +56,7 @@ signal respawned
 @export_range(0.05, 2.0, 0.01) var home_arrival_distance := 0.18
 
 @export_group("Movement")
-@export_range(0.1, 12.0, 0.1) var movement_speed := 2.6
+@export_range(0.1, 12.0, 0.1) var movement_speed := 3.2
 @export_range(0.1, 80.0, 0.1) var acceleration := 10.0
 @export_range(0.1, 80.0, 0.1) var deceleration := 16.0
 ## Distance where the mob starts easing into its destination instead of snapping.
@@ -68,9 +68,9 @@ signal respawned
 
 @export_group("Combat")
 @export_range(0.1, 5.0, 0.05) var attack_range := 1.6
-@export_range(0.0, 500.0, 1.0) var attack_damage := 8.0
+@export_range(0.0, 500.0, 1.0) var attack_damage := 20.0
 ## Attacks per second. This also drives attack animation speed.
-@export_range(0.1, 5.0, 0.05) var attack_speed := 0.75
+@export_range(0.1, 5.0, 0.05) var attack_speed := 1.0
 
 @export_group("Equipment Abilities")
 ## Equipment sources keyed by ability slot. Weapons own Q/W/E, chest R, head D, boots F.

@@ -127,23 +127,25 @@ transform = Transform3D(1.02, 0, 0, 0, 1.02, 0, 0, 0, 1.02, 12, 0, 4)
 display_name = "Ability Raider"
 
 [node name="Health" parent="World/LevelContent/Mobs/AbilityRaider" index="4"]
-max_health = 180.0
-current_health = 180.0
+max_health = 1200.0
+current_health = 1200.0
+health_regeneration_per_second = 10.0
 
 [node name="EquipmentLoadout" parent="World/LevelContent/Mobs/AbilityRaider" index="6"]
 equipped_item_ids = PackedStringArray("one_handed_sword_t1", "leather_armor_t1", "leather_helmet_t1", "leather_boots_t1")
 
 [node name="Stats" parent="World/LevelContent/Mobs/AbilityRaider" index="8"]
-max_health = 180.0
-auto_attack_damage = 12.0
-auto_attack_speed = 0.85
-move_speed = 2.9
+max_health = 1200.0
+health_regeneration = 10.0
+auto_attack_damage = 20.0
+auto_attack_speed = 1.0
+move_speed = 3.2
 
 [node name="AI" parent="World/LevelContent/Mobs/AbilityRaider" index="14"]
 aggro_radius = 7.0
 leash_radius = 14.0
-attack_damage = 12.0
-attack_speed = 0.85
+attack_damage = 20.0
+attack_speed = 1.0
 loot_dropper_path = NodePath("")
 respawn_delay = 5.0
 

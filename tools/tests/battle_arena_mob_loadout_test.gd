@@ -1,5 +1,6 @@
 extends SceneTree
 
+const PlayerStatsScript := preload("res://scripts/player/stats/player_stats.gd")
 const ARENA_PATH := "res://scenes/debug/combat/BattleTestArena.tscn"
 
 
@@ -45,6 +46,8 @@ func _run_test() -> void:
 		)
 		if hand_preview == null:
 			_fail("%s should have an editor-visible sword preview." % raider_name)
+			return
+		if not _has_player_base_stats(raider, raider_name):
 			return
 
 	var expected_item_ids := PackedStringArray([
@@ -106,3 +109,73 @@ func _child_names(node: Node) -> PackedStringArray:
 	for child in node.get_children():
 		names.append(child.name)
 	return names
+
+
+func _has_player_base_stats(raider: Node, raider_name: String) -> bool:
+	var health := raider.get_node_or_null("Health")
+	var stats := raider.get_node_or_null("Stats")
+	var ai := raider.get_node_or_null("AI")
+	if health == null or stats == null or ai == null:
+		_fail("%s should include Health, Stats, and AI nodes." % raider_name)
+		return false
+
+	var stat_ids := [
+		PlayerStatsScript.MAX_HEALTH,
+		PlayerStatsScript.HEALTH_REGENERATION,
+		PlayerStatsScript.AUTO_ATTACK_DAMAGE,
+		PlayerStatsScript.AUTO_ATTACK_SPEED,
+		PlayerStatsScript.ARMOR,
+		PlayerStatsScript.MAGICAL_RESISTANCE,
+		PlayerStatsScript.MOVE_SPEED,
+	]
+	for stat_id in stat_ids:
+		var expected_stat := _expected_player_stat(stat_id)
+		var actual_stat := float(stats.call("get_base_stat", stat_id))
+		if not is_equal_approx(actual_stat, expected_stat):
+			_fail(
+				"%s Stats.%s should be %.2f, found %.2f."
+				% [raider_name, stat_id, expected_stat, actual_stat]
+			)
+			return false
+
+	var expected_health := float(stats.call("get_stat", PlayerStatsScript.MAX_HEALTH))
+	var expected_regeneration := float(stats.call("get_stat", PlayerStatsScript.HEALTH_REGENERATION))
+	if not _has_value(health, "max_health", expected_health, raider_name):
+		return false
+	if not _has_value(health, "current_health", expected_health, raider_name):
+		return false
+	if not _has_value(health, "health_regeneration_per_second", expected_regeneration, raider_name):
+		return false
+
+	if not _has_value(
+		ai,
+		"attack_damage",
+		_expected_player_stat(PlayerStatsScript.AUTO_ATTACK_DAMAGE),
+		raider_name
+	):
+		return false
+	if not _has_value(
+		ai,
+		"attack_speed",
+		_expected_player_stat(PlayerStatsScript.AUTO_ATTACK_SPEED),
+		raider_name
+	):
+		return false
+
+	return true
+
+
+func _expected_player_stat(stat_id: StringName) -> float:
+	return float(PlayerStatsScript.BASE_STAT_VALUES.get(stat_id, 0.0))
+
+
+func _has_value(node: Node, property_name: String, expected: float, owner_name: String) -> bool:
+	var actual := float(node.get(property_name))
+	if is_equal_approx(actual, expected):
+		return true
+
+	_fail(
+		"%s %s.%s should be %.2f, found %.2f."
+		% [owner_name, node.name, property_name, expected, actual]
+	)
+	return false

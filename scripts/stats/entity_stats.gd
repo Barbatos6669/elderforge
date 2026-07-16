@@ -11,15 +11,15 @@ signal stat_changed(stat_id: StringName, value: float)
 @export var forged_traits_path: NodePath = NodePath("../ForgedTraits")
 
 @export_group("Combat")
-@export var max_health := 100.0
-@export var health_regeneration := 0.0
-@export var auto_attack_damage := 8.0
-@export var auto_attack_speed := 0.75
+@export var max_health := 1200.0
+@export var health_regeneration := 10.0
+@export var auto_attack_damage := 20.0
+@export var auto_attack_speed := 1.0
 @export var armor := 0.0
 @export var magical_resistance := 0.0
 
 @export_group("Movement")
-@export var move_speed := 2.6
+@export var move_speed := 3.2
 
 var _forged_traits: Node
 
