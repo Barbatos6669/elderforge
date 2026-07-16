@@ -1,4 +1,4 @@
-[gd_scene load_steps=27 format=3]
+[gd_scene load_steps=28 format=3]
 
 [ext_resource type="Script" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="1_hover_feedback"]
 [ext_resource type="Script" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
@@ -24,6 +24,7 @@
 [ext_resource type="Script" path="res://scripts/player/equipment/player_equipment_visuals.gd" id="22_equipment_visuals"]
 [ext_resource type="Script" path="res://scripts/player/equipment/equipment_socket_3d.gd" id="23_equipment_socket"]
 [ext_resource type="Script" path="res://scripts/debug/mob_aggro_zone_debug_3d.gd" id="24_aggro_zone"]
+[ext_resource type="PackedScene" path="res://scenes/effects/DamageImmunityBubble3D.tscn" id="25_immunity_bubble"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -82,6 +83,8 @@ script = ExtResource("6_health")
 max_health = 1200.0
 current_health = 1200.0
 health_regeneration_per_second = 10.0
+
+[node name="DamageImmunityBubble" parent="." instance=ExtResource("25_immunity_bubble")]
 
 [node name="Mana" type="Node" parent="."]
 script = ExtResource("20_resource_pool")

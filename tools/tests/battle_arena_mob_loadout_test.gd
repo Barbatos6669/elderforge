@@ -51,6 +51,8 @@ func _run_test() -> void:
 			return
 		if not _has_debug_combat_zones(raider, raider_name):
 			return
+		if not _has_damage_immunity_bubble(raider, raider_name):
+			return
 
 	var expected_item_ids := PackedStringArray([
 		"one_handed_sword_t1",
@@ -225,6 +227,20 @@ func _has_debug_combat_zones(raider: Node, raider_name: String) -> bool:
 		return false
 	if _horizontal_distance(deaggro_zone_3d.global_position, expected_center) > 0.05:
 		_fail("%s debug de-aggro zone should be centered on the mob home point." % raider_name)
+		return false
+	return true
+
+
+func _has_damage_immunity_bubble(raider: Node, raider_name: String) -> bool:
+	var bubble := raider.get_node_or_null("DamageImmunityBubble")
+	if bubble == null:
+		_fail("%s should include a DamageImmunityBubble visual." % raider_name)
+		return false
+	if not bubble.has_method("is_active"):
+		_fail("%s DamageImmunityBubble should expose its active state for tests." % raider_name)
+		return false
+	if bool(bubble.call("is_active")):
+		_fail("%s DamageImmunityBubble should be inactive until immunity or shield starts." % raider_name)
 		return false
 	return true
 

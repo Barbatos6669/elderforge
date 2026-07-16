@@ -4,6 +4,7 @@ const CombatHealthScript := preload("res://scripts/combat/combat_health.gd")
 const ResourcePoolScript := preload("res://scripts/combat/resource_pool.gd")
 const EnemyMobAIScript := preload("res://scripts/entities/enemy_mob_ai.gd")
 const MobEquipmentLoadoutScript := preload("res://scripts/entities/mob_equipment_loadout.gd")
+const DamageImmunityBubbleScene := preload("res://scenes/effects/DamageImmunityBubble3D.tscn")
 
 
 func _initialize() -> void:
@@ -139,6 +140,7 @@ func _test_boots_roll_repositions_mob() -> bool:
 	var mob := mob_data["mob"] as CharacterBody3D
 	var ai := mob_data["ai"] as EnemyMobAI
 	var health := mob_data["health"] as CombatHealth
+	var bubble := mob_data["bubble"] as Node3D
 	await process_frame
 
 	var target_data := _spawn_player_target(fixture, Vector3(0.0, 0.0, 3.0), 500.0)
@@ -152,6 +154,9 @@ func _test_boots_roll_repositions_mob() -> bool:
 		return false
 	if not health.is_damage_immune():
 		_fail("Mob boots ability should apply its authored immunity window.")
+		return false
+	if bubble == null or not bubble.has_method("is_active") or not bool(bubble.call("is_active")):
+		_fail("Mob boots ability should show the damage-immunity bubble during the roll.")
 		return false
 	if ai.get_ability_cooldown_remaining(&"f") <= 0.0:
 		_fail("Mob boots ability should start cooldown.")
@@ -209,6 +214,10 @@ func _spawn_mob(
 	health.current_health = current_health
 	mob.add_child(health)
 
+	var bubble := DamageImmunityBubbleScene.instantiate() as Node3D
+	bubble.name = "DamageImmunityBubble"
+	mob.add_child(bubble)
+
 	var mana := ResourcePoolScript.new()
 	mana.name = "Mana"
 	mana.display_name = "Energy"
@@ -231,6 +240,7 @@ func _spawn_mob(
 	return {
 		"mob": mob,
 		"health": health,
+		"bubble": bubble,
 		"mana": mana,
 		"loadout": loadout,
 		"ai": ai,
