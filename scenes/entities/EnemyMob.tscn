@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3]
+[gd_scene load_steps=26 format=3]
 
 [ext_resource type="Script" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="1_hover_feedback"]
 [ext_resource type="Script" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
@@ -21,6 +21,8 @@
 [ext_resource type="Script" path="res://scripts/stats/forged_trait_auto_allocator.gd" id="19_trait_allocator"]
 [ext_resource type="Script" path="res://scripts/combat/resource_pool.gd" id="20_resource_pool"]
 [ext_resource type="Script" path="res://scripts/entities/mob_equipment_loadout.gd" id="21_mob_loadout"]
+[ext_resource type="Script" path="res://scripts/player/equipment/player_equipment_visuals.gd" id="22_equipment_visuals"]
+[ext_resource type="Script" path="res://scripts/player/equipment/equipment_socket_3d.gd" id="23_equipment_socket"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -108,10 +110,20 @@ body_color = Color(1, 0.48, 0.45, 1)
 hair_color = Color(0.25, 0.05, 0.04, 1)
 eye_color = Color(1, 0.76, 0.34, 1)
 
+[node name="EquipmentVisuals" type="Node" parent="."]
+script = ExtResource("22_equipment_visuals")
+inventory_path = NodePath("../EquipmentLoadout")
+
 [node name="Visuals" type="Node3D" parent="."]
 
 [node name="BaseCharacter" parent="Visuals" instance=ExtResource("7_base_character")]
 rotation = Vector3(0, 3.14159, 0)
+
+[node name="MainHandAttachment" type="BoneAttachment3D" parent="Visuals/BaseCharacter/Armature/Skeleton3D"]
+bone_name = "hand_r"
+script = ExtResource("23_equipment_socket")
+slot_id = "main_hand"
+use_preview_transform = false
 
 [node name="Animation" type="Node" parent="."]
 script = ExtResource("10_animation")

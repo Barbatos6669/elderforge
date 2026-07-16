@@ -51,6 +51,25 @@ func _run_test() -> void:
 			_fail("Ability Raider should bind %s on slot %s." % [expected_abilities[slot_id], slot_id])
 			return
 
+	var skeleton := ability_raider.get_node_or_null("Visuals/BaseCharacter/Armature/Skeleton3D")
+	if skeleton == null:
+		_fail("Ability Raider should expose a character skeleton for visible equipment.")
+		return
+
+	var expected_visual_nodes := {
+		"MainHandAttachment/MainHandEquipment": "MainHandEquipment",
+		"ChestEquipment": "ChestEquipment",
+		"HeadEquipment": "HeadEquipment",
+		"ShoesEquipment": "ShoesEquipment",
+	}
+	for equipment_path in expected_visual_nodes:
+		if skeleton.get_node_or_null(equipment_path) == null:
+			_fail(
+				"Ability Raider should visibly equip %s. Skeleton children: %s"
+				% [expected_visual_nodes[equipment_path], _child_names(skeleton)]
+			)
+			return
+
 	arena.queue_free()
 	await process_frame
 	print("Battle arena mob loadout tests passed.")
@@ -60,3 +79,10 @@ func _run_test() -> void:
 func _fail(message: String) -> void:
 	push_error(message)
 	quit(1)
+
+
+func _child_names(node: Node) -> PackedStringArray:
+	var names := PackedStringArray()
+	for child in node.get_children():
+		names.append(child.name)
+	return names
