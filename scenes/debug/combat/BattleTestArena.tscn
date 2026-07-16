@@ -103,7 +103,8 @@ equipped_item_ids = PackedStringArray("one_handed_sword_t1", "leather_helmet_t1"
 transform = Transform3D(-3.93402e-08, 0, 0.9, 0.9, -3.93402e-08, 3.93402e-08, 3.93402e-08, 0.9, 1.72063e-15, -0.04, 0.11, 0.02)
 
 [node name="AI" parent="World/LevelContent/Mobs/HeavyRaider" index="14"]
-leash_radius = 1.5
+aggro_radius = 4.0
+leash_radius = 1.0
 debug_show_aggro_zone = true
 debug_show_deaggro_zone = true
 
@@ -117,7 +118,8 @@ equipped_item_ids = PackedStringArray("one_handed_sword_t1")
 transform = Transform3D(-3.93402e-08, 0, 0.9, 0.9, -3.93402e-08, 3.93402e-08, 3.93402e-08, 0.9, 1.72063e-15, -0.04, 0.11, 0.02)
 
 [node name="AI" parent="World/LevelContent/Mobs/StandardRaider" index="14"]
-leash_radius = 1.5
+aggro_radius = 4.0
+leash_radius = 1.0
 debug_show_aggro_zone = true
 debug_show_deaggro_zone = true
 
@@ -131,7 +133,8 @@ equipped_item_ids = PackedStringArray("one_handed_sword_t1", "leather_boots_t1")
 transform = Transform3D(-3.93402e-08, 0, 0.9, 0.9, -3.93402e-08, 3.93402e-08, 3.93402e-08, 0.9, 1.72063e-15, -0.04, 0.11, 0.02)
 
 [node name="AI" parent="World/LevelContent/Mobs/SwiftRaider" index="14"]
-leash_radius = 1.5
+aggro_radius = 4.0
+leash_radius = 1.0
 debug_show_aggro_zone = true
 debug_show_deaggro_zone = true
 
@@ -157,8 +160,8 @@ auto_attack_speed = 1.0
 move_speed = 3.2
 
 [node name="AI" parent="World/LevelContent/Mobs/AbilityRaider" index="14"]
-aggro_radius = 7.0
-leash_radius = 1.75
+aggro_radius = 4.5
+leash_radius = 1.125
 attack_damage = 20.0
 attack_speed = 1.0
 debug_show_aggro_zone = true

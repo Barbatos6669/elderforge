@@ -190,6 +190,16 @@ func _has_debug_combat_zones(raider: Node, raider_name: String) -> bool:
 		raider_name
 	):
 		return false
+
+	var expected_aggro_radius := _expected_aggro_radius(raider_name)
+	var actual_aggro_radius := float(ai.get("aggro_radius"))
+	if not is_equal_approx(actual_aggro_radius, expected_aggro_radius):
+		_fail(
+			"%s aggro radius should use the tight arena tuning: %.3f, found %.3f."
+			% [raider_name, expected_aggro_radius, actual_aggro_radius]
+		)
+		return false
+
 	if not _has_debug_radius_zone(
 		deaggro_zone,
 		ai,
@@ -250,6 +260,12 @@ func _has_debug_radius_zone(
 
 func _horizontal_distance(a: Vector3, b: Vector3) -> float:
 	return Vector2(a.x, a.z).distance_to(Vector2(b.x, b.z))
+
+
+func _expected_aggro_radius(raider_name: String) -> float:
+	if raider_name == "AbilityRaider":
+		return 4.5
+	return 4.0
 
 
 func _expected_player_stat(stat_id: StringName) -> float:
