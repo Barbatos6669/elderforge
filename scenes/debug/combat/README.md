@@ -22,7 +22,7 @@ project's main scene.
   with player-base stats so mob equipment abilities can be tested in a live
   fight.
 - Orange debug rings around hostiles show each mob's aggro radius, and blue
-  rings show the home-centered de-aggro/leash boundary one eighth beyond aggro.
+  rings show the tight home-centered de-aggro/leash boundary.
 - Hostiles have a short five-second respawn and produce no loot, keeping the
   arena reusable and uncluttered.
 

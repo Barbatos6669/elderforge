@@ -200,11 +200,11 @@ func _has_debug_combat_zones(raider: Node, raider_name: String) -> bool:
 	):
 		return false
 
-	var expected_deaggro_radius := float(ai.get("aggro_radius")) * 1.125
+	var expected_deaggro_radius := float(ai.get("aggro_radius")) * 0.25
 	var actual_deaggro_radius := float(ai.get("leash_radius"))
 	if not is_equal_approx(actual_deaggro_radius, expected_deaggro_radius):
 		_fail(
-			"%s de-aggro radius should be one eighth beyond aggro: %.3f, found %.3f."
+			"%s de-aggro radius should use the tight leash tuning: %.3f, found %.3f."
 			% [raider_name, expected_deaggro_radius, actual_deaggro_radius]
 		)
 		return false
