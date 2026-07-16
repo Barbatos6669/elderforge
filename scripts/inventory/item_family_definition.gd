@@ -39,5 +39,11 @@ extends Resource
 ## Values are resource path templates and may include `%d` for tier-specific
 ## definitions. Always-on passives are separate data and do not consume a key.
 @export var ability_path_templates: Dictionary = {}
+## Optional selectable spell paths keyed by action-bar slot.
+##
+## Each value may be a path, an array of paths, or dictionaries with `path`,
+## `min_tier`, and `max_tier`. The authored default in `ability_path_templates`
+## is always included as the first available choice.
+@export var ability_choice_path_templates: Dictionary = {}
 ## Additive player stat bonuses shared by every tier in this family.
 @export var stat_modifiers: Dictionary = {}

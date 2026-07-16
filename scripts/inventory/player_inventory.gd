@@ -13,6 +13,7 @@ signal slots_changed
 signal slot_changed(slot_index: int)
 signal currency_changed(silver: int, gold: int)
 signal equipped_slots_changed
+signal ability_selection_changed(item_id: String, slot_id: String, ability_path: String)
 
 ## Number of bag slots owned by this inventory.
 @export_range(1, MAX_SLOT_COUNT, 1) var slot_count := MAX_SLOT_COUNT
@@ -38,6 +39,7 @@ signal equipped_slots_changed
 
 var _slots: Array = []
 var _equipped_slots := {}
+var _ability_selections_by_item_id := {}
 var _prototype_definitions: Array = []
 var _definitions_by_id := {}
 var _silver := 0
@@ -65,6 +67,7 @@ func initialize(new_slot_count: int, silver: int, gold: int, seed_resources: boo
 	_silver = maxi(silver, 0)
 	_gold = maxi(gold, 0)
 	_equipped_slots = {}
+	_ability_selections_by_item_id = {}
 	_slots = []
 	_normalize_slot_count()
 	if seed_resources:
@@ -99,14 +102,14 @@ func get_equipped_slots() -> Dictionary:
 	for slot_id in _equipped_slots:
 		var stack := _equipped_slots[slot_id] as Resource
 		if stack != null and not stack.is_empty():
-			display_slots[slot_id] = stack.to_display_dict()
+			display_slots[slot_id] = _stack_to_display_dict(stack)
 	return display_slots
 
 
 ## Returns one equipped slot in the same UI-facing dictionary format as `get_equipped_slots()`.
 func get_equipped_slot(equipment_slot_id: String) -> Dictionary:
 	var stack := _equipped_stack_at(equipment_slot_id)
-	return stack.to_display_dict() if stack != null and not stack.is_empty() else {}
+	return _stack_to_display_dict(stack)
 
 
 func get_slot(slot_index: int) -> Resource:
@@ -121,7 +124,7 @@ func get_display_slots() -> Array:
 	var display_slots := []
 	for slot in _slots:
 		var stack := slot as Resource
-		display_slots.append(stack.to_display_dict() if stack != null and not stack.is_empty() else {})
+		display_slots.append(_stack_to_display_dict(stack))
 	return display_slots
 
 
@@ -146,6 +149,7 @@ func get_network_snapshot() -> Dictionary:
 		"gold": _gold,
 		"slots": network_slots,
 		"equipped_slots": network_equipped_slots,
+		"ability_selections": _ability_selections_by_item_id.duplicate(true),
 	}
 
 
@@ -177,6 +181,10 @@ func apply_network_snapshot(snapshot: Dictionary) -> void:
 			if stack != null:
 				_equipped_slots[String(slot_id)] = stack
 
+	_ability_selections_by_item_id = _validated_ability_selections(
+		snapshot.get("ability_selections", {})
+	)
+
 	slots_changed.emit()
 	currency_changed.emit(_silver, _gold)
 	equipped_slots_changed.emit()
@@ -184,7 +192,7 @@ func apply_network_snapshot(snapshot: Dictionary) -> void:
 
 func get_display_slot(slot_index: int) -> Dictionary:
 	var stack := get_slot(slot_index)
-	return stack.to_display_dict() if stack != null and not stack.is_empty() else {}
+	return _stack_to_display_dict(stack)
 
 
 ## Replaces one slot with a stack resource or clears it with null.
@@ -351,6 +359,47 @@ func get_definition(item_id: String) -> Resource:
 	return _definitions_by_id.get(item_id) as Resource
 
 
+## Returns true when an authored item spell can occupy the requested action key.
+func can_select_item_ability(item_id: String, slot_id: String, ability_path: String) -> bool:
+	var definition := get_definition(item_id.strip_edges())
+	return _definition_allows_ability(
+		definition,
+		slot_id.strip_edges().to_lower(),
+		ability_path.strip_edges()
+	)
+
+
+## Selects one active spell for every stack sharing this item definition.
+func select_item_ability(item_id: String, slot_id: String, ability_path: String) -> bool:
+	var clean_item_id := item_id.strip_edges()
+	var clean_slot_id := slot_id.strip_edges().to_lower()
+	var clean_path := ability_path.strip_edges()
+	var definition := get_definition(clean_item_id)
+	if not _definition_allows_ability(definition, clean_slot_id, clean_path):
+		return false
+
+	var current_paths := _effective_ability_paths(definition)
+	if String(current_paths.get(clean_slot_id, "")) == clean_path:
+		return true
+
+	var selections := (
+		_ability_selections_by_item_id.get(clean_item_id, {}) as Dictionary
+	).duplicate(true)
+	var default_paths := _default_ability_paths(definition)
+	if String(default_paths.get(clean_slot_id, "")) == clean_path:
+		selections.erase(clean_slot_id)
+	else:
+		selections[clean_slot_id] = clean_path
+
+	if selections.is_empty():
+		_ability_selections_by_item_id.erase(clean_item_id)
+	else:
+		_ability_selections_by_item_id[clean_item_id] = selections
+
+	ability_selection_changed.emit(clean_item_id, clean_slot_id, clean_path)
+	return true
+
+
 func set_currency(silver: int, gold: int) -> void:
 	_silver = maxi(silver, 0)
 	_gold = maxi(gold, 0)
@@ -458,6 +507,8 @@ func _connect_persistence_signals() -> void:
 		slots_changed.connect(_on_persistent_inventory_changed)
 	if not equipped_slots_changed.is_connected(_on_persistent_inventory_changed):
 		equipped_slots_changed.connect(_on_persistent_inventory_changed)
+	if not ability_selection_changed.is_connected(_on_persistent_ability_selection_changed):
+		ability_selection_changed.connect(_on_persistent_ability_selection_changed)
 	if not currency_changed.is_connected(_on_persistent_currency_changed):
 		currency_changed.connect(_on_persistent_currency_changed)
 
@@ -503,6 +554,14 @@ func _on_persistent_inventory_changed() -> void:
 
 
 func _on_persistent_currency_changed(_silver_value: int, _gold_value: int) -> void:
+	_save_to_player_database()
+
+
+func _on_persistent_ability_selection_changed(
+	_item_id: String,
+	_slot_id: String,
+	_ability_path: String
+) -> void:
 	_save_to_player_database()
 
 
@@ -599,6 +658,178 @@ func _create_stack(definition: Resource, quantity: int) -> Resource:
 	var stack: Resource = ItemStackScript.new() as Resource
 	stack.call("configure", definition, quantity)
 	return stack
+
+
+func _stack_to_display_dict(stack: Resource) -> Dictionary:
+	if stack == null or stack.is_empty():
+		return {}
+
+	var definition := stack.get("definition") as Resource
+	if definition == null:
+		return {}
+
+	var display_data := stack.to_display_dict() as Dictionary
+	var default_paths := _default_ability_paths(definition)
+	var choices := _definition_ability_choices(definition, default_paths)
+	var effective_paths := _effective_ability_paths(definition, default_paths, choices)
+	display_data["default_ability_paths"] = default_paths
+	display_data["ability_choices"] = choices
+	display_data["ability_paths"] = effective_paths
+	display_data["selected_ability_paths"] = effective_paths.duplicate(true)
+	return display_data
+
+
+func _default_ability_paths(definition: Resource) -> Dictionary:
+	if definition == null:
+		return {}
+
+	var defaults := {}
+	var raw_paths: Variant = definition.get("ability_paths")
+	if raw_paths is Dictionary:
+		for raw_slot_id in (raw_paths as Dictionary).keys():
+			var slot_id := String(raw_slot_id).strip_edges().to_lower()
+			var path := String((raw_paths as Dictionary)[raw_slot_id]).strip_edges()
+			if not slot_id.is_empty() and not path.is_empty():
+				defaults[slot_id] = path
+
+	var legacy_q_path := String(definition.get("q_ability_path")).strip_edges()
+	if not legacy_q_path.is_empty() and not defaults.has("q"):
+		defaults["q"] = legacy_q_path
+	return defaults
+
+
+func _definition_ability_choices(
+	definition: Resource,
+	default_paths: Dictionary = {}
+) -> Dictionary:
+	if definition == null:
+		return {}
+	if default_paths.is_empty():
+		default_paths = _default_ability_paths(definition)
+
+	var choices := {}
+	var raw_choices: Variant = definition.get("ability_choices")
+	if raw_choices is Dictionary:
+		for raw_slot_id in (raw_choices as Dictionary).keys():
+			var slot_id := String(raw_slot_id).strip_edges().to_lower()
+			if slot_id.is_empty():
+				continue
+
+			var paths := PackedStringArray()
+			var raw_paths: Variant = (raw_choices as Dictionary)[raw_slot_id]
+			if raw_paths is Array:
+				for raw_path in raw_paths as Array:
+					_append_valid_ability_choice(paths, slot_id, String(raw_path))
+			elif raw_paths is PackedStringArray:
+				for raw_path in raw_paths as PackedStringArray:
+					_append_valid_ability_choice(paths, slot_id, String(raw_path))
+			else:
+				_append_valid_ability_choice(paths, slot_id, String(raw_paths))
+			if not paths.is_empty():
+				choices[slot_id] = paths
+
+	for raw_slot_id in default_paths.keys():
+		var slot_id := String(raw_slot_id)
+		var default_path := String(default_paths[raw_slot_id])
+		var paths := PackedStringArray(choices.get(slot_id, PackedStringArray()))
+		if _ability_path_matches_slot(default_path, slot_id) and not paths.has(default_path):
+			paths.insert(0, default_path)
+		if not paths.is_empty():
+			choices[slot_id] = paths
+	return choices
+
+
+func _effective_ability_paths(
+	definition: Resource,
+	default_paths: Dictionary = {},
+	choices: Dictionary = {}
+) -> Dictionary:
+	if definition == null:
+		return {}
+	if default_paths.is_empty():
+		default_paths = _default_ability_paths(definition)
+	if choices.is_empty():
+		choices = _definition_ability_choices(definition, default_paths)
+
+	var effective := default_paths.duplicate(true)
+	var item_id := String(definition.get("id")).strip_edges()
+	var selections := _ability_selections_by_item_id.get(item_id, {}) as Dictionary
+	for raw_slot_id in choices.keys():
+		var slot_id := String(raw_slot_id)
+		var paths := PackedStringArray(choices[raw_slot_id])
+		if paths.is_empty():
+			continue
+
+		var selected_path := String(selections.get(slot_id, ""))
+		if paths.has(selected_path):
+			effective[slot_id] = selected_path
+		elif not paths.has(String(effective.get(slot_id, ""))):
+			effective[slot_id] = paths[0]
+	return effective
+
+
+func _definition_allows_ability(
+	definition: Resource,
+	slot_id: String,
+	ability_path: String
+) -> bool:
+	if definition == null or slot_id.is_empty() or ability_path.is_empty():
+		return false
+
+	var choices := _definition_ability_choices(definition)
+	if not choices.has(slot_id):
+		return false
+	return PackedStringArray(choices[slot_id]).has(ability_path)
+
+
+func _append_valid_ability_choice(
+	paths: PackedStringArray,
+	slot_id: String,
+	ability_path: String
+) -> void:
+	var clean_path := ability_path.strip_edges()
+	if (
+		not clean_path.is_empty()
+		and not paths.has(clean_path)
+		and _ability_path_matches_slot(clean_path, slot_id)
+	):
+		paths.append(clean_path)
+
+
+func _ability_path_matches_slot(ability_path: String, slot_id: String) -> bool:
+	if ability_path.is_empty() or slot_id.is_empty() or not ResourceLoader.exists(ability_path):
+		return false
+
+	var definition := load(ability_path) as Resource
+	return (
+		definition != null
+		and String(definition.get("input_slot")).strip_edges().to_lower() == slot_id
+	)
+
+
+func _validated_ability_selections(raw_selections: Variant) -> Dictionary:
+	var validated := {}
+	if not (raw_selections is Dictionary):
+		return validated
+
+	for raw_item_id in (raw_selections as Dictionary).keys():
+		var item_id := String(raw_item_id).strip_edges()
+		var definition := get_definition(item_id)
+		var raw_item_selections: Variant = (raw_selections as Dictionary)[raw_item_id]
+		if definition == null or not (raw_item_selections is Dictionary):
+			continue
+
+		var item_selections := {}
+		for raw_slot_id in (raw_item_selections as Dictionary).keys():
+			var slot_id := String(raw_slot_id).strip_edges().to_lower()
+			var ability_path := String(
+				(raw_item_selections as Dictionary)[raw_slot_id]
+			).strip_edges()
+			if _definition_allows_ability(definition, slot_id, ability_path):
+				item_selections[slot_id] = ability_path
+		if not item_selections.is_empty():
+			validated[item_id] = item_selections
+	return validated
 
 
 func _stack_to_network_dict(stack: Resource) -> Dictionary:

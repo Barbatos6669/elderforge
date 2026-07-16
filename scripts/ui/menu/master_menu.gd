@@ -59,6 +59,7 @@ const INVENTORY_EQUIPMENT_SLOTS := [
 	{"id": "shoes", "label": "Shoes", "abbr": "SH"},
 	{"id": "food", "label": "Food", "abbr": "FD"},
 ]
+const INVENTORY_ABILITY_SLOT_ORDER := ["q", "w", "e", "r", "d", "f"]
 
 const CATEGORY_NEWS := {
 	"glossary": {
@@ -330,6 +331,7 @@ var _selected_creature_id := "lantern_moth"
 var _selected_crafting_recipe_id := ""
 var _selected_inventory_slot_index := -1
 var _selected_inventory_equipment_slot_id := ""
+var _selected_inventory_spell_path := ""
 
 
 func _ready() -> void:
@@ -1150,52 +1152,188 @@ func _build_inventory_inspector_panel() -> Control:
 	panel.add_theme_stylebox_override("panel", UiStyle.master_menu_detail_panel_style())
 
 	var layout := VBoxContainer.new()
-	layout.add_theme_constant_override("separation", 10)
+	layout.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	layout.add_theme_constant_override("separation", 8)
 	panel.add_child(_wrap_margin(layout, 12))
 
 	var selected_data := _selected_inventory_item_data()
 	var selected_title := _selected_inventory_title(selected_data)
 
 	var title := Label.new()
-	title.text = selected_title.to_upper()
+	title.text = "SPELL LOADOUT"
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	UiStyle.label_primary(title, 16, 1)
 	layout.add_child(title)
 
-	if not selected_data.is_empty():
-		var preview := InventoryItemIconScript.new() as Control
-		preview.name = "SelectedItemIcon"
-		preview.custom_minimum_size = Vector2(96.0, 96.0)
-		preview.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		preview.call("set_item", selected_data)
-		layout.add_child(preview)
+	var item_label := Label.new()
+	item_label.name = "SpellLoadoutItemName"
+	item_label.text = selected_title
+	item_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UiStyle.label_muted(item_label, 12)
+	layout.add_child(item_label)
 
-	var meta_list := VBoxContainer.new()
-	meta_list.name = "SelectedItemMeta"
-	meta_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	meta_list.add_theme_constant_override("separation", 6)
-	layout.add_child(meta_list)
-	for meta_row in _selected_inventory_meta_rows(selected_data):
-		var row_data := meta_row as Dictionary
-		meta_list.add_child(_build_inventory_readout(
-			String(row_data.get("label", "")),
-			String(row_data.get("value", ""))
-		))
+	var choice_rows := _inventory_spell_choice_rows(selected_data)
+	_ensure_inventory_spell_focus(choice_rows)
+	if choice_rows.is_empty():
+		var empty_label := Label.new()
+		empty_label.name = "SpellLoadoutEmpty"
+		empty_label.text = (
+			"No active spells available."
+			if not selected_data.is_empty()
+			else "No spell loadout selected."
+		)
+		empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		empty_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		UiStyle.label_muted(empty_label, 13)
+		layout.add_child(empty_label)
+		return panel
 
 	var scroll := ScrollContainer.new()
-	scroll.name = "InspectorScroll"
+	scroll.name = "SpellLoadoutScroll"
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	layout.add_child(scroll)
 
+	var content := VBoxContainer.new()
+	content.name = "SpellLoadoutList"
+	content.custom_minimum_size = Vector2(270.0, 0.0)
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_theme_constant_override("separation", 7)
+	scroll.add_child(content)
+
+	var item_id := String(selected_data.get("id", "")).strip_edges()
+	for row_value in choice_rows:
+		var row := row_value as Dictionary
+		var slot_id := String(row.get("slot_id", ""))
+
+		var slot_label := Label.new()
+		slot_label.text = "%s SPELL" % slot_id.to_upper()
+		UiStyle.label_primary(slot_label, 12, 1)
+		content.add_child(slot_label)
+
+		var paths := PackedStringArray(row.get("paths", PackedStringArray()))
+		var selected_path := String(row.get("selected_path", ""))
+		for choice_index in range(paths.size()):
+			content.add_child(_build_inventory_spell_choice_button(
+				item_id,
+				slot_id,
+				paths[choice_index],
+				paths[choice_index] == selected_path,
+				choice_index
+			))
+
+	var separator := HSeparator.new()
+	separator.add_theme_constant_override("separation", 5)
+	content.add_child(separator)
+
+	var focused_definition := _load_inventory_ability(_selected_inventory_spell_path)
+	if focused_definition == null:
+		return panel
+
+	var spell_title := Label.new()
+	spell_title.name = "SelectedSpellTitle"
+	spell_title.text = String(focused_definition.get("display_name"))
+	spell_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UiStyle.label_primary(spell_title, 15, 1)
+	content.add_child(spell_title)
+
 	var description := Label.new()
-	description.name = "SelectedItemDescription"
-	description.text = _selected_inventory_description(selected_data)
+	description.name = "SelectedSpellDescription"
+	description.text = String(focused_definition.get("description"))
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	description.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	UiStyle.label_muted(description, 13)
-	scroll.add_child(description)
+	content.add_child(description)
+
+	var raw_effects: Variant = focused_definition.get("tooltip_effects")
+	if raw_effects is Array:
+		for effect_value in raw_effects as Array:
+			var effect := effect_value as Resource
+			if effect == null:
+				continue
+			content.add_child(_build_inventory_spell_detail_row(
+				String(effect.get("label")),
+				String(effect.get("value"))
+			))
+
+	content.add_child(_build_inventory_spell_detail_row(
+		"Energy",
+		_format_decimal(float(focused_definition.get("energy_cost")))
+	))
+	content.add_child(_build_inventory_spell_detail_row(
+		"Cooldown",
+		"%ss" % _format_decimal(float(focused_definition.get("cooldown_seconds")))
+	))
+	content.add_child(_build_inventory_spell_detail_row(
+		"Cast",
+		"%ss" % _format_decimal(float(focused_definition.get("cast_duration_seconds")))
+	))
 	return panel
+
+
+func _build_inventory_spell_choice_button(
+	item_id: String,
+	slot_id: String,
+	ability_path: String,
+	is_selected: bool,
+	choice_index: int
+) -> Button:
+	var definition := _load_inventory_ability(ability_path)
+	var display_name := (
+		String(definition.get("display_name"))
+		if definition != null
+		else ability_path.get_file().get_basename().capitalize()
+	)
+
+	var button := Button.new()
+	button.name = "SpellChoice%s%02d" % [slot_id.to_upper(), choice_index + 1]
+	button.custom_minimum_size = Vector2(0.0, 44.0)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.focus_mode = Control.FOCUS_NONE
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.clip_text = true
+	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	button.text = "%s%s" % [display_name, "  SELECTED" if is_selected else ""]
+	button.tooltip_text = String(definition.get("description")) if definition != null else display_name
+	button.add_theme_font_size_override("font_size", 13)
+	button.add_theme_color_override("font_color", UiStyle.COLOR_TEXT_PRIMARY)
+	button.add_theme_color_override("font_hover_color", Color.WHITE)
+	button.add_theme_color_override("font_pressed_color", Color.WHITE)
+	button.add_theme_stylebox_override("normal", UiStyle.master_menu_detail_item_style(is_selected))
+	button.add_theme_stylebox_override("hover", UiStyle.master_menu_detail_item_style(true))
+	button.add_theme_stylebox_override("pressed", UiStyle.master_menu_detail_item_style(true))
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.set_meta("ability_path", ability_path)
+	button.set_meta("ability_slot_id", slot_id)
+	button.pressed.connect(_on_inventory_spell_choice_pressed.bind(
+		item_id,
+		slot_id,
+		ability_path
+	))
+	return button
+
+
+func _build_inventory_spell_detail_row(label_text: String, value_text: String) -> Control:
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 8)
+
+	var label := Label.new()
+	label.text = label_text
+	label.custom_minimum_size = Vector2(72.0, 0.0)
+	UiStyle.label_muted(label, 11)
+	row.add_child(label)
+
+	var value := Label.new()
+	value.text = value_text
+	value.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	UiStyle.label_primary(value, 11, 1)
+	row.add_child(value)
+	return row
 
 
 func _build_creature_center_panel(data: Dictionary) -> Control:
@@ -1627,6 +1765,11 @@ func _connect_inventory_signals() -> void:
 		if not _inventory.is_connected("equipped_slots_changed", equipped_callable):
 			_inventory.connect("equipped_slots_changed", equipped_callable)
 
+	if _inventory.has_signal("ability_selection_changed"):
+		var selection_callable := Callable(self, "_on_inventory_ability_selection_changed")
+		if not _inventory.is_connected("ability_selection_changed", selection_callable):
+			_inventory.connect("ability_selection_changed", selection_callable)
+
 
 func _disconnect_inventory_signals() -> void:
 	if _inventory == null:
@@ -1643,6 +1786,13 @@ func _disconnect_inventory_signals() -> void:
 	var equipped_callable := Callable(self, "_on_inventory_equipment_changed")
 	if _inventory.has_signal("equipped_slots_changed") and _inventory.is_connected("equipped_slots_changed", equipped_callable):
 		_inventory.disconnect("equipped_slots_changed", equipped_callable)
+
+	var selection_callable := Callable(self, "_on_inventory_ability_selection_changed")
+	if (
+		_inventory.has_signal("ability_selection_changed")
+		and _inventory.is_connected("ability_selection_changed", selection_callable)
+	):
+		_inventory.disconnect("ability_selection_changed", selection_callable)
 
 
 func _bind_stats() -> void:
@@ -1685,6 +1835,14 @@ func _on_inventory_currency_changed(_silver: int, _gold: int) -> void:
 
 
 func _on_inventory_equipment_changed() -> void:
+	_refresh_live_inventory_views()
+
+
+func _on_inventory_ability_selection_changed(
+	_item_id: String,
+	_slot_id: String,
+	_ability_path: String
+) -> void:
 	_refresh_live_inventory_views()
 
 
@@ -1842,12 +2000,14 @@ func _ensure_inventory_selection() -> void:
 func _on_inventory_bag_slot_pressed(slot_index: int) -> void:
 	_selected_inventory_slot_index = slot_index
 	_selected_inventory_equipment_slot_id = ""
+	_selected_inventory_spell_path = ""
 	_update_detail_view()
 
 
 func _on_inventory_equipment_slot_pressed(slot_id: String) -> void:
 	_selected_inventory_slot_index = -1
 	_selected_inventory_equipment_slot_id = slot_id
+	_selected_inventory_spell_path = ""
 	_update_detail_view()
 
 
@@ -2200,6 +2360,105 @@ func _selected_inventory_description(selected_data: Dictionary) -> String:
 		return "This bag slot is empty."
 
 	return _inventory_detail_description(_inventory_item_rows(12))
+
+
+func _inventory_spell_choice_rows(slot_data: Dictionary) -> Array:
+	var choices := slot_data.get("ability_choices", {}) as Dictionary
+	if choices == null or choices.is_empty():
+		return []
+
+	var selected_paths := slot_data.get("ability_paths", {}) as Dictionary
+	var rows: Array = []
+	var consumed := {}
+	for slot_id in INVENTORY_ABILITY_SLOT_ORDER:
+		if not choices.has(slot_id):
+			continue
+		consumed[slot_id] = true
+		_append_inventory_spell_choice_row(rows, slot_id, choices[slot_id], selected_paths)
+
+	var remaining_slots: Array[String] = []
+	for raw_slot_id in choices.keys():
+		var slot_id := String(raw_slot_id).strip_edges().to_lower()
+		if not slot_id.is_empty() and not consumed.has(slot_id):
+			remaining_slots.append(slot_id)
+	remaining_slots.sort()
+	for slot_id in remaining_slots:
+		_append_inventory_spell_choice_row(rows, slot_id, choices[slot_id], selected_paths)
+	return rows
+
+
+func _append_inventory_spell_choice_row(
+	rows: Array,
+	slot_id: String,
+	raw_paths: Variant,
+	selected_paths: Dictionary
+) -> void:
+	var paths := PackedStringArray()
+	if raw_paths is PackedStringArray:
+		paths = (raw_paths as PackedStringArray).duplicate()
+	elif raw_paths is Array:
+		for raw_path in raw_paths as Array:
+			var path := String(raw_path).strip_edges()
+			if not path.is_empty() and not paths.has(path):
+				paths.append(path)
+	else:
+		var path := String(raw_paths).strip_edges()
+		if not path.is_empty():
+			paths.append(path)
+	if paths.is_empty():
+		return
+
+	var selected_path := String(selected_paths.get(slot_id, ""))
+	if not paths.has(selected_path):
+		selected_path = paths[0]
+	rows.append({
+		"slot_id": slot_id,
+		"paths": paths,
+		"selected_path": selected_path,
+	})
+
+
+func _ensure_inventory_spell_focus(choice_rows: Array) -> void:
+	var available_paths := PackedStringArray()
+	var first_selected_path := ""
+	for row_value in choice_rows:
+		var row := row_value as Dictionary
+		var selected_path := String(row.get("selected_path", ""))
+		if first_selected_path.is_empty() and not selected_path.is_empty():
+			first_selected_path = selected_path
+		for path in PackedStringArray(row.get("paths", PackedStringArray())):
+			if not available_paths.has(path):
+				available_paths.append(path)
+
+	if available_paths.has(_selected_inventory_spell_path):
+		return
+	_selected_inventory_spell_path = (
+		first_selected_path
+		if not first_selected_path.is_empty()
+		else (available_paths[0] if not available_paths.is_empty() else "")
+	)
+
+
+func _load_inventory_ability(ability_path: String) -> Resource:
+	if ability_path.is_empty() or not ResourceLoader.exists(ability_path):
+		return null
+	return load(ability_path) as Resource
+
+
+func _on_inventory_spell_choice_pressed(
+	item_id: String,
+	slot_id: String,
+	ability_path: String
+) -> void:
+	if _inventory == null or not _inventory.has_method("select_item_ability"):
+		return
+
+	var previous_path := _selected_inventory_spell_path
+	_selected_inventory_spell_path = ability_path
+	if not bool(_inventory.call("select_item_ability", item_id, slot_id, ability_path)):
+		_selected_inventory_spell_path = previous_path
+		return
+	_update_detail_view()
 
 
 func _inventory_ability_slot_text(slot_data: Dictionary) -> String:

@@ -21,6 +21,8 @@ extends Resource
 @export_file("*.tres") var q_ability_path := ""
 ## Equipment-provided action-bar abilities keyed by stable slot id.
 @export var ability_paths: Dictionary = {}
+## Selectable active abilities keyed by action-bar slot. Values are path arrays.
+@export var ability_choices: Dictionary = {}
 ## Additive player stat bonuses granted while this item is equipped.
 @export var stat_modifiers: Dictionary = {}
 @export_range(0, 8, 1) var tier := 0
@@ -50,6 +52,7 @@ func to_display_dict(quantity: int) -> Dictionary:
 		"equipment_animation_profile_path": equipment_animation_profile_path,
 		"q_ability_path": q_ability_path,
 		"ability_paths": ability_paths.duplicate(true),
+		"ability_choices": ability_choices.duplicate(true),
 		"stat_modifiers": stat_modifiers.duplicate(true),
 		"tier": tier,
 		"tier_roman": tier_roman,

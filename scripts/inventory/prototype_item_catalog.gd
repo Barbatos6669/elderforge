@@ -148,6 +148,7 @@ static func _append_family_definition(definitions: Array, family_definition: Res
 	var equipment_animation_profile_path_template := String(family_definition.get("equipment_animation_profile_path_template"))
 	var q_ability_path_template := String(family_definition.get("q_ability_path_template"))
 	var ability_path_templates := family_definition.get("ability_path_templates") as Dictionary
+	var ability_choice_path_templates := family_definition.get("ability_choice_path_templates") as Dictionary
 	var stat_modifiers := family_definition.get("stat_modifiers") as Dictionary
 
 	if family_id.is_empty() or item_id_prefix.is_empty() or tier_names.is_empty():
@@ -176,6 +177,11 @@ static func _append_family_definition(definitions: Array, family_definition: Res
 		definition.equipment_animation_profile_path = _resolve_tier_path(equipment_animation_profile_path_template, tier)
 		definition.q_ability_path = _resolve_tier_path(q_ability_path_template, tier)
 		definition.ability_paths = _resolve_ability_paths(ability_path_templates, tier)
+		definition.ability_choices = _resolve_ability_choices(
+			ability_choice_path_templates,
+			tier,
+			definition.ability_paths
+		)
 		definition.stat_modifiers = stat_modifiers.duplicate(true) if stat_modifiers != null else {}
 		definition.tier = tier
 		definition.tier_roman = roman
@@ -205,6 +211,68 @@ static func _resolve_ability_paths(path_templates: Dictionary, tier: int) -> Dic
 			continue
 		resolved_paths[slot_id] = _resolve_tier_path(path_template, tier)
 	return resolved_paths
+
+
+static func _resolve_ability_choices(
+	choice_templates: Dictionary,
+	tier: int,
+	default_paths: Dictionary
+) -> Dictionary:
+	var resolved_choices := {}
+	if choice_templates != null:
+		for raw_slot_id in choice_templates.keys():
+			var slot_id := String(raw_slot_id).strip_edges().to_lower()
+			if slot_id.is_empty():
+				continue
+
+			var paths := PackedStringArray()
+			for raw_choice in _choice_entries(choice_templates[raw_slot_id]):
+				var path_template := ""
+				var min_tier := 1
+				var max_tier := 8
+				if raw_choice is Dictionary:
+					var choice_data := raw_choice as Dictionary
+					path_template = String(choice_data.get("path", ""))
+					min_tier = maxi(int(choice_data.get("min_tier", 1)), 1)
+					max_tier = maxi(int(choice_data.get("max_tier", 8)), min_tier)
+				else:
+					path_template = String(raw_choice)
+
+				if tier < min_tier or tier > max_tier or path_template.is_empty():
+					continue
+				var resolved_path := _resolve_tier_path(path_template, tier)
+				if not resolved_path.is_empty() and not paths.has(resolved_path):
+					paths.append(resolved_path)
+
+			if not paths.is_empty():
+				resolved_choices[slot_id] = paths
+
+	if default_paths != null:
+		for raw_slot_id in default_paths.keys():
+			var slot_id := String(raw_slot_id).strip_edges().to_lower()
+			var default_path := String(default_paths[raw_slot_id]).strip_edges()
+			if slot_id.is_empty() or default_path.is_empty():
+				continue
+
+			var paths := PackedStringArray(resolved_choices.get(slot_id, PackedStringArray()))
+			if not paths.has(default_path):
+				paths.insert(0, default_path)
+			resolved_choices[slot_id] = paths
+
+	return resolved_choices
+
+
+static func _choice_entries(raw_choices: Variant) -> Array:
+	if raw_choices is Array:
+		return raw_choices as Array
+
+	var entries: Array = []
+	if raw_choices is PackedStringArray:
+		for path in raw_choices as PackedStringArray:
+			entries.append(path)
+	elif raw_choices != null:
+		entries.append(raw_choices)
+	return entries
 
 
 static func _resolve_tier_path(path_template: String, tier: int) -> String:

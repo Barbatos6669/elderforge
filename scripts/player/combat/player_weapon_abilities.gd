@@ -907,22 +907,44 @@ func _bind_inventory() -> void:
 
 
 func _connect_inventory() -> void:
-	if _inventory == null or not _inventory.has_signal("equipped_slots_changed"):
+	if _inventory == null:
 		return
-	var callable := Callable(self, "_on_equipped_slots_changed")
-	if not _inventory.is_connected("equipped_slots_changed", callable):
-		_inventory.connect("equipped_slots_changed", callable)
+	if _inventory.has_signal("equipped_slots_changed"):
+		var equipped_callable := Callable(self, "_on_equipped_slots_changed")
+		if not _inventory.is_connected("equipped_slots_changed", equipped_callable):
+			_inventory.connect("equipped_slots_changed", equipped_callable)
+	if _inventory.has_signal("ability_selection_changed"):
+		var selection_callable := Callable(self, "_on_ability_selection_changed")
+		if not _inventory.is_connected("ability_selection_changed", selection_callable):
+			_inventory.connect("ability_selection_changed", selection_callable)
 
 
 func _disconnect_inventory() -> void:
-	if _inventory == null or not _inventory.has_signal("equipped_slots_changed"):
+	if _inventory == null:
 		return
-	var callable := Callable(self, "_on_equipped_slots_changed")
-	if _inventory.is_connected("equipped_slots_changed", callable):
-		_inventory.disconnect("equipped_slots_changed", callable)
+	var equipped_callable := Callable(self, "_on_equipped_slots_changed")
+	if (
+		_inventory.has_signal("equipped_slots_changed")
+		and _inventory.is_connected("equipped_slots_changed", equipped_callable)
+	):
+		_inventory.disconnect("equipped_slots_changed", equipped_callable)
+	var selection_callable := Callable(self, "_on_ability_selection_changed")
+	if (
+		_inventory.has_signal("ability_selection_changed")
+		and _inventory.is_connected("ability_selection_changed", selection_callable)
+	):
+		_inventory.disconnect("ability_selection_changed", selection_callable)
 
 
 func _on_equipped_slots_changed() -> void:
+	_refresh_equipped_abilities()
+
+
+func _on_ability_selection_changed(
+	_item_id: String,
+	_slot_id: String,
+	_ability_path: String
+) -> void:
 	_refresh_equipped_abilities()
 
 

@@ -12,11 +12,13 @@ The master menu is the fullscreen hub for player-facing submenus.
   button is hover-selected. It is placeholder-driven today, except Inventory
   reads visible bag items and silver from `PlayerInventory` when available.
 - The Inventory detail page renders the bound `PlayerInventory` bag slots,
-  equipped gear slots, carried weight, and currency. Selecting a bag or gear
-  slot updates the right-side item inspector. Gear can be dragged between the
-  bag and its compatible equipment slot to equip, unequip, or swap it. Other
-  inventory drag/drop commands still live in the retired companion inventory
-  window.
+  equipped gear slots, carried weight, and currency. Gear can be dragged
+  between the bag and its compatible equipment slot to equip, unequip, or swap
+  it. Selecting a weapon or armor piece opens its right-side spell loadout,
+  grouped by action key, where the player can choose from every spell unlocked
+  by that item tier. Materials and gear without active spells show an empty
+  loadout state. Other inventory drag/drop commands still live in the retired
+  companion inventory window.
 - Clicking a second-level button, or a main hub button without second-level
   buttons, opens detail mode. Detail mode hides the hub tiles/news, shows the
   section page, and uses the top rotary selector to cycle through Creatures,

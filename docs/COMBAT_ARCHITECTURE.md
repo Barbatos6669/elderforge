@@ -29,9 +29,12 @@ a swing after it has already committed.
 
 ## Equipment ability contract
 
-1. An equipped item supplies an `ability_paths` dictionary keyed by action-bar
-   slot. Main-hand weapons own Q/W/E, chest armor owns R, helmets own D, and
-   boots own F. Weapon passives are always-on and do not consume a cast key.
+1. An equipped item supplies an effective `ability_paths` dictionary keyed by
+   action-bar slot. Main-hand weapons own Q/W/E, chest armor owns R, helmets own
+   D, and boots own F. Items can also expose tier-gated `ability_choices`;
+   `PlayerInventory` validates and persists the player's selected path before
+   publishing it through `ability_paths`. Weapon passives are always-on and do
+   not consume a cast key.
 2. Pressing a bound key or clicking its HUD slot requests the same ability path.
 3. `selected_target` abilities approach and validate their hostile target.
 4. `direction` abilities preview a ground indicator while ordinary locomotion

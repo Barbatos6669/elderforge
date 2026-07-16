@@ -95,9 +95,11 @@ choice, or playtest flow changes.
   to reduce overlap.
 - Moved the fullscreen master menu Inventory page beyond placeholder text. It
   now renders a real bag-slot grid, equipment-slot grid, currency/weight
-  readouts, and selected-item details from `PlayerInventory`. Gear can be
-  dragged between the bag and its compatible equipment slot to equip, unequip,
-  or swap it.
+  readouts, and spell loadouts from `PlayerInventory`. Gear can be dragged
+  between the bag and its compatible equipment slot to equip, unequip, or swap
+  it. The right panel presents the selected item's tier-gated spell choices,
+  grouped by action key, persisted by item id, and rebound into combat
+  immediately when changed.
 - Expanded the equipment ability HUD to eight stable circular slots. Equipped
   items bind through one canonical ownership contract: weapon Q/W/E, chest R,
   helmet D, boots F, plus two future utility placeholders. The sword supplies Q,

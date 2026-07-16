@@ -11,13 +11,17 @@ Equipment abilities are split into data and runtime behavior:
 - `player_weapon_abilities.gd` owns targeting, casting, impact, and cooldowns
   for the local player.
 
-An equipped item exposes an `ability_paths` dictionary keyed by action-bar slot.
-Tiered item families author the same relationship through
-`ability_path_templates`. The canonical active layout is Q/W/E for the weapon,
-R for chest armor, D for the helmet, and F for boots. Weapon passives are
-always-on data and do not consume an active key. Adding another common
-equipment spell normally means creating a `.tres` ability and pointing the
-item family at it instead of editing player code.
+An equipped item exposes its active `ability_paths` dictionary keyed by
+action-bar slot. Tiered item families author defaults through
+`ability_path_templates` and optional selectable lists through
+`ability_choice_path_templates`. Choice entries can gate a spell with
+`min_tier` and `max_tier`; `PlayerInventory` stores the player's valid choice
+and publishes it back through the effective `ability_paths` dictionary. The
+canonical active layout is Q/W/E for the weapon, R for chest armor, D for the
+helmet, and F for boots. Weapon passives are always-on data and do not consume
+an active key. Adding another common equipment spell normally means creating a
+`.tres` ability and pointing the item family at it instead of editing player
+code.
 
 Targeted cast requests accept an untrusted `Variant` at their public boundary,
 then normalize it to a live `Node`. This matters because Godot Node references

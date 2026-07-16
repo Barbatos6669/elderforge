@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="WeaponAbilityDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/abilities/weapon_ability_definition.gd" id="1_definition"]
+
+[resource]
+script = ExtResource("1_definition")
+ability_id = "test_guard_focus"
+display_name = "Guard Focus"
+description = "Brace behind a focused ward for the spell-selection integration test."
+tooltip_tags = PackedStringArray("Buff", "Shield", "Self")
+input_slot = &"d"
+icon_id = "energizing_shield"
+targeting_mode = "self"
+execution_type = "shield"
+energy_cost = 10.0
+cooldown_seconds = 12.0
+cast_duration_seconds = 0.25
+absorb_shield_amount = 250.0
+absorb_shield_duration_seconds = 2.0
+impact_fraction = 0.0
+attack_range = 0.0
+approach_distance = 0.0
+base_damage = 0.0
+damage_multiplier = 0.0

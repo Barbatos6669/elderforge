@@ -1,6 +1,8 @@
 extends SceneTree
 
 const MASTER_MENU_SCENE := preload("res://scenes/ui/menu/MasterMenu.tscn")
+const ENERGIZING_SHIELD_PATH := "res://assets/combat/abilities/energizing_shield.tres"
+const TEST_GUARD_FOCUS_PATH := "res://tools/tests/fixtures/test_guard_focus.tres"
 
 
 func _initialize() -> void:
@@ -24,6 +26,10 @@ func _run_test() -> void:
 	inventory.debug_seed_quantity = 7
 	inventory.debug_equipped_item_ids = PackedStringArray(["leather_helmet_t1"])
 	fixture.add_child(inventory)
+	var helmet_definition := inventory.get_definition("leather_helmet_t1")
+	helmet_definition.set("ability_choices", {
+		"d": PackedStringArray([ENERGIZING_SHIELD_PATH, TEST_GUARD_FOCUS_PATH]),
+	})
 
 	var menu := MASTER_MENU_SCENE.instantiate() as MasterMenu
 	menu.inventory_path = NodePath("../PlayerInventory")
@@ -38,7 +44,7 @@ func _run_test() -> void:
 
 	if not _inventory_page_rendered(menu):
 		return
-	if not await _helmet_selection_updates_inspector(menu):
+	if not await _helmet_selection_updates_spell_loadout(menu, inventory):
 		return
 	if not await _dragging_helmet_to_bag_unequips(menu, inventory):
 		return
@@ -92,7 +98,10 @@ func _inventory_page_rendered(menu: MasterMenu) -> bool:
 	return true
 
 
-func _helmet_selection_updates_inspector(menu: MasterMenu) -> bool:
+func _helmet_selection_updates_spell_loadout(
+	menu: MasterMenu,
+	inventory: PlayerInventory
+) -> bool:
 	var head_slot := menu.find_child("HeadEquipmentSlot", true, false) as Button
 	if head_slot == null:
 		_fail("Helmet slot should exist before selection.")
@@ -101,17 +110,33 @@ func _helmet_selection_updates_inspector(menu: MasterMenu) -> bool:
 	head_slot.pressed.emit()
 	await process_frame
 
-	var description := menu.find_child("SelectedItemDescription", true, false) as Label
-	if description == null:
-		_fail("Inventory inspector should render selected item details.")
-		return false
-	if not description.text.to_lower().contains("protective shield"):
-		_fail("Selecting the helmet should show its item description.")
+	var loadout_list := menu.find_child("SpellLoadoutList", true, false) as VBoxContainer
+	if loadout_list == null:
+		_fail("Selecting spell-bearing gear should render its spell loadout.")
 		return false
 
-	var spells_readout := menu.find_child("SpellsReadout", true, false) as PanelContainer
-	if spells_readout == null:
-		_fail("Spell-bearing equipment should show its active spell slots.")
+	var default_choice := menu.find_child("SpellChoiceD01", true, false) as Button
+	var alternate_choice := menu.find_child("SpellChoiceD02", true, false) as Button
+	if default_choice == null or alternate_choice == null:
+		_fail("The D spell slot should render every available helmet spell.")
+		return false
+	if not default_choice.text.contains("Energizing Shield"):
+		_fail("The helmet's authored default spell should be selected first.")
+		return false
+
+	alternate_choice.pressed.emit()
+	await process_frame
+	await process_frame
+
+	var equipped_head := inventory.get_equipped_slot("head")
+	var selected_paths := equipped_head.get("ability_paths", {}) as Dictionary
+	if String(selected_paths.get("d", "")) != TEST_GUARD_FOCUS_PATH:
+		_fail("Choosing a loadout spell should update the helmet's active D ability.")
+		return false
+
+	var spell_title := menu.find_child("SelectedSpellTitle", true, false) as Label
+	if spell_title == null or spell_title.text != "Guard Focus":
+		_fail("The right panel should focus the newly selected spell.")
 		return false
 
 	return true
@@ -159,9 +184,9 @@ func _dragging_helmet_to_bag_unequips(menu: MasterMenu, inventory: PlayerInvento
 		_fail("The fullscreen inventory should refresh after unequipping gear.")
 		return false
 
-	var description := menu.find_child("SelectedItemDescription", true, false) as Label
-	if description == null or not description.text.to_lower().contains("protective shield"):
-		_fail("The moved helmet should remain selected in the bag inspector.")
+	var spell_title := menu.find_child("SelectedSpellTitle", true, false) as Label
+	if spell_title == null or spell_title.text != "Guard Focus":
+		_fail("The moved helmet should retain its selected spell in the bag.")
 		return false
 
 	return true
@@ -204,9 +229,9 @@ func _dragging_bag_helmet_to_head_equips(menu: MasterMenu, inventory: PlayerInve
 		_fail("The fullscreen equipment slot should refresh after equipping gear.")
 		return false
 
-	var description := menu.find_child("SelectedItemDescription", true, false) as Label
-	if description == null or not description.text.to_lower().contains("protective shield"):
-		_fail("The equipped helmet should remain selected in the inspector.")
+	var spell_title := menu.find_child("SelectedSpellTitle", true, false) as Label
+	if spell_title == null or spell_title.text != "Guard Focus":
+		_fail("The re-equipped helmet should retain its selected spell.")
 		return false
 
 	return true

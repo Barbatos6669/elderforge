@@ -61,6 +61,13 @@ GDScript notes:
   Q, leather chest supplies R, leather helmet supplies D, and leather boots
   supply F. `q_ability_path` remains a legacy compatibility field while older
   item resources are migrated. Passives do not use an active action-bar slot.
+- Equipment can expose multiple selectable spells per action key through
+  `ability_choices`; tiered families author these with
+  `ability_choice_path_templates`. Choice entries may include `min_tier` and
+  `max_tier`. `PlayerInventory.select_item_ability()` validates the selected
+  resource against both the item choices and the ability's own input key, then
+  persists the choice by item id. UI-facing `ability_paths` always contains the
+  effective selection, so combat and HUD consumers keep their existing lookup.
 - Equippable items can set `stat_modifiers` with stable `PlayerStats` ids. The
   player adds those values only while the item is equipped; for example, the
   starter sword grants `auto_attack_damage = 20` on top of the base 20.

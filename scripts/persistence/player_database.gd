@@ -23,6 +23,9 @@ const MAX_INVENTORY_SLOTS := 42
 const MAX_STACK_QUANTITY := 999
 const MAX_CURRENCY := 999999999
 const MAX_TRANSACTION_HISTORY := 500
+const MAX_ITEM_ID_LENGTH := 96
+const MAX_ABILITY_SLOT_ID_LENGTH := 8
+const MAX_RESOURCE_PATH_LENGTH := 384
 
 ## Active storage backend. JSON is the safe default until a SQLite addon exists.
 @export_enum("json", "sqlite") var storage_backend_id := "json"
@@ -521,12 +524,41 @@ func sanitize_inventory_snapshot(snapshot: Variant) -> Dictionary:
 				continue
 			equipped_slots[clean_slot_id] = stack
 
+	var ability_selections := {}
+	var raw_selections: Variant = data.get("ability_selections", {})
+	if raw_selections is Dictionary:
+		for raw_item_id in (raw_selections as Dictionary).keys():
+			var item_id := String(raw_item_id).strip_edges().substr(0, MAX_ITEM_ID_LENGTH)
+			var raw_item_selections: Variant = (raw_selections as Dictionary)[raw_item_id]
+			if item_id.is_empty() or not (raw_item_selections is Dictionary):
+				continue
+
+			var item_selections := {}
+			for raw_slot_id in (raw_item_selections as Dictionary).keys():
+				var slot_id := String(raw_slot_id).strip_edges().to_lower().substr(
+					0,
+					MAX_ABILITY_SLOT_ID_LENGTH
+				)
+				var ability_path := String(
+					(raw_item_selections as Dictionary)[raw_slot_id]
+				).strip_edges().substr(0, MAX_RESOURCE_PATH_LENGTH)
+				if (
+					slot_id.is_empty()
+					or not ability_path.begins_with("res://")
+					or not ability_path.ends_with(".tres")
+				):
+					continue
+				item_selections[slot_id] = ability_path
+			if not item_selections.is_empty():
+				ability_selections[item_id] = item_selections
+
 	return {
 		"slot_count": slot_count,
 		"silver": clampi(int(data.get("silver", 0)), 0, MAX_CURRENCY),
 		"gold": clampi(int(data.get("gold", 0)), 0, MAX_CURRENCY),
 		"slots": slots,
 		"equipped_slots": equipped_slots,
+		"ability_selections": ability_selections,
 	}
 
 
@@ -591,6 +623,7 @@ func _empty_inventory_snapshot() -> Dictionary:
 		"gold": 0,
 		"slots": slots,
 		"equipped_slots": {},
+		"ability_selections": {},
 	}
 
 
