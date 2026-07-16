@@ -49,6 +49,21 @@ func spend(amount: float) -> float:
 	return spent_amount
 
 
+## Returns whether this pool has enough resource to pay a full cost.
+func can_spend(amount: float) -> bool:
+	return amount <= 0.0 or current_resource >= amount
+
+
+## Pays a full cost only when enough resource is available.
+func try_spend(amount: float) -> bool:
+	if amount <= 0.0:
+		return true
+	if not can_spend(amount):
+		return false
+
+	return is_equal_approx(spend(amount), amount)
+
+
 ## Restores resource and returns the amount actually restored.
 func restore(amount: float) -> float:
 	if amount <= 0.0:
