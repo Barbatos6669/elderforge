@@ -10,6 +10,8 @@ const CraftingRecipeCatalogScript := preload("res://scripts/crafting/crafting_re
 const MasterMenuStatIconScript := preload("res://scripts/ui/menu/master_menu_stat_icon.gd")
 const MasterMenuTileIconScript := preload("res://scripts/ui/menu/master_menu_tile_icon.gd")
 const MasterMenuCreaturePortraitScript := preload("res://scripts/ui/menu/master_menu_creature_portrait.gd")
+const InventoryItemIconScript := preload("res://scripts/ui/inventory/inventory_item_icon.gd")
+const EquipmentSlotIconScript := preload("res://scripts/ui/inventory/equipment_slot_icon.gd")
 const WORLD_INPUT_BLOCKER_GROUP := "blocking_world_input"
 
 const BUTTONS := [
@@ -40,6 +42,18 @@ const DETAIL_SEQUENCE := [
 	{"id": "world_map", "label": "World Map"},
 	{"id": "quests", "label": "Quests"},
 	{"id": "character", "label": "Character"},
+]
+
+const INVENTORY_EQUIPMENT_SLOTS := [
+	{"id": "bag", "label": "Bag", "abbr": "BG"},
+	{"id": "head", "label": "Helmet", "abbr": "HM"},
+	{"id": "cape", "label": "Cape", "abbr": "CP"},
+	{"id": "main_hand", "label": "Main Hand", "abbr": "MH"},
+	{"id": "chest", "label": "Chest", "abbr": "CH"},
+	{"id": "off_hand", "label": "Off Hand", "abbr": "OH"},
+	{"id": "potion", "label": "Potion", "abbr": "PT"},
+	{"id": "shoes", "label": "Shoes", "abbr": "SH"},
+	{"id": "food", "label": "Food", "abbr": "FD"},
 ]
 
 const CATEGORY_NEWS := {
@@ -310,6 +324,8 @@ var _active_category_id := "glossary"
 var _active_detail_id := ""
 var _selected_creature_id := "lantern_moth"
 var _selected_crafting_recipe_id := ""
+var _selected_inventory_slot_index := -1
+var _selected_inventory_equipment_slot_id := ""
 
 
 func _ready() -> void:
@@ -780,6 +796,8 @@ func _update_detail_view() -> void:
 
 	if _active_detail_id == "creatures":
 		_build_creatures_detail(data)
+	elif _active_detail_id == "inventory":
+		_build_inventory_detail(data)
 	else:
 		_build_generic_detail(data)
 
@@ -814,6 +832,15 @@ func _build_generic_detail(data: Dictionary) -> void:
 	_detail_body.add_child(_build_generic_center_panel(data))
 	_detail_body.add_child(_build_detail_column_spacer())
 	_detail_body.add_child(_build_description_panel(data, 315.0))
+
+
+func _build_inventory_detail(_data: Dictionary) -> void:
+	_ensure_inventory_selection()
+	_detail_body.add_child(_build_inventory_bag_panel())
+	_detail_body.add_child(_build_detail_column_spacer())
+	_detail_body.add_child(_build_inventory_equipment_panel())
+	_detail_body.add_child(_build_detail_column_spacer())
+	_detail_body.add_child(_build_inventory_inspector_panel())
 
 
 func _build_detail_column_spacer() -> Control:
@@ -884,6 +911,285 @@ func _build_detail_list_item(label_text: String, is_selected: bool, item_id: Str
 	button.add_theme_constant_override("h_separation", 0)
 	button.pressed.connect(_on_detail_list_item_pressed.bind(item_id))
 	return button
+
+
+func _build_inventory_bag_panel() -> Control:
+	var panel := PanelContainer.new()
+	panel.name = "InventoryBagPanel"
+	panel.custom_minimum_size = Vector2(405.0, 430.0)
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	panel.add_theme_stylebox_override("panel", UiStyle.master_menu_detail_panel_style())
+
+	var layout := VBoxContainer.new()
+	layout.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	layout.add_theme_constant_override("separation", 8)
+	panel.add_child(_wrap_margin(layout, 10))
+
+	var title := Label.new()
+	title.text = "BAG CONTENTS"
+	UiStyle.label_primary(title, 16, 1)
+	layout.add_child(title)
+
+	var summary := Label.new()
+	summary.name = "BagSummary"
+	summary.text = "%d / %d slots used" % [_inventory_slots_used(), _inventory_slot_total()]
+	UiStyle.label_muted(summary, 12)
+	layout.add_child(summary)
+
+	var scroll := ScrollContainer.new()
+	scroll.name = "BagScroll"
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	layout.add_child(scroll)
+
+	var grid := GridContainer.new()
+	grid.name = "BagSlotGrid"
+	grid.columns = 7
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 7)
+	grid.add_theme_constant_override("v_separation", 7)
+	scroll.add_child(grid)
+
+	var total_slots := maxi(_inventory_slot_total(), _inventory_display_slots().size())
+	for slot_index in range(total_slots):
+		grid.add_child(_build_inventory_bag_slot(slot_index))
+
+	if total_slots <= 0:
+		var empty_label := Label.new()
+		empty_label.text = "No inventory is bound."
+		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		UiStyle.label_muted(empty_label, 14)
+		grid.add_child(empty_label)
+
+	return panel
+
+
+func _build_inventory_bag_slot(slot_index: int) -> Control:
+	var slot_data := _inventory_slot_at(slot_index)
+	var is_selected := (
+		_selected_inventory_equipment_slot_id.is_empty()
+		and _selected_inventory_slot_index == slot_index
+	)
+
+	var button := Button.new()
+	button.name = "BagSlot%02d" % (slot_index + 1)
+	button.custom_minimum_size = Vector2(48.0, 48.0)
+	button.focus_mode = Control.FOCUS_NONE
+	button.clip_text = true
+	button.text = ""
+	button.tooltip_text = _inventory_slot_tooltip(slot_index, slot_data)
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.add_theme_color_override("font_color", UiStyle.COLOR_TEXT_PRIMARY)
+	button.add_theme_color_override("font_hover_color", Color.WHITE)
+	button.add_theme_color_override("font_pressed_color", Color.WHITE)
+	button.pressed.connect(_on_inventory_bag_slot_pressed.bind(slot_index))
+
+	if slot_data.is_empty():
+		button.add_theme_stylebox_override("normal", _inventory_slot_style(Color(0.08, 0.09, 0.08, 1.0), false, is_selected))
+		button.add_theme_stylebox_override("hover", _inventory_slot_style(Color(0.13, 0.14, 0.12, 1.0), true, is_selected))
+		button.add_theme_stylebox_override("pressed", _inventory_slot_style(Color(0.06, 0.07, 0.06, 1.0), true, is_selected))
+		return button
+
+	var item_icon := InventoryItemIconScript.new() as Control
+	item_icon.name = "ItemIcon"
+	item_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	item_icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	item_icon.call("set_item", slot_data)
+	button.add_child(item_icon)
+
+	var item_color := slot_data.get("color", Color(0.28, 0.32, 0.28, 1.0)) as Color
+	button.add_theme_stylebox_override("normal", _inventory_slot_style(item_color.darkened(0.38), false, is_selected))
+	button.add_theme_stylebox_override("hover", _inventory_slot_style(item_color.darkened(0.22), true, is_selected))
+	button.add_theme_stylebox_override("pressed", _inventory_slot_style(item_color.darkened(0.48), true, is_selected))
+	return button
+
+
+func _build_inventory_equipment_panel() -> Control:
+	var panel := PanelContainer.new()
+	panel.name = "InventoryEquipmentPanel"
+	panel.custom_minimum_size = Vector2(280.0, 430.0)
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	panel.add_theme_stylebox_override("panel", UiStyle.master_menu_detail_panel_style())
+
+	var layout := VBoxContainer.new()
+	layout.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	layout.add_theme_constant_override("separation", 10)
+	panel.add_child(_wrap_margin(layout, 10))
+
+	var title := Label.new()
+	title.text = "EQUIPPED GEAR"
+	UiStyle.label_primary(title, 16, 1)
+	layout.add_child(title)
+
+	var grid := GridContainer.new()
+	grid.name = "EquipmentSlotGrid"
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 7)
+	layout.add_child(grid)
+
+	for definition in INVENTORY_EQUIPMENT_SLOTS:
+		grid.add_child(_build_inventory_equipment_slot(definition as Dictionary))
+
+	var readouts := VBoxContainer.new()
+	readouts.name = "InventoryReadouts"
+	readouts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	readouts.add_theme_constant_override("separation", 6)
+	layout.add_child(readouts)
+	readouts.add_child(_build_inventory_readout("Weight", "%s / %s kg" % [
+		_format_decimal(_inventory_carried_weight()),
+		_format_decimal(_inventory_max_load()),
+	]))
+	readouts.add_child(_build_inventory_readout("Silver", _format_whole_number(_inventory_silver())))
+	var gold := _inventory_gold()
+	if gold > 0:
+		readouts.add_child(_build_inventory_readout("Gold", _format_whole_number(gold)))
+
+	return panel
+
+
+func _build_inventory_equipment_slot(definition: Dictionary) -> Control:
+	var slot_id := String(definition.get("id", ""))
+	var label_text := String(definition.get("label", _format_slot_label(slot_id)))
+	var slot_data := _inventory_equipped_slot_at(slot_id)
+	var is_selected := _selected_inventory_equipment_slot_id == slot_id
+
+	var cell := VBoxContainer.new()
+	cell.name = "%sEquipmentCell" % slot_id.capitalize().replace(" ", "")
+	cell.custom_minimum_size = Vector2(82.0, 78.0)
+	cell.add_theme_constant_override("separation", 3)
+
+	var button := Button.new()
+	button.name = "%sEquipmentSlot" % slot_id.capitalize().replace(" ", "")
+	button.custom_minimum_size = Vector2(58.0, 58.0)
+	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	button.focus_mode = Control.FOCUS_NONE
+	button.clip_text = true
+	button.text = ""
+	button.tooltip_text = "%s: %s" % [label_text, _slot_display_name(slot_data)] if not slot_data.is_empty() else label_text
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.pressed.connect(_on_inventory_equipment_slot_pressed.bind(slot_id))
+	cell.add_child(button)
+
+	if slot_data.is_empty():
+		var empty_icon := EquipmentSlotIconScript.new() as Control
+		empty_icon.name = "DefaultIcon"
+		empty_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		empty_icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+		empty_icon.offset_left = 7.0
+		empty_icon.offset_top = 7.0
+		empty_icon.offset_right = -7.0
+		empty_icon.offset_bottom = -7.0
+		empty_icon.call("set_icon_id", slot_id)
+		button.add_child(empty_icon)
+		button.add_theme_stylebox_override("normal", _inventory_slot_style(Color(0.08, 0.09, 0.08, 1.0), false, is_selected))
+		button.add_theme_stylebox_override("hover", _inventory_slot_style(Color(0.13, 0.14, 0.12, 1.0), true, is_selected))
+		button.add_theme_stylebox_override("pressed", _inventory_slot_style(Color(0.06, 0.07, 0.06, 1.0), true, is_selected))
+	else:
+		var item_icon := InventoryItemIconScript.new() as Control
+		item_icon.name = "ItemIcon"
+		item_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		item_icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+		item_icon.call("set_item", slot_data)
+		button.add_child(item_icon)
+
+		var item_color := slot_data.get("color", Color(0.28, 0.32, 0.28, 1.0)) as Color
+		button.add_theme_stylebox_override("normal", _inventory_slot_style(item_color.darkened(0.38), false, is_selected))
+		button.add_theme_stylebox_override("hover", _inventory_slot_style(item_color.darkened(0.22), true, is_selected))
+		button.add_theme_stylebox_override("pressed", _inventory_slot_style(item_color.darkened(0.48), true, is_selected))
+
+	var label := Label.new()
+	label.text = String(definition.get("abbr", label_text.substr(0, 2))).to_upper()
+	label.tooltip_text = label_text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UiStyle.label_muted(label, 10)
+	cell.add_child(label)
+	return cell
+
+
+func _build_inventory_readout(label_text: String, value_text: String) -> Control:
+	var panel := PanelContainer.new()
+	panel.name = "%sReadout" % label_text.replace(" ", "")
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_theme_stylebox_override("panel", UiStyle.master_menu_detail_item_style(false))
+
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 8)
+	panel.add_child(_wrap_margin(row, 7))
+
+	var label := Label.new()
+	label.text = label_text
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	UiStyle.label_muted(label, 12)
+	row.add_child(label)
+
+	var value := Label.new()
+	value.text = value_text
+	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	value.custom_minimum_size = Vector2(96.0, 0.0)
+	UiStyle.label_primary(value, 12, 1)
+	row.add_child(value)
+	return panel
+
+
+func _build_inventory_inspector_panel() -> Control:
+	var panel := PanelContainer.new()
+	panel.name = "InventoryInspectorPanel"
+	panel.custom_minimum_size = Vector2(300.0, 430.0)
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	panel.add_theme_stylebox_override("panel", UiStyle.master_menu_detail_panel_style())
+
+	var layout := VBoxContainer.new()
+	layout.add_theme_constant_override("separation", 10)
+	panel.add_child(_wrap_margin(layout, 12))
+
+	var selected_data := _selected_inventory_item_data()
+	var selected_title := _selected_inventory_title(selected_data)
+
+	var title := Label.new()
+	title.text = selected_title.to_upper()
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UiStyle.label_primary(title, 16, 1)
+	layout.add_child(title)
+
+	if not selected_data.is_empty():
+		var preview := InventoryItemIconScript.new() as Control
+		preview.name = "SelectedItemIcon"
+		preview.custom_minimum_size = Vector2(96.0, 96.0)
+		preview.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		preview.call("set_item", selected_data)
+		layout.add_child(preview)
+
+	var meta_list := VBoxContainer.new()
+	meta_list.name = "SelectedItemMeta"
+	meta_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	meta_list.add_theme_constant_override("separation", 6)
+	layout.add_child(meta_list)
+	for meta_row in _selected_inventory_meta_rows(selected_data):
+		var row_data := meta_row as Dictionary
+		meta_list.add_child(_build_inventory_readout(
+			String(row_data.get("label", "")),
+			String(row_data.get("value", ""))
+		))
+
+	var scroll := ScrollContainer.new()
+	scroll.name = "InspectorScroll"
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	layout.add_child(scroll)
+
+	var description := Label.new()
+	description.name = "SelectedItemDescription"
+	description.text = _selected_inventory_description(selected_data)
+	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	description.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	UiStyle.label_muted(description, 13)
+	scroll.add_child(description)
+	return panel
 
 
 func _build_creature_center_panel(data: Dictionary) -> Control:
@@ -1472,6 +1778,83 @@ func _inventory_display_slots() -> Array:
 	return slots if slots is Array else []
 
 
+func _inventory_slot_at(slot_index: int) -> Dictionary:
+	var slots := _inventory_display_slots()
+	if slot_index < 0 or slot_index >= slots.size():
+		return {}
+
+	var slot_data := slots[slot_index] as Dictionary
+	return slot_data if slot_data != null else {}
+
+
+func _inventory_equipped_slots() -> Dictionary:
+	if _inventory == null or not _inventory.has_method("get_equipped_slots"):
+		return {}
+
+	var equipped_value: Variant = _inventory.call("get_equipped_slots")
+	return equipped_value if equipped_value is Dictionary else {}
+
+
+func _inventory_equipped_slot_at(slot_id: String) -> Dictionary:
+	var equipped := _inventory_equipped_slots()
+	var slot_data := equipped.get(slot_id, {}) as Dictionary
+	return slot_data if slot_data != null else {}
+
+
+func _ensure_inventory_selection() -> void:
+	var total_slots := maxi(_inventory_slot_total(), _inventory_display_slots().size())
+	if (
+		_selected_inventory_equipment_slot_id.is_empty()
+		and _selected_inventory_slot_index >= 0
+		and _selected_inventory_slot_index < total_slots
+	):
+		return
+
+	if not _selected_inventory_equipment_slot_id.is_empty():
+		for definition in INVENTORY_EQUIPMENT_SLOTS:
+			if String((definition as Dictionary).get("id", "")) == _selected_inventory_equipment_slot_id:
+				return
+
+	_selected_inventory_slot_index = -1
+	_selected_inventory_equipment_slot_id = ""
+
+	for slot_index in range(total_slots):
+		if not _inventory_slot_at(slot_index).is_empty():
+			_selected_inventory_slot_index = slot_index
+			return
+
+	for definition in INVENTORY_EQUIPMENT_SLOTS:
+		var slot_id := String((definition as Dictionary).get("id", ""))
+		if not _inventory_equipped_slot_at(slot_id).is_empty():
+			_selected_inventory_equipment_slot_id = slot_id
+			return
+
+	if total_slots > 0:
+		_selected_inventory_slot_index = 0
+
+
+func _on_inventory_bag_slot_pressed(slot_index: int) -> void:
+	_selected_inventory_slot_index = slot_index
+	_selected_inventory_equipment_slot_id = ""
+	_update_detail_view()
+
+
+func _on_inventory_equipment_slot_pressed(slot_id: String) -> void:
+	_selected_inventory_slot_index = -1
+	_selected_inventory_equipment_slot_id = slot_id
+	_update_detail_view()
+
+
+func _inventory_slot_tooltip(slot_index: int, slot_data: Dictionary) -> String:
+	if slot_data.is_empty():
+		return "Bag Slot %d" % (slot_index + 1)
+
+	return "%s x%d" % [
+		_slot_display_name(slot_data),
+		maxi(int(slot_data.get("quantity", 1)), 1),
+	]
+
+
 func _inventory_item_rows(limit: int = 0) -> Array:
 	var totals := {}
 	var ordered_ids: Array[String] = []
@@ -1511,18 +1894,11 @@ func _inventory_item_rows(limit: int = 0) -> Array:
 
 
 func _inventory_equipped_rows() -> Array:
-	if _inventory == null or not _inventory.has_method("get_equipped_slots"):
-		return []
-
-	var equipped_value: Variant = _inventory.call("get_equipped_slots")
-	if not (equipped_value is Dictionary):
-		return []
-
-	var equipped := equipped_value as Dictionary
+	var equipped := _inventory_equipped_slots()
 	var rows: Array = []
 	var slot_order := [
 		"bag",
-		"helmet",
+		"head",
 		"cape",
 		"main_hand",
 		"chest",
@@ -1553,7 +1929,7 @@ func _append_equipped_row(rows: Array, slot_id: String, slot_value: Variant) -> 
 		return
 
 	rows.append({
-		"slot": _format_slot_label(slot_id),
+		"slot": _equipment_slot_label(slot_id),
 		"name": _slot_display_name(slot_data),
 		"category": String(slot_data.get("category", "Gear")),
 	})
@@ -1615,6 +1991,134 @@ func _format_inventory_item_row(row: Dictionary) -> String:
 	var tier_roman := String(row.get("tier_roman", "")).strip_edges()
 	var prefix := "T%s " % tier_roman if not tier_roman.is_empty() else ""
 	return "%s%s x%d" % [prefix, String(row.get("name", "Item")), quantity]
+
+
+func _selected_inventory_item_data() -> Dictionary:
+	if not _selected_inventory_equipment_slot_id.is_empty():
+		return _inventory_equipped_slot_at(_selected_inventory_equipment_slot_id)
+
+	return _inventory_slot_at(_selected_inventory_slot_index)
+
+
+func _selected_inventory_title(selected_data: Dictionary) -> String:
+	if not selected_data.is_empty():
+		return _slot_display_name(selected_data)
+
+	if not _selected_inventory_equipment_slot_id.is_empty():
+		return "Empty %s" % _equipment_slot_label(_selected_inventory_equipment_slot_id)
+	if _selected_inventory_slot_index >= 0:
+		return "Empty Bag Slot"
+	if _inventory == null:
+		return "Inventory Unavailable"
+	return "Inventory Overview"
+
+
+func _selected_inventory_meta_rows(selected_data: Dictionary) -> Array:
+	var rows: Array = []
+	if selected_data.is_empty():
+		rows.append({
+			"label": "Slots",
+			"value": "%d / %d" % [_inventory_slots_used(), _inventory_slot_total()],
+		})
+		rows.append({
+			"label": "Weight",
+			"value": "%s / %s kg" % [
+				_format_decimal(_inventory_carried_weight()),
+				_format_decimal(_inventory_max_load()),
+			],
+		})
+		rows.append({
+			"label": "Silver",
+			"value": _format_whole_number(_inventory_silver()),
+		})
+		return rows
+
+	rows.append({
+		"label": "Type",
+		"value": String(selected_data.get("category", "Item")),
+	})
+
+	var quantity := maxi(int(selected_data.get("quantity", 1)), 1)
+	var max_stack := maxi(int(selected_data.get("max_stack", 1)), 1)
+	rows.append({
+		"label": "Stack",
+		"value": "%d / %d" % [quantity, max_stack],
+	})
+
+	var unit_weight := float(selected_data.get("unit_weight", 0.0))
+	if unit_weight > 0.0:
+		rows.append({
+			"label": "Weight",
+			"value": "%s kg" % _format_decimal(unit_weight * float(quantity)),
+		})
+
+	var equip_slot := String(selected_data.get("equip_slot", "")).strip_edges()
+	if not equip_slot.is_empty():
+		rows.append({
+			"label": "Slot",
+			"value": _equipment_slot_label(equip_slot),
+		})
+
+	var ability_slots := _inventory_ability_slot_text(selected_data)
+	if not ability_slots.is_empty():
+		rows.append({
+			"label": "Spells",
+			"value": ability_slots,
+		})
+
+	return rows
+
+
+func _selected_inventory_description(selected_data: Dictionary) -> String:
+	if not selected_data.is_empty():
+		var description := String(selected_data.get("description", "")).strip_edges()
+		if not description.is_empty():
+			return description
+		return "%s is ready to use." % _slot_display_name(selected_data)
+
+	if _inventory == null:
+		return "No PlayerInventory node is bound to this menu."
+
+	if not _selected_inventory_equipment_slot_id.is_empty():
+		return "Nothing is equipped in the %s slot." % _equipment_slot_label(_selected_inventory_equipment_slot_id)
+	if _selected_inventory_slot_index >= 0:
+		return "This bag slot is empty."
+
+	return _inventory_detail_description(_inventory_item_rows(12))
+
+
+func _inventory_ability_slot_text(slot_data: Dictionary) -> String:
+	var ability_paths := slot_data.get("ability_paths", {}) as Dictionary
+	if ability_paths == null or ability_paths.is_empty():
+		return ""
+
+	var slots := PackedStringArray()
+	for raw_slot_id in ability_paths.keys():
+		var slot_id := String(raw_slot_id).strip_edges().to_upper()
+		if not slot_id.is_empty():
+			slots.append(slot_id)
+	slots.sort()
+	return ", ".join(slots)
+
+
+func _equipment_slot_label(slot_id: String) -> String:
+	for definition in INVENTORY_EQUIPMENT_SLOTS:
+		var definition_data := definition as Dictionary
+		if String(definition_data.get("id", "")) == slot_id:
+			return String(definition_data.get("label", _format_slot_label(slot_id)))
+
+	return _format_slot_label(slot_id)
+
+
+func _inventory_slot_style(background: Color, is_hovered: bool, is_selected: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = background
+	style.border_color = Color(0.86, 0.72, 0.25, 1.0) if is_selected else Color(0.31, 0.34, 0.28, 1.0)
+	if is_hovered and not is_selected:
+		style.border_color = Color(0.58, 0.62, 0.48, 1.0)
+	style.set_border_width_all(2 if is_selected else 1)
+	style.set_corner_radius_all(6)
+	return style
 
 
 func _slot_display_name(slot_data: Dictionary) -> String:

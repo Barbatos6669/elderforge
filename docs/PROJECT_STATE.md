@@ -39,7 +39,9 @@ choice, or playtest flow changes.
   (`Q`, `W`, `E`, `R`, `D`, `F`, `1`, `2`). Weapons own Q/W/E, chest armor owns
   R, helmets own D, boots own F, and weapon passives do not consume a cast key.
 - Master menu: top status strip, main category buttons, hover-selected submenus,
-  recent-entry timeline, and detail pages for category content.
+  recent-entry timeline, and detail pages for category content. The Inventory
+  detail page now reads `PlayerInventory` directly for bag slots, equipped gear,
+  carried weight, currency, and selected item details.
 - Crafting menu: reads from `scripts/crafting/crafting_recipe_catalog.gd` and
   shows craftable items, ingredients, and lore/details in the standard
   three-panel layout.
@@ -91,6 +93,9 @@ choice, or playtest flow changes.
 - Added the shared three-by-three gameplay HUD contract. Persistent widgets now
   declare a stable zone, clip to its bounds, and reflow at compact resolutions
   to reduce overlap.
+- Moved the fullscreen master menu Inventory page beyond placeholder text. It
+  now renders a real bag-slot grid, equipment-slot grid, currency/weight
+  readouts, and selected-item details from `PlayerInventory`.
 - Expanded the equipment ability HUD to eight stable circular slots. Equipped
   items bind through one canonical ownership contract: weapon Q/W/E, chest R,
   helmet D, boots F, plus two future utility placeholders. The sword supplies Q,
