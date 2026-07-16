@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="EquipmentAnimationProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/animation/equipment_animation_profile.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+profile_id = "one_handed_sword"
+idle_animation_name_override = &"Sword_Idle"
+move_pose_animation_name = &"Sword_Idle"
+move_pose_bone_names = PackedStringArray("clavicle_r", "upperarm_r", "lowerarm_r", "hand_r")
+move_pose_blend = 0.86
+basic_attack_animation_scene_path = "res://assets/animations/universal_animation_library_1/UAL1_Standard.glb"
+basic_attack_animation_name = &"Sword_Attack"
+basic_attack_impact_fraction = 0.49
+fit_basic_attack_animation_to_cycle = true

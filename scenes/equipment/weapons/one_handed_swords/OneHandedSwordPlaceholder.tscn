@@ -1,0 +1,76 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/equipment/tier_tinted_equipment.gd" id="1_tier_tinted"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_blade"]
+albedo_color = Color(0.72, 0.74, 0.77, 1)
+metallic = 0.35
+roughness = 0.34
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_guard"]
+albedo_color = Color(0.24, 0.2, 0.12, 1)
+metallic = 0.48
+roughness = 0.38
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_grip"]
+albedo_color = Color(0.18, 0.075, 0.035, 1)
+roughness = 0.82
+
+[sub_resource type="BoxMesh" id="BoxMesh_blade"]
+size = Vector3(0.12, 0.88, 0.035)
+
+[sub_resource type="BoxMesh" id="BoxMesh_blade_tip"]
+size = Vector3(0.06, 0.17, 0.035)
+
+[sub_resource type="BoxMesh" id="BoxMesh_guard"]
+size = Vector3(0.44, 0.065, 0.085)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_grip"]
+top_radius = 0.055
+bottom_radius = 0.055
+height = 0.34
+radial_segments = 8
+rings = 1
+
+[sub_resource type="SphereMesh" id="SphereMesh_pommel"]
+radius = 0.085
+height = 0.15
+radial_segments = 8
+rings = 4
+
+[node name="OneHandedSwordPlaceholder" type="Node3D"]
+script = ExtResource("1_tier_tinted")
+tinted_mesh_names = PackedStringArray("Blade", "BladeTip")
+
+[node name="GripPoint" type="Marker3D" parent="."]
+
+[node name="HitPoint" type="Marker3D" parent="."]
+position = Vector3(0, 1.14, 0)
+
+[node name="Visuals" type="Node3D" parent="."]
+
+[node name="Blade" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 0.55, 0)
+mesh = SubResource("BoxMesh_blade")
+surface_material_override/0 = SubResource("StandardMaterial3D_blade")
+
+[node name="BladeTip" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 1.04, 0)
+rotation = Vector3(0, 0, 0.785398)
+mesh = SubResource("BoxMesh_blade_tip")
+surface_material_override/0 = SubResource("StandardMaterial3D_blade")
+
+[node name="Guard" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, 0.085, 0)
+mesh = SubResource("BoxMesh_guard")
+surface_material_override/0 = SubResource("StandardMaterial3D_guard")
+
+[node name="Grip" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, -0.12, 0)
+mesh = SubResource("CylinderMesh_grip")
+surface_material_override/0 = SubResource("StandardMaterial3D_grip")
+
+[node name="Pommel" type="MeshInstance3D" parent="Visuals"]
+position = Vector3(0, -0.34, 0)
+mesh = SubResource("SphereMesh_pommel")
+surface_material_override/0 = SubResource("StandardMaterial3D_guard")

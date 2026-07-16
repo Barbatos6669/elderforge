@@ -14,5 +14,12 @@ weight_per_tier = 0.3
 usage_text = "one-handed melee combat, weapon crafting, and early combat prototypes"
 max_stack = 1
 equip_slot = "main_hand"
-equipment_scene_path_template = ""
-equipment_attachment_profile_path = ""
+equipment_scene_path_template = "res://scenes/equipment/weapons/one_handed_swords/OneHandedSwordPlaceholder.tscn"
+equipment_attachment_profile_path = "res://assets/models/equipment/attachments/one_handed_sword_main_hand.tres"
+equipment_animation_profile_path_template = "res://assets/animations/equipment/one_handed_sword_animation_profile.tres"
+ability_path_templates = {
+"q": "res://assets/combat/abilities/one_handed_sword_q.tres"
+}
+stat_modifiers = {
+"auto_attack_damage": 20.0
+}
