@@ -15,6 +15,7 @@ const EquipmentSlotIconScript := preload("res://scripts/ui/inventory/equipment_s
 const InventorySlotButtonScript := preload("res://scripts/ui/inventory/inventory_slot_button.gd")
 const EquipmentSlotButtonScript := preload("res://scripts/ui/inventory/equipment_slot_button.gd")
 const WORLD_INPUT_BLOCKER_GROUP := "blocking_world_input"
+const SLOT_DRAG_TYPE := "elderforge_inventory_slot"
 const EQUIPMENT_DRAG_TYPE := "elderforge_equipment_slot"
 
 const BUTTONS := [
@@ -1850,9 +1851,15 @@ func _on_inventory_equipment_slot_pressed(slot_id: String) -> void:
 	_update_detail_view()
 
 
-## Fullscreen bag slots currently act as drop targets for equipped gear.
-func get_slot_drag_data(_slot_index: int) -> Variant:
-	return null
+## Returns drag payload for a filled fullscreen bag slot.
+func get_slot_drag_data(slot_index: int) -> Variant:
+	if _inventory_slot_at(slot_index).is_empty():
+		return null
+
+	return {
+		"type": SLOT_DRAG_TYPE,
+		"source_index": slot_index,
+	}
 
 
 func create_slot_drag_preview(slot_index: int) -> Control:
@@ -1889,7 +1896,7 @@ func drop_slot_data(target_index: int, data: Variant) -> void:
 	_update_detail_view()
 
 
-## Equipped slots are drag sources; other equipment-slot drops remain disabled.
+## Returns drag payload for a filled fullscreen equipment slot.
 func get_gear_slot_drag_data(slot_id: String) -> Variant:
 	if _inventory_equipped_slot_at(slot_id).is_empty():
 		return null
@@ -1904,12 +1911,34 @@ func create_gear_slot_drag_preview(slot_id: String) -> Control:
 	return _create_inventory_drag_preview(_inventory_equipped_slot_at(slot_id), "DraggedGearIcon")
 
 
-func can_drop_gear_slot_data(_slot_id: String, _data: Variant) -> bool:
-	return false
+func can_drop_gear_slot_data(slot_id: String, data: Variant) -> bool:
+	if _inventory == null or slot_id.is_empty() or typeof(data) != TYPE_DICTIONARY:
+		return false
+
+	var drag_data := data as Dictionary
+	if String(drag_data.get("type", "")) != SLOT_DRAG_TYPE:
+		return false
+
+	var source_index := int(drag_data.get("source_index", -1))
+	return (
+		_inventory.has_method("can_equip_from_slot")
+		and bool(_inventory.call("can_equip_from_slot", source_index, slot_id))
+	)
 
 
-func drop_gear_slot_data(_slot_id: String, _data: Variant) -> void:
-	pass
+func drop_gear_slot_data(slot_id: String, data: Variant) -> void:
+	if not can_drop_gear_slot_data(slot_id, data):
+		return
+
+	var source_index := int((data as Dictionary).get("source_index", -1))
+	_selected_inventory_slot_index = -1
+	_selected_inventory_equipment_slot_id = slot_id
+	if not bool(_inventory.call("equip_from_slot", source_index, slot_id)):
+		_selected_inventory_slot_index = source_index
+		_selected_inventory_equipment_slot_id = ""
+		return
+
+	_update_detail_view()
 
 
 func _create_inventory_drag_preview(slot_data: Dictionary, icon_name: String) -> Control:

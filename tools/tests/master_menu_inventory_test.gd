@@ -42,6 +42,8 @@ func _run_test() -> void:
 		return
 	if not await _dragging_helmet_to_bag_unequips(menu, inventory):
 		return
+	if not await _dragging_bag_helmet_to_head_equips(menu, inventory):
+		return
 
 	fixture.queue_free()
 	await process_frame
@@ -160,6 +162,51 @@ func _dragging_helmet_to_bag_unequips(menu: MasterMenu, inventory: PlayerInvento
 	var description := menu.find_child("SelectedItemDescription", true, false) as Label
 	if description == null or not description.text.to_lower().contains("protective shield"):
 		_fail("The moved helmet should remain selected in the bag inspector.")
+		return false
+
+	return true
+
+
+func _dragging_bag_helmet_to_head_equips(menu: MasterMenu, inventory: PlayerInventory) -> bool:
+	var source_slot := menu.find_child("BagSlot03", true, false) as Button
+	var head_slot := menu.find_child("HeadEquipmentSlot", true, false) as Button
+	var chest_slot := menu.find_child("ChestEquipmentSlot", true, false) as Button
+	if source_slot == null or head_slot == null or chest_slot == null:
+		_fail("Equip drag test requires the bag, helmet, and chest slots.")
+		return false
+
+	var drag_data: Variant = menu.call("get_slot_drag_data", 2)
+	if drag_data == null:
+		_fail("A bagged helmet should provide drag data.")
+		return false
+	if bool(chest_slot.call("_can_drop_data", Vector2.ZERO, drag_data)):
+		_fail("A helmet should not be accepted by the chest equipment slot.")
+		return false
+	if not bool(head_slot.call("_can_drop_data", Vector2.ZERO, drag_data)):
+		_fail("The helmet equipment slot should accept a bagged helmet.")
+		return false
+
+	head_slot.call("_drop_data", Vector2.ZERO, drag_data)
+	await process_frame
+	await process_frame
+
+	if not inventory.get_display_slots()[2].is_empty():
+		_fail("Equipping a bag item should clear its source bag slot.")
+		return false
+
+	var equipped_head := inventory.get_equipped_slot("head")
+	if String(equipped_head.get("id", "")) != "leather_helmet_t1":
+		_fail("Dropping the helmet onto its equipment slot should equip it.")
+		return false
+
+	var refreshed_head := menu.find_child("HeadEquipmentSlot", true, false) as Button
+	if refreshed_head == null or not refreshed_head.tooltip_text.contains("Wolfhide Hood I"):
+		_fail("The fullscreen equipment slot should refresh after equipping gear.")
+		return false
+
+	var description := menu.find_child("SelectedItemDescription", true, false) as Label
+	if description == null or not description.text.to_lower().contains("protective shield"):
+		_fail("The equipped helmet should remain selected in the inspector.")
 		return false
 
 	return true
