@@ -11,6 +11,8 @@ Files:
   the ground.
 - `directional_ability_indicator.gd`: reusable gold ground disc and arrow used
   to preview a directional ability's heading and travel distance.
+- `ability_telegraph_3d.gd`: reusable hostile red ground warnings for mob
+  ability wind-ups and movement paths.
 - `damage_immunity_bubble_3d.gd`: listens to `CombatHealth` and displays a
   lightweight shield sphere while timed damage immunity or a finite absorb
   shield is active.

@@ -10,6 +10,7 @@ const AttackTimelineScript := preload("res://scripts/combat/attack_timeline.gd")
 const DamageRequestScript := preload("res://scripts/combat/damage_request.gd")
 const DamageResolverScript := preload("res://scripts/combat/damage_resolver.gd")
 const AbilitySlots := preload("res://scripts/combat/abilities/equipment_ability_slots.gd")
+const AbilityTelegraphScript := preload("res://scripts/effects/ability_telegraph_3d.gd")
 const TARGETING_SELECTED := "selected_target"
 const TARGETING_DIRECTION := "direction"
 const TARGETING_SELF := "self"
@@ -84,6 +85,10 @@ signal respawned
 ## Dodge rolls become defensive at low health and offensive as a gap closer.
 @export_range(0.05, 1.0, 0.05) var dodge_ability_health_ratio := 0.45
 @export_range(0.1, 5.0, 0.05) var defensive_dodge_distance := 1.4
+## Shows hostile ground warnings while mob equipment abilities are winding up.
+@export var show_hostile_ability_telegraphs := true
+## Radius used for selected-target warnings when an ability has no wider hint.
+@export_range(0.2, 5.0, 0.05) var target_ability_telegraph_radius := 1.1
 
 @export_group("Death")
 ## Minimum time the defeated body stays visible before hiding for respawn.
@@ -130,6 +135,7 @@ var _channel_slot: StringName = &""
 var _channel_definition: Resource
 var _channel_remaining_seconds := 0.0
 var _channel_tick_count := 0
+var _active_ability_telegraph: Node3D
 
 
 func _ready() -> void:
@@ -675,6 +681,7 @@ func _begin_target_ability(slot_id: StringName, target: Node, definition: Resour
 	_ability_cast_target = target
 	_ability_cast_definition = definition
 	_start_ability_cooldown(definition)
+	_show_target_ability_telegraph(target, definition, _telegraph_warning_duration(definition, cast_duration))
 	_play_ability_animation(definition, cast_duration)
 	ability_cast_started.emit(slot_id, target, definition)
 	attack_started.emit(target, 1.0 / cast_duration)
@@ -718,6 +725,7 @@ func _begin_dodge_ability(slot_id: StringName, definition: Resource, direction: 
 	_dodge_direction = safe_direction
 	_dodge_remaining_seconds = duration
 	_dodge_speed = distance / duration
+	_show_direction_ability_telegraph(definition, safe_direction, duration)
 	ability_cast_started.emit(slot_id, _target, definition)
 	return true
 
@@ -740,6 +748,7 @@ func _update_dodge_ability(delta: float) -> bool:
 		_dodge_definition = null
 		_dodge_direction = Vector3.ZERO
 		_dodge_speed = 0.0
+		_clear_ability_telegraph()
 		ability_cast_finished.emit(finished_slot)
 	return true
 
@@ -774,6 +783,7 @@ func _update_channel_ability(delta: float) -> bool:
 
 func _resolve_ability_impact() -> void:
 	var impact_target := _ability_cast_target
+	_clear_ability_telegraph()
 	if not _can_complete_current_ability():
 		ability_cast_interrupted.emit(_ability_cast_slot, impact_target, "Target left ability range")
 		return
@@ -801,6 +811,7 @@ func _finish_current_ability() -> void:
 	_ability_cast_slot = &""
 	_ability_cast_target = null
 	_ability_cast_definition = null
+	_clear_ability_telegraph()
 	ability_cast_finished.emit(finished_slot)
 
 
@@ -809,6 +820,7 @@ func _interrupt_current_ability(reason: String) -> void:
 		return
 	var interrupted_slot := _ability_cast_slot
 	var interrupted_target := _ability_cast_target
+	_clear_ability_telegraph()
 	ability_cast_interrupted.emit(interrupted_slot, interrupted_target, reason)
 
 
@@ -836,6 +848,7 @@ func _reset_active_ability_state() -> void:
 	_dodge_direction = Vector3.ZERO
 	_dodge_remaining_seconds = 0.0
 	_dodge_speed = 0.0
+	_clear_ability_telegraph()
 	_clear_channel_state()
 
 
@@ -950,6 +963,84 @@ func _play_ability_animation(definition: Resource, duration_seconds: float) -> v
 		)
 	elif _animation.has_method("play_attack"):
 		_animation.call("play_attack", 1.0 / maxf(duration_seconds, 0.01))
+
+
+func _show_target_ability_telegraph(target: Node, definition: Resource, duration_seconds: float) -> void:
+	if not show_hostile_ability_telegraphs:
+		return
+
+	var target_3d := target as Node3D
+	if target_3d == null:
+		return
+
+	var telegraph := _create_ability_telegraph()
+	if telegraph == null:
+		return
+
+	var radius := maxf(
+		target_ability_telegraph_radius,
+		maxf(float(definition.get("indicator_width")) * 0.5, 0.0) if definition != null else 0.0
+	)
+	telegraph.call("show_following_circle", target_3d, radius, duration_seconds)
+
+
+func _show_direction_ability_telegraph(definition: Resource, direction: Vector3, duration_seconds: float) -> void:
+	if not show_hostile_ability_telegraphs or _body == null or definition == null:
+		return
+
+	var telegraph := _create_ability_telegraph()
+	if telegraph == null:
+		return
+
+	telegraph.call(
+		"show_direction",
+		_body.global_position,
+		direction,
+		maxf(float(definition.get("movement_distance")), 0.4),
+		maxf(float(definition.get("indicator_width")), 0.2),
+		duration_seconds
+	)
+
+
+func _telegraph_warning_duration(definition: Resource, cast_duration: float) -> float:
+	var safe_cast_duration := maxf(cast_duration, 0.05)
+	if _execution_type(definition) == EXECUTION_DAMAGE:
+		var impact_fraction := clampf(float(definition.get("impact_fraction")), 0.0, 1.0)
+		return maxf(safe_cast_duration * impact_fraction, minf(safe_cast_duration, 0.2))
+
+	return safe_cast_duration
+
+
+func _create_ability_telegraph() -> Node3D:
+	_clear_ability_telegraph()
+	var parent := _telegraph_parent()
+	if parent == null:
+		return null
+
+	var telegraph := AbilityTelegraphScript.new() as Node3D
+	telegraph.name = "HostileAbilityTelegraph"
+	parent.add_child(telegraph)
+	_active_ability_telegraph = telegraph
+	return telegraph
+
+
+func _clear_ability_telegraph() -> void:
+	if _active_ability_telegraph == null:
+		return
+	if is_instance_valid(_active_ability_telegraph):
+		if _active_ability_telegraph.has_method("hide_telegraph"):
+			_active_ability_telegraph.call("hide_telegraph")
+		_active_ability_telegraph.queue_free()
+	_active_ability_telegraph = null
+
+
+func _telegraph_parent() -> Node:
+	if _body != null and _body.get_parent() != null:
+		return _body.get_parent()
+	var tree := get_tree()
+	if tree != null:
+		return tree.current_scene
+	return null
 
 
 func _ability_damage(definition: Resource) -> float:
