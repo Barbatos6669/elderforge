@@ -1,0 +1,115 @@
+[gd_scene format=3 uid="uid://cvfnrcexe16dt"]
+
+[ext_resource type="PackedScene" uid="uid://eyv46h3mu4rj" path="res://scenes/levels/PlayableLevelShell.tscn" id="1_shell"]
+[ext_resource type="PackedScene" path="res://scenes/entities/EnemyMob.tscn" id="2_enemy"]
+[ext_resource type="PackedScene" path="res://scenes/debug/combat/CombatTrainingTarget.tscn" id="3_training_target"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_arena_floor"]
+albedo_color = Color(0.105, 0.125, 0.115, 1)
+roughness = 0.95
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_arena_floor"]
+material = SubResource("StandardMaterial3D_arena_floor")
+size = Vector2(36, 28)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_arena_wall"]
+albedo_color = Color(0.19, 0.17, 0.14, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="BoxMesh_wall_ns"]
+material = SubResource("StandardMaterial3D_arena_wall")
+size = Vector3(36.5, 1, 0.5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_wall_ew"]
+material = SubResource("StandardMaterial3D_arena_wall")
+size = Vector3(0.5, 1, 28.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wall_ns"]
+size = Vector3(36.5, 2, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wall_ew"]
+size = Vector3(0.5, 2, 28.5)
+
+[node name="BattleTestArena" unique_id=1862967205 instance=ExtResource("1_shell")]
+
+[node name="DebugGrid" parent="World" parent_id_path=PackedInt32Array(1649046816) index="0" unique_id=1382919682]
+visible = true
+half_size = 18
+
+[node name="PlayerSpawn" parent="World" parent_id_path=PackedInt32Array(1649046816) index="3" unique_id=601006216]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 9)
+spawn_id = "battle_test_arena_spawn"
+show_debug_visuals = false
+
+[node name="Player" parent="World" parent_id_path=PackedInt32Array(1649046816) index="4" unique_id=650309786]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 9)
+
+[node name="ArenaFloor" type="MeshInstance3D" parent="World/LevelContent/GroundDress" parent_id_path=PackedInt32Array(287854674) index="0" unique_id=1322653200]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.012, 0)
+mesh = SubResource("PlaneMesh_arena_floor")
+
+[node name="ArenaBoundary" type="StaticBody3D" parent="World/LevelContent/Walls" parent_id_path=PackedInt32Array(1808398126) index="0" unique_id=1704427175]
+collision_mask = 0
+
+[node name="NorthVisual" type="MeshInstance3D" parent="World/LevelContent/Walls/ArenaBoundary" index="0" unique_id=883993977]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, -14.25)
+mesh = SubResource("BoxMesh_wall_ns")
+
+[node name="SouthVisual" type="MeshInstance3D" parent="World/LevelContent/Walls/ArenaBoundary" index="1" unique_id=1673222948]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 14.25)
+mesh = SubResource("BoxMesh_wall_ns")
+
+[node name="WestVisual" type="MeshInstance3D" parent="World/LevelContent/Walls/ArenaBoundary" index="2" unique_id=839764620]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18.25, 0.5, 0)
+mesh = SubResource("BoxMesh_wall_ew")
+
+[node name="EastVisual" type="MeshInstance3D" parent="World/LevelContent/Walls/ArenaBoundary" index="3" unique_id=2025235529]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.25, 0.5, 0)
+mesh = SubResource("BoxMesh_wall_ew")
+
+[node name="NorthCollision" type="CollisionShape3D" parent="World/LevelContent/Walls/ArenaBoundary" index="4" unique_id=477320425]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -14.25)
+shape = SubResource("BoxShape3D_wall_ns")
+
+[node name="SouthCollision" type="CollisionShape3D" parent="World/LevelContent/Walls/ArenaBoundary" index="5" unique_id=1616853991]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 14.25)
+shape = SubResource("BoxShape3D_wall_ns")
+
+[node name="WestCollision" type="CollisionShape3D" parent="World/LevelContent/Walls/ArenaBoundary" index="6" unique_id=1021253928]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18.25, 1, 0)
+shape = SubResource("BoxShape3D_wall_ew")
+
+[node name="EastCollision" type="CollisionShape3D" parent="World/LevelContent/Walls/ArenaBoundary" index="7" unique_id=701405331]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.25, 1, 0)
+shape = SubResource("BoxShape3D_wall_ew")
+
+[node name="LeftTrainingTarget" parent="World/LevelContent/Mobs" parent_id_path=PackedInt32Array(1514346223) index="0" unique_id=536758034 instance=ExtResource("3_training_target")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 1)
+
+[node name="CenterTrainingTarget" parent="World/LevelContent/Mobs" parent_id_path=PackedInt32Array(1514346223) index="1" unique_id=1921826609 instance=ExtResource("3_training_target")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1)
+
+[node name="RightTrainingTarget" parent="World/LevelContent/Mobs" parent_id_path=PackedInt32Array(1514346223) index="2" unique_id=1206241471 instance=ExtResource("3_training_target")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 1)
+
+[node name="HeavyRaider" parent="World/LevelContent/Mobs" parent_id_path=PackedInt32Array(1514346223) index="3" unique_id=2078959874 instance=ExtResource("2_enemy")]
+transform = Transform3D(1.12, 0, 0, 0, 1.12, 0, 0, 0, 1.12, -11, 0, -8)
+
+[node name="StandardRaider" parent="World/LevelContent/Mobs" parent_id_path=PackedInt32Array(1514346223) index="4" unique_id=1668829225 instance=ExtResource("2_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -9)
+
+[node name="SwiftRaider" parent="World/LevelContent/Mobs" parent_id_path=PackedInt32Array(1514346223) index="5" unique_id=1532366594 instance=ExtResource("2_enemy")]
+transform = Transform3D(0.92, 0, 0, 0, 0.92, 0, 0, 0, 0.92, 11, 0, -8)
+
+[node name="DayNightCycle" parent="World/LevelContent/Lighting" parent_id_path=PackedInt32Array(1716202818) index="1"]
+process_mode = 4
+
+[node name="PlayerInventory" parent="." index="3" unique_id=723058141]
+debug_main_hand_item_id = "one_handed_sword_t1"
+debug_equipped_item_ids = PackedStringArray("leather_armor_t1", "leather_helmet_t1", "leather_boots_t1")
+persist_to_player_database = false
+
+[node name="WorldTimeHud" parent="." index="6"]
+
+[node name="HudMap" parent="." index="7"]
+map_size_meters = Vector2(48, 48)

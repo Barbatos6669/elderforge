@@ -1,0 +1,44 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/entities/EnemyMob.tscn" id="1_enemy"]
+
+[node name="CombatTrainingTarget" instance=ExtResource("1_enemy")]
+
+[node name="Selectable" parent="." index="1"]
+display_name = "Training Target"
+
+[node name="Health" parent="." index="4"]
+max_health = 1000.0
+current_health = 1000.0
+health_regeneration_per_second = 5.0
+
+[node name="Stats" parent="." index="6"]
+max_health = 1000.0
+health_regeneration = 5.0
+auto_attack_damage = 0.0
+auto_attack_speed = 1.0
+move_speed = 0.0
+
+[node name="TraitAllocator" parent="." index="7"]
+allocate_on_ready = false
+
+[node name="VisualStyle" parent="." index="9"]
+body_color = Color(0.82, 0.62, 0.34, 1)
+hair_color = Color(0.2, 0.12, 0.06, 1)
+outfit_style = "starter_peasant"
+
+[node name="AI" parent="." index="12"]
+process_mode = 4
+aggro_radius = 0.5
+movement_speed = 0.1
+attack_damage = 0.0
+loot_dropper_path = NodePath("")
+minimum_death_visible_time = 0.8
+respawn_delay = 3.0
+
+[node name="LootDropper" parent="." index="13"]
+silver_min = 0
+silver_max = 0
+guaranteed_item_id = ""
+guaranteed_item_min = 0
+guaranteed_item_max = 0
