@@ -57,7 +57,7 @@ signal respawned
 ## Distance from the mob where players first pull aggro.
 @export_range(0.5, 30.0, 0.1) var aggro_radius := 4.0
 ## Maximum distance from the home point before the mob drops aggro and returns.
-@export_range(1.0, 60.0, 0.1) var leash_radius := 1.0
+@export_range(1.0, 60.0, 0.1) var leash_radius := 1.2
 ## Distance from home where the mob stops returning and idles.
 @export_range(0.05, 2.0, 0.01) var home_arrival_distance := 0.18
 ## Shows the aggro radius as a debug ground ring.
