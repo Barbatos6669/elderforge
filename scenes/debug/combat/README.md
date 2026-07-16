@@ -15,6 +15,8 @@ project's main scene.
 - The left hostile is slow, durable, and heavy-hitting.
 - The center hostile represents the current baseline enemy.
 - The right hostile moves and attacks quickly but has less health.
+- The side `Ability Raider` equips the starter sword, chest, helmet, and boots
+  so mob equipment abilities can be tested in a live fight.
 - Hostiles have a short five-second respawn and produce no loot, keeping the
   arena reusable and uncluttered.
 

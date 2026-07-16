@@ -101,6 +101,33 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -9)
 [node name="SwiftRaider" parent="World/LevelContent/Mobs" parent_id_path=PackedInt32Array(1514346223) index="5" unique_id=1532366594 instance=ExtResource("2_enemy")]
 transform = Transform3D(0.92, 0, 0, 0, 0.92, 0, 0, 0, 0.92, 11, 0, -8)
 
+[node name="AbilityRaider" parent="World/LevelContent/Mobs" parent_id_path=PackedInt32Array(1514346223) index="6" instance=ExtResource("2_enemy")]
+transform = Transform3D(1.02, 0, 0, 0, 1.02, 0, 0, 0, 1.02, 12, 0, 4)
+
+[node name="Selectable" parent="World/LevelContent/Mobs/AbilityRaider" index="1"]
+display_name = "Ability Raider"
+
+[node name="Health" parent="World/LevelContent/Mobs/AbilityRaider" index="4"]
+max_health = 180.0
+current_health = 180.0
+
+[node name="EquipmentLoadout" parent="World/LevelContent/Mobs/AbilityRaider" index="6"]
+equipped_item_ids = PackedStringArray("one_handed_sword_t1", "leather_armor_t1", "leather_helmet_t1", "leather_boots_t1")
+
+[node name="Stats" parent="World/LevelContent/Mobs/AbilityRaider" index="8"]
+max_health = 180.0
+auto_attack_damage = 12.0
+auto_attack_speed = 0.85
+move_speed = 2.9
+
+[node name="AI" parent="World/LevelContent/Mobs/AbilityRaider" index="14"]
+aggro_radius = 7.0
+leash_radius = 14.0
+attack_damage = 12.0
+attack_speed = 0.85
+loot_dropper_path = NodePath("")
+respawn_delay = 5.0
+
 [node name="DayNightCycle" parent="World/LevelContent/Lighting" parent_id_path=PackedInt32Array(1716202818) index="1"]
 process_mode = 4
 
