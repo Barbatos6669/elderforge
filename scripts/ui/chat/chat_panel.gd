@@ -7,9 +7,10 @@ class_name ChatPanel
 extends CanvasLayer
 
 const UiStyle := preload("res://scripts/ui/elderforge_ui_style.gd")
+const HudGrid := preload("res://scripts/ui/hud/hud_grid_layout.gd")
 const WORLD_INPUT_BLOCKER_GROUP := "blocking_world_input"
-const EXPANDED_TAB_RECT := Rect2(16.0, -274.0, 62.0, 28.0)
-const COLLAPSED_TAB_RECT := Rect2(8.0, -44.0, 62.0, 28.0)
+const PANEL_MAX_SIZE := Vector2(440.0, 228.0)
+const TAB_SIZE := Vector2(62.0, 28.0)
 
 @export var network_manager_path: NodePath = NodePath("../Network")
 @export_range(20, 250, 1) var max_visible_lines := 80
@@ -70,15 +71,14 @@ func _build_ui() -> void:
 	_root = Control.new()
 	_root.name = "ChatRoot"
 	_root.anchor_left = 0.0
-	_root.anchor_top = 1.0
+	_root.anchor_top = 0.0
 	_root.anchor_right = 0.0
-	_root.anchor_bottom = 1.0
-	_root.offset_left = 16.0
-	_root.offset_top = -246.0
-	_root.offset_right = 456.0
-	_root.offset_bottom = -18.0
+	_root.anchor_bottom = 0.0
+	_root.clip_contents = true
 	_root.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(_root)
+	_layout_panel()
+	_connect_viewport_resize()
 
 	_frame = PanelContainer.new()
 	_frame.name = "ChatFrame"
@@ -121,9 +121,9 @@ func _build_ui() -> void:
 	_toggle_tab = Button.new()
 	_toggle_tab.name = "ChatTab"
 	_toggle_tab.anchor_left = 0.0
-	_toggle_tab.anchor_top = 1.0
+	_toggle_tab.anchor_top = 0.0
 	_toggle_tab.anchor_right = 0.0
-	_toggle_tab.anchor_bottom = 1.0
+	_toggle_tab.anchor_bottom = 0.0
 	_toggle_tab.focus_mode = Control.FOCUS_NONE
 	_toggle_tab.mouse_filter = Control.MOUSE_FILTER_STOP
 	_toggle_tab.add_theme_stylebox_override("normal", _tab_style(false))
@@ -139,6 +139,30 @@ func _build_ui() -> void:
 	_auto_hide_timer.timeout.connect(_on_auto_hide_timeout)
 	add_child(_auto_hide_timer)
 
+	_refresh_toggle_tab()
+
+
+func _connect_viewport_resize() -> void:
+	var viewport := get_viewport()
+	if viewport == null:
+		return
+
+	var callback := Callable(self, "_layout_panel")
+	if not viewport.size_changed.is_connected(callback):
+		viewport.size_changed.connect(callback)
+
+
+func _layout_panel() -> void:
+	if _root == null:
+		return
+
+	var cell_rect := _bottom_left_cell_rect()
+	var panel_size := Vector2(
+		maxf(minf(PANEL_MAX_SIZE.x, cell_rect.size.x), 1.0),
+		maxf(minf(PANEL_MAX_SIZE.y, cell_rect.size.y), 1.0)
+	)
+	var panel_position := Vector2(cell_rect.position.x, cell_rect.end.y - panel_size.y)
+	_apply_rect(_root, Rect2(panel_position, panel_size))
 	_refresh_toggle_tab()
 
 
@@ -287,11 +311,27 @@ func _refresh_toggle_tab() -> void:
 		return
 
 	_toggle_tab.text = "Hide" if _is_expanded else "Chat"
-	var tab_rect := EXPANDED_TAB_RECT if _is_expanded else COLLAPSED_TAB_RECT
-	_toggle_tab.offset_left = tab_rect.position.x
-	_toggle_tab.offset_top = tab_rect.position.y
-	_toggle_tab.offset_right = tab_rect.position.x + tab_rect.size.x
-	_toggle_tab.offset_bottom = tab_rect.position.y + tab_rect.size.y
+	var cell_rect := _bottom_left_cell_rect()
+	var tab_position := (
+		Vector2(_root.position.x, _root.position.y - TAB_SIZE.y)
+		if _is_expanded and _root != null
+		else Vector2(cell_rect.position.x, cell_rect.end.y - TAB_SIZE.y)
+	)
+	_apply_rect(_toggle_tab, Rect2(tab_position, TAB_SIZE))
+
+
+func _bottom_left_cell_rect() -> Rect2:
+	return HudGrid.rect_for_viewport(
+		get_viewport().get_visible_rect().size,
+		HudGrid.Zone.BOTTOM_LEFT
+	)
+
+
+func _apply_rect(control: Control, rect: Rect2) -> void:
+	control.offset_left = rect.position.x
+	control.offset_top = rect.position.y
+	control.offset_right = rect.position.x + rect.size.x
+	control.offset_bottom = rect.position.y + rect.size.y
 
 
 func _schedule_auto_hide() -> void:
