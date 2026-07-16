@@ -6,6 +6,8 @@ class_name PlayerAutoAttack
 extends Node
 
 const AttackTimelineScript := preload("res://scripts/combat/attack_timeline.gd")
+const DamageRequestScript := preload("res://scripts/combat/damage_request.gd")
+const DamageResolverScript := preload("res://scripts/combat/damage_resolver.gd")
 
 ## Emitted when a real swing begins, after the player has reached attack range.
 signal attack_started(target: Node)
@@ -37,6 +39,7 @@ signal attack_stopped
 var _target: Node
 var _swing_target: Node
 var _timeline = AttackTimelineScript.new()
+var _damage_resolver = DamageResolverScript.new()
 
 
 ## Engages a valid target. The first swing begins after moving into range.
@@ -228,11 +231,18 @@ func _resolve_attack_impact(attacker: Node3D) -> void:
 		attack_interrupted.emit(impact_target)
 		return
 
-	var applied_damage: float = health.call("apply_damage", _attack_damage(attacker))
-	if applied_damage <= 0.0:
+	var request := DamageRequestScript.create(
+		attacker,
+		impact_target,
+		_attack_damage(attacker),
+		DamageRequestScript.TYPE_PHYSICAL,
+		health
+	)
+	var result := _damage_resolver.resolve(request)
+	if not result.was_applied():
 		return
 
-	attack_landed.emit(impact_target, applied_damage)
+	attack_landed.emit(impact_target, result.applied_damage)
 	if _is_health_defeated(health):
 		stop_attack()
 
