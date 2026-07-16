@@ -12,7 +12,10 @@ const MasterMenuTileIconScript := preload("res://scripts/ui/menu/master_menu_til
 const MasterMenuCreaturePortraitScript := preload("res://scripts/ui/menu/master_menu_creature_portrait.gd")
 const InventoryItemIconScript := preload("res://scripts/ui/inventory/inventory_item_icon.gd")
 const EquipmentSlotIconScript := preload("res://scripts/ui/inventory/equipment_slot_icon.gd")
+const InventorySlotButtonScript := preload("res://scripts/ui/inventory/inventory_slot_button.gd")
+const EquipmentSlotButtonScript := preload("res://scripts/ui/inventory/equipment_slot_button.gd")
 const WORLD_INPUT_BLOCKER_GROUP := "blocking_world_input"
+const EQUIPMENT_DRAG_TYPE := "elderforge_equipment_slot"
 
 const BUTTONS := [
 	{"id": "glossary", "label": "Glossary"},
@@ -972,7 +975,7 @@ func _build_inventory_bag_slot(slot_index: int) -> Control:
 		and _selected_inventory_slot_index == slot_index
 	)
 
-	var button := Button.new()
+	var button: Button = InventorySlotButtonScript.new()
 	button.name = "BagSlot%02d" % (slot_index + 1)
 	button.custom_minimum_size = Vector2(48.0, 48.0)
 	button.focus_mode = Control.FOCUS_NONE
@@ -983,6 +986,7 @@ func _build_inventory_bag_slot(slot_index: int) -> Control:
 	button.add_theme_color_override("font_color", UiStyle.COLOR_TEXT_PRIMARY)
 	button.add_theme_color_override("font_hover_color", Color.WHITE)
 	button.add_theme_color_override("font_pressed_color", Color.WHITE)
+	button.call("setup", self, slot_index)
 	button.pressed.connect(_on_inventory_bag_slot_pressed.bind(slot_index))
 
 	if slot_data.is_empty():
@@ -1061,7 +1065,7 @@ func _build_inventory_equipment_slot(definition: Dictionary) -> Control:
 	cell.custom_minimum_size = Vector2(82.0, 78.0)
 	cell.add_theme_constant_override("separation", 3)
 
-	var button := Button.new()
+	var button: Button = EquipmentSlotButtonScript.new()
 	button.name = "%sEquipmentSlot" % slot_id.capitalize().replace(" ", "")
 	button.custom_minimum_size = Vector2(58.0, 58.0)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -1070,6 +1074,7 @@ func _build_inventory_equipment_slot(definition: Dictionary) -> Control:
 	button.text = ""
 	button.tooltip_text = "%s: %s" % [label_text, _slot_display_name(slot_data)] if not slot_data.is_empty() else label_text
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.call("setup", self, slot_id)
 	button.pressed.connect(_on_inventory_equipment_slot_pressed.bind(slot_id))
 	cell.add_child(button)
 
@@ -1843,6 +1848,87 @@ func _on_inventory_equipment_slot_pressed(slot_id: String) -> void:
 	_selected_inventory_slot_index = -1
 	_selected_inventory_equipment_slot_id = slot_id
 	_update_detail_view()
+
+
+## Fullscreen bag slots currently act as drop targets for equipped gear.
+func get_slot_drag_data(_slot_index: int) -> Variant:
+	return null
+
+
+func create_slot_drag_preview(slot_index: int) -> Control:
+	return _create_inventory_drag_preview(_inventory_slot_at(slot_index), "DraggedBagItemIcon")
+
+
+func can_drop_slot_data(target_index: int, data: Variant) -> bool:
+	if _inventory == null or typeof(data) != TYPE_DICTIONARY:
+		return false
+
+	var drag_data := data as Dictionary
+	if String(drag_data.get("type", "")) != EQUIPMENT_DRAG_TYPE:
+		return false
+
+	var source_slot_id := String(drag_data.get("source_slot_id", ""))
+	return (
+		_inventory.has_method("can_unequip_to_slot")
+		and bool(_inventory.call("can_unequip_to_slot", source_slot_id, target_index))
+	)
+
+
+func drop_slot_data(target_index: int, data: Variant) -> void:
+	if not can_drop_slot_data(target_index, data):
+		return
+
+	var source_slot_id := String((data as Dictionary).get("source_slot_id", ""))
+	_selected_inventory_slot_index = target_index
+	_selected_inventory_equipment_slot_id = ""
+	if not bool(_inventory.call("unequip_to_slot", source_slot_id, target_index)):
+		_selected_inventory_slot_index = -1
+		_selected_inventory_equipment_slot_id = source_slot_id
+		return
+
+	_update_detail_view()
+
+
+## Equipped slots are drag sources; other equipment-slot drops remain disabled.
+func get_gear_slot_drag_data(slot_id: String) -> Variant:
+	if _inventory_equipped_slot_at(slot_id).is_empty():
+		return null
+
+	return {
+		"type": EQUIPMENT_DRAG_TYPE,
+		"source_slot_id": slot_id,
+	}
+
+
+func create_gear_slot_drag_preview(slot_id: String) -> Control:
+	return _create_inventory_drag_preview(_inventory_equipped_slot_at(slot_id), "DraggedGearIcon")
+
+
+func can_drop_gear_slot_data(_slot_id: String, _data: Variant) -> bool:
+	return false
+
+
+func drop_gear_slot_data(_slot_id: String, _data: Variant) -> void:
+	pass
+
+
+func _create_inventory_drag_preview(slot_data: Dictionary, icon_name: String) -> Control:
+	if slot_data.is_empty():
+		return null
+
+	var preview := Control.new()
+	preview.custom_minimum_size = Vector2(64.0, 64.0)
+	preview.size = Vector2(64.0, 64.0)
+	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	preview.modulate = Color(1.0, 1.0, 1.0, 0.88)
+
+	var item_icon := InventoryItemIconScript.new() as Control
+	item_icon.name = icon_name
+	item_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	item_icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	item_icon.call("set_item", slot_data)
+	preview.add_child(item_icon)
+	return preview
 
 
 func _inventory_slot_tooltip(slot_index: int, slot_data: Dictionary) -> String:

@@ -40,6 +40,8 @@ func _run_test() -> void:
 		return
 	if not await _helmet_selection_updates_inspector(menu):
 		return
+	if not await _dragging_helmet_to_bag_unequips(menu, inventory):
+		return
 
 	fixture.queue_free()
 	await process_frame
@@ -108,6 +110,56 @@ func _helmet_selection_updates_inspector(menu: MasterMenu) -> bool:
 	var spells_readout := menu.find_child("SpellsReadout", true, false) as PanelContainer
 	if spells_readout == null:
 		_fail("Spell-bearing equipment should show its active spell slots.")
+		return false
+
+	return true
+
+
+func _dragging_helmet_to_bag_unequips(menu: MasterMenu, inventory: PlayerInventory) -> bool:
+	var head_slot := menu.find_child("HeadEquipmentSlot", true, false) as Button
+	var target_slot := menu.find_child("BagSlot03", true, false) as Button
+	if head_slot == null or target_slot == null:
+		_fail("Drag test requires the equipped helmet and an empty bag slot.")
+		return false
+	if not inventory.get_display_slots()[2].is_empty():
+		_fail("The drag target bag slot should start empty.")
+		return false
+	if not String(head_slot.get_script().resource_path).ends_with("equipment_slot_button.gd"):
+		_fail("Equipped items should use the shared equipment drag control.")
+		return false
+	if not String(target_slot.get_script().resource_path).ends_with("inventory_slot_button.gd"):
+		_fail("Bag items should use the shared inventory drop control.")
+		return false
+
+	var drag_data: Variant = menu.call("get_gear_slot_drag_data", "head")
+	if drag_data == null:
+		_fail("An equipped helmet should provide drag data.")
+		return false
+	if not bool(target_slot.call("_can_drop_data", Vector2.ZERO, drag_data)):
+		_fail("An empty bag slot should accept equipped helmet drag data.")
+		return false
+
+	target_slot.call("_drop_data", Vector2.ZERO, drag_data)
+	await process_frame
+	await process_frame
+
+	if not inventory.get_equipped_slot("head").is_empty():
+		_fail("Dropping equipped gear into the bag should clear its equipment slot.")
+		return false
+
+	var moved_slot := inventory.get_display_slots()[2] as Dictionary
+	if String(moved_slot.get("id", "")) != "leather_helmet_t1":
+		_fail("The unequipped helmet should move into the target bag slot.")
+		return false
+
+	var refreshed_target := menu.find_child("BagSlot03", true, false) as Button
+	if refreshed_target == null or not refreshed_target.tooltip_text.contains("Wolfhide Hood I"):
+		_fail("The fullscreen inventory should refresh after unequipping gear.")
+		return false
+
+	var description := menu.find_child("SelectedItemDescription", true, false) as Label
+	if description == null or not description.text.to_lower().contains("protective shield"):
+		_fail("The moved helmet should remain selected in the bag inspector.")
 		return false
 
 	return true

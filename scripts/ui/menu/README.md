@@ -13,9 +13,9 @@ The master menu is the fullscreen hub for player-facing submenus.
   reads visible bag items and silver from `PlayerInventory` when available.
 - The Inventory detail page renders the bound `PlayerInventory` bag slots,
   equipped gear slots, carried weight, and currency. Selecting a bag or gear
-  slot updates the right-side item inspector. Drag/drop ownership still lives in
-  the retired companion inventory window until the fullscreen menu gets command
-  controls.
+  slot updates the right-side item inspector. Equipped gear can be dragged into
+  a compatible bag slot to unequip it. Other inventory drag/drop commands still
+  live in the retired companion inventory window.
 - Clicking a second-level button, or a main hub button without second-level
   buttons, opens detail mode. Detail mode hides the hub tiles/news, shows the
   section page, and uses the top rotary selector to cycle through Creatures,
