@@ -9,9 +9,9 @@ Files:
   players, and enemies. Emits `damage_taken` whenever damage actually lowers
   HP. Passive regeneration can be paused by combat state or future debuffs.
 - `damage_request.gd`, `damage_result.gd`, and `damage_resolver.gd`: the shared
-  damage application entry point. The first slice preserves current
-  `CombatHealth.apply_damage` behavior while giving future mitigation and
-  server-authoritative rules a single contract.
+  damage application entry point. Player auto-attacks and hostile mob melee use
+  this path while preserving current `CombatHealth.apply_damage` behavior,
+  giving future mitigation and server-authoritative rules a single contract.
 - `combat_state.gd`: reusable in-combat/out-of-combat timer. Gameplay systems
   call `notify_combat_activity()` to keep the owner in combat.
 - `resource_pool.gd`: reusable current/max resource pool for mana, energy,

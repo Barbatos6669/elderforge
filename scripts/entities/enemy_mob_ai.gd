@@ -6,6 +6,9 @@
 class_name EnemyMobAI
 extends Node
 
+const DamageRequestScript := preload("res://scripts/combat/damage_request.gd")
+const DamageResolverScript := preload("res://scripts/combat/damage_resolver.gd")
+
 signal aggro_started(target: Node)
 signal aggro_dropped
 signal attack_started(target: Node, speed_scale: float)
@@ -78,6 +81,7 @@ var _original_collision_mask := 0
 var _is_respawning := false
 var _suppress_next_loot_drop := false
 var _network_control_timeout := 0.0
+var _damage_resolver = DamageResolverScript.new()
 
 
 func _ready() -> void:
@@ -163,13 +167,20 @@ func _update_attack(delta: float) -> void:
 		_animation.call("play_attack", attack_speed_value)
 	attack_started.emit(_target, attack_speed_value)
 
-	var applied_damage := float(target_health.call("apply_damage", _attack_damage()))
-	if applied_damage <= 0.0:
+	var request := DamageRequestScript.create(
+		_body if _body != null else self,
+		_target,
+		_attack_damage(),
+		DamageRequestScript.TYPE_PHYSICAL,
+		target_health
+	)
+	var result := _damage_resolver.resolve(request)
+	if not result.was_applied():
 		_drop_aggro()
 		return
 
 	_cooldown_remaining = _attack_interval()
-	attack_landed.emit(_target, applied_damage)
+	attack_landed.emit(_target, result.applied_damage)
 
 
 func _return_home_or_idle(delta: float) -> void:
