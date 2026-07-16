@@ -200,6 +200,15 @@ func _has_debug_combat_zones(raider: Node, raider_name: String) -> bool:
 	):
 		return false
 
+	var expected_deaggro_radius := float(ai.get("aggro_radius")) * 1.125
+	var actual_deaggro_radius := float(ai.get("leash_radius"))
+	if not is_equal_approx(actual_deaggro_radius, expected_deaggro_radius):
+		_fail(
+			"%s de-aggro radius should be one eighth beyond aggro: %.3f, found %.3f."
+			% [raider_name, expected_deaggro_radius, actual_deaggro_radius]
+		)
+		return false
+
 	var expected_center := raider_3d.global_position
 	if _horizontal_distance(aggro_zone_3d.global_position, expected_center) > 0.05:
 		_fail("%s debug aggro zone should be centered on the mob." % raider_name)
