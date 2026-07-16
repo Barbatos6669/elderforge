@@ -9,6 +9,8 @@ signal chat_message_received(sender_peer_id: int, sender_name: String, channel: 
 signal chat_system_message_received(message: String)
 
 const PLAYER_SCENE := preload("res://scenes/player/Player.tscn")
+const DamageRequestScript := preload("res://scripts/combat/damage_request.gd")
+const DamageResolverScript := preload("res://scripts/combat/damage_resolver.gd")
 const WeaponAbilityCatalogScript := preload("res://scripts/combat/abilities/weapon_ability_catalog.gd")
 const DEFAULT_PORT := 24565
 const PLAYTEST_CONFIG_FILE := "playtest_server.cfg"
@@ -69,6 +71,7 @@ var _peer_account_names := {}
 var _peer_last_chat_seconds := {}
 var _peer_ability_ready_at_msec := {}
 var _authorized_peers := {}
+var _damage_resolver = DamageResolverScript.new()
 var _send_elapsed := 0.0
 var _mob_send_elapsed := 0.0
 var _is_command_line_server := false
@@ -502,12 +505,7 @@ func _server_receive_mob_damage(mob_path: String, damage: float) -> void:
 		return
 
 	var mob := _node_from_state_path(mob_path)
-	var health := _mob_health(mob)
-	if health == null or not health.has_method("apply_damage"):
-		return
-
-	var clean_damage := clampf(damage, 0.0, 500.0)
-	var applied_damage := float(health.call("apply_damage", clean_damage))
+	var applied_damage := _resolve_server_mob_damage(sender_id, mob, damage)
 	if applied_damage <= 0.0:
 		return
 
@@ -1186,6 +1184,38 @@ func _server_accept_ability_cooldown(peer_id: int, ability_id: String) -> bool:
 	ready_by_ability[ability_id] = now_msec + cooldown_msec
 	_peer_ability_ready_at_msec[peer_id] = ready_by_ability
 	return true
+
+
+func _resolve_server_mob_damage(attacker_peer_id: int, mob: Node, reported_damage: float) -> float:
+	var health := _mob_health(mob)
+	if health == null or not health.has_method("apply_damage"):
+		return 0.0
+
+	var clean_damage := clampf(reported_damage, 0.0, 500.0)
+	# TODO: Replace this trusted damage value with an attack-intent request.
+	# The server should validate attacker state, target, range, and timing before
+	# creating the DamageRequest.
+	var request := DamageRequestScript.create(
+		_server_damage_source_for_peer(attacker_peer_id),
+		mob,
+		clean_damage,
+		DamageRequestScript.TYPE_PHYSICAL,
+		health
+	)
+	var result := _damage_resolver.resolve(request)
+	return result.applied_damage if result.was_applied() else 0.0
+
+
+func _server_damage_source_for_peer(peer_id: int) -> Node:
+	if peer_id == multiplayer.get_unique_id():
+		return _get_local_player()
+
+	if _remote_players.has(peer_id):
+		var remote_player := _remote_players[peer_id] as Node
+		if remote_player != null and is_instance_valid(remote_player):
+			return remote_player
+
+	return self
 
 
 func _server_player_profile(account_key: String, display_name: String, appearance: Dictionary) -> Dictionary:

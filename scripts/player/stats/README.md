@@ -20,6 +20,9 @@ GDScript notes:
 - Health regeneration is applied by the player's `CombatHealth` node. Energy
   regeneration is tracked here and mirrored by the player's `Mana` resource pool
   until we have final formulas.
+- `DamageResolver` reads `armor` and `magical_resistance` through `get_stat()`.
+  Physical and magical ability formulas also read their matching percentage
+  bonus here; true damage currently receives no type bonus.
 - `persist_to_player_database` saves/restores signed-in account stat values
   through `/root/PlayerDatabase`. Persistence stores base values only; active
   Forged Trait modifiers are saved through the trait loadout progression

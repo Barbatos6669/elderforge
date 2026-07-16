@@ -7,13 +7,16 @@ Use `CODEBASE_GUIDE.md` for the longer learning walkthrough.
 
 | Path | Purpose |
 | --- | --- |
-| `project.godot` | Godot project settings and main scene pointer. |
-| `scenes/world/starting_city/StartingCity.tscn` | Current playable prototype entry scene. |
+| `project.godot` | Godot project settings; points normal runs at the sign-in gateway. |
+| `scenes/bootstrap/SignInGateway.tscn` | Normal client entry scene for account and character flow. |
+| `scenes/world/starting_city/StartingCity.tscn` | Current playable world loaded after character selection; direct entry for dedicated servers. |
 | `scenes/levels/PlayableLevelShell.tscn` | Shared level shell inherited by playable scenes. |
+| `scenes/debug/combat/BattleTestArena.tscn` | Direct-run combat sandbox with mob ability, loadout, aggro, and leash diagnostics. |
 | `scenes/player/Player.tscn` | Reusable player prefab. |
 | `scenes/entities/animals/Rat.tscn` | Killable/skinnable rat animal prefab. |
 | `scripts/README.md` | GDScript primer and guide to script folder READMEs. |
 | `docs/ROADMAP.md` | Phase plan and milestone direction. |
+| `docs/COMBAT_ARCHITECTURE.md` | Shared timing, ability, damage, and combat-authority contract. |
 | `docs/MULTIPLAYER_READINESS.md` | Current multiplayer-safe systems, prototype-local systems, and next authority pass. |
 | `docs/PERSISTENCE_ARCHITECTURE.md` | Player database backend plan from JSON to SQLite to larger live databases. |
 
@@ -52,7 +55,8 @@ Godot-native prototypes.
 | `scripts/player/audio/player_footstep_audio.gd` | Plays footstep audio tied to movement cadence. |
 | `scripts/player/stats/player_stats.gd` | Stores player stat ids and current numeric values. |
 | `scripts/player/targeting/player_targeting.gd` | Handles local selection and targeting rules. |
-| `scripts/player/combat/player_auto_attack.gd` | Prototype auto-attack flow for hostile targets. |
+| `scripts/player/combat/player_auto_attack.gd` | Hostile-target auto-attack flow, impact validation, and typed physical damage request. |
+| `scripts/player/combat/player_weapon_abilities.gd` | Equipment ability targeting, casting, cooldown, movement, self effects, and damage requests. |
 | `scripts/player/channeling/player_channeling.gd` | Generic timed-action state for gathering and future spell casts. |
 | `scripts/player/gathering/player_gathering.gd` | Player-side gathering approach, channel start, and reward handoff. |
 | `scenes/gathering/trees/OakTreeT1.tscn` | First gatherable T1 Oak Tree prefab. |
@@ -68,8 +72,11 @@ Godot-native prototypes.
 | `scripts/entities/animals/` | Reusable animal animation and skinnable corpse behavior. |
 | `scripts/ui/inventory/` | Inventory and equipment UI behavior. |
 | `scripts/ui/chat/` | In-game chat panel and text-entry behavior. |
-| `scripts/combat/` | Shared health, combat state, resource pools, and damage numbers. |
+| `scripts/combat/` | Shared health, attack timing, typed damage resolution, abilities, resource pools, and damage feedback. |
+| `scripts/combat/damage_resolver.gd` | Defense mitigation and final damage application for current player and mob impacts. |
+| `scripts/network/multiplayer_test_manager.gd` | Direct-connect playtest replication and the current trusted-client/server-authority boundary. |
 | `scripts/interaction/` | Hover, cursor, selection, and target feedback helpers. |
+| `tools/tests/` | Focused headless Godot regression checks. |
 | `scripts/camera/isometric_camera_rig.gd` | Perspective-isometric follow camera with scroll zoom. |
 | `scenes/levels/lighting/BasicLevelLighting.tscn` | Shared directional/fill/spawn lighting rig. |
 | `scenes/levels/atmosphere/AtmosphereField.tscn` | Reusable ground mist atmosphere pass. |
@@ -95,5 +102,6 @@ rg --files
 rg "class_name PlayerInventory" scripts
 rg "move_or_swap_slots|add_stack" scripts
 rg "auto_attack|target" scripts/player scripts/interaction
+rg "DamageRequest|DamageResolver" scripts tools/tests
 rg "source_animation_scene|gathering_animation_scene" scenes/player scripts/player
 ```

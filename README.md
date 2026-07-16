@@ -6,7 +6,17 @@ This project may take inspiration from the broad sandbox MMO genre, including ga
 
 ## Current Status
 
-The repository is in the early local prototype stage. We have a playable Godot scene with a reusable player prefab, click-to-move controls, an isometric camera, placeholder character visuals, animation, footsteps, and zeroed player stat tracking. Backend services, multiplayer authority, inventory, combat, persistence, and the content pipeline still need to be designed and implemented.
+The repository is an active playable prototype. The current build includes
+account and character flow, click-to-move exploration, gathering, refining,
+crafting, inventory and equipment, hostile creatures, loot, equipment abilities,
+direct-connect friend playtests, and prototype JSON persistence.
+
+Multiplayer replication exists, but several valuable gameplay outcomes still
+trust client reports. The active architecture work is moving combat intent,
+range/timing checks, stat-derived damage, rewards, and persistence toward
+server authority. See [Project State](docs/PROJECT_STATE.md) for the current
+feature snapshot and [Multiplayer Readiness](docs/MULTIPLAYER_READINESS.md) for
+the authority gaps.
 
 For friend testing, see [Playtest Builds](docs/playtest_builds.md).
 
@@ -27,12 +37,14 @@ For friend testing, see [Playtest Builds](docs/playtest_builds.md).
 
 ## Getting Started
 
-1. Install Godot 4.
+1. Install Godot 4.7.
 2. Clone this repository.
 3. Open `project.godot` in Godot.
 4. Run the project from the editor.
 
-There is not yet a full game loop. See [docs/ROADMAP.md](docs/ROADMAP.md) for the first milestones.
+The normal run path starts at sign-in, continues through character selection or
+creation, and then enters Starting City. The current loop is still a prototype;
+see [docs/ROADMAP.md](docs/ROADMAP.md) for the remaining milestones.
 
 ## Learning the Codebase
 

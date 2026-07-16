@@ -10,7 +10,8 @@ Files:
   animation sync and `attack_landed` when damage is actually applied. It can
   also call an optional `LootDropper3D` child when the mob is defeated, and can
   read optional `Stats` and `EquipmentLoadout` children for Forged Trait
-  modifiers and item-authored combat abilities.
+  modifiers and item-authored combat abilities. Basic and ability impacts route
+  through the shared typed damage resolver.
 - `mob_equipment_loadout.gd`: mob-only equipped item source. It resolves
   prototype item ids such as `one_handed_sword_t1` into equipped-slot
   dictionaries without joining player inventory groups or persistence.

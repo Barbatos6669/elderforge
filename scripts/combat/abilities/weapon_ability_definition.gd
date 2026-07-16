@@ -20,6 +20,9 @@ extends Resource
 ## Execution behavior stays data-driven so future movement skills can reuse the
 ## same targeting flow without inheriting damage-only assumptions.
 @export_enum("damage", "dodge", "regeneration", "shield") var execution_type := "damage"
+## Damage requests use this type for resolver mitigation. True damage bypasses
+## armor and magical resistance.
+@export_enum("physical", "magical", "true") var damage_type := "physical"
 @export_range(0.0, 10000.0, 0.1) var energy_cost := 0.0
 @export_range(0.0, 120.0, 0.1) var cooldown_seconds := 5.0
 @export_range(0.0, 10.0, 0.01) var cast_duration_seconds := 1.0

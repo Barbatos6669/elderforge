@@ -76,6 +76,28 @@ seconds, restores 25% of missing energy, and starts a 21.14-second cooldown.
 state changes that `DamageImmunityBubble3D` mirrors with the same bubble visual
 used by short damage-immunity windows.
 
+## Shared damage resolver
+
+Current combat damage enters gameplay as a typed `DamageRequest` and leaves as
+a `DamageResult`. Callers still own attack intent, hostility, timing, range, and
+target validation. The resolver owns damage-type normalization, defense lookup,
+mitigation, and final application through `CombatHealth`:
+
+- `physical` damage checks armor.
+- `magical` damage checks magical resistance.
+- `true` damage bypasses defense mitigation.
+
+Physical and magical mitigation use
+`incoming_damage * 100 / (100 + defense)`. Defense values are clamped to zero,
+so this pass does not support negative resistance or vulnerability.
+
+`DamageResult` preserves source, target, health component, damage type,
+requested damage, mitigated damage, mitigation amount, defense value, and
+actual health damage applied. Player auto-attacks, player equipment abilities,
+mob basic attacks, mob equipment abilities, and server-routed mob damage all
+use this resolver. Future damage entry points should use the same request/result
+contract.
+
 ## Damage feedback
 
 `CombatHealth.damage_taken` is the shared confirmation point for floating
@@ -92,7 +114,13 @@ damage emits the same signal on remote clients.
   lookup, target/aim state, ability impacts or movement requests, and cooldowns.
 - `scripts/combat/abilities/weapon_ability_definition.gd` owns authored spell
   values; `weapon_ability_catalog.gd` owns network-safe id lookup.
+- `scripts/combat/damage_request.gd`, `damage_resolver.gd`, and
+  `damage_result.gd` own typed damage inputs, mitigation, application, and
+  result metadata.
 - `scripts/entities/enemy_mob_ai.gd` owns mob aggro, chase, and mob impacts.
+- `scripts/effects/ability_telegraph_3d.gd` owns hostile wind-up and movement
+  path warnings; `scripts/debug/mob_aggro_zone_debug_3d.gd` visualizes aggro and
+  de-aggro/leash tuning only.
 - `scripts/combat/combat_health.gd` owns current/max health and defeat signals.
 - `scripts/player/controllers/player_controller.gd` coordinates movement,
   facing, animation, combat state, and input cancellation.
@@ -103,17 +131,19 @@ damage emits the same signal on remote clients.
 
 ## Multiplayer boundary
 
-The current playtest transport still accepts client-reported mob damage. That
-is adequate only for trusted prototype testing. Before PvP or a public test,
-replace it with a server-authoritative resolver:
+The current playtest transport still accepts a client-reported mob damage
+amount, but the server now clamps that value and routes it through the shared
+damage resolver. That is adequate only for trusted prototype testing. Before
+PvP or a public test, replace the reported damage amount with
+server-authoritative attack intent:
 
 1. Client sends attack intent and target id.
 2. Server validates attacker state, hostility, range, line of sight, and timing.
-3. Server computes damage from authoritative stats and defenses.
+3. Server computes damage from authoritative stats, ability data, and defenses.
 4. Server applies health changes and broadcasts the result.
 5. Clients predict animation/feedback but never decide final damage.
 
-Do not build PvP, critical hits, armor formulas, or valuable loot security on
+Do not build PvP, critical hits, valuable loot security, or reward ownership on
 the current client-reported damage RPC.
 
 ## Next combat layers
@@ -121,21 +151,21 @@ the current client-reported damage RPC.
 Implement these in order so later systems use one resolver instead of inventing
 their own damage rules:
 
-1. Typed damage request/result (`physical`, `magical`, `true`, source, target).
-2. Armor and magical-resistance mitigation.
-3. Server-authoritative attack intent and cooldown validation.
+1. Server-authoritative attack intent, range, timing, and cooldown validation.
+2. Server-derived damage from authoritative stats, equipment, and ability data.
+3. Replicated result metadata for consistent hit feedback and auditing.
 4. Energy costs and cast/channel interruption rules for abilities.
 5. Buff/debuff and crowd-control effects.
 6. Threat tables, assists, kill credit, XP, and loot ownership.
 
 ## Validation
 
-Run the focused timing test from the repository root:
+Run the focused combat checks from the repository root:
 
 ```powershell
 & 'C:\Godot\Godot_v4.7-stable_win64_console.exe' `
   --headless --path . `
-  --script res://tools/tests/combat_attack_timeline_test.gd
+  --script res://tools/tests/combat_damage_resolver_test.gd
 
 & 'C:\Godot\Godot_v4.7-stable_win64_console.exe' `
   --headless --path . `
@@ -143,9 +173,21 @@ Run the focused timing test from the repository root:
 
 & 'C:\Godot\Godot_v4.7-stable_win64_console.exe' `
   --headless --path . `
-  --script res://tools/tests/boots_dodge_roll_test.gd
+  --script res://tools/tests/mob_damage_resolver_test.gd
 
 & 'C:\Godot\Godot_v4.7-stable_win64_console.exe' `
   --headless --path . `
-  --script res://tools/tests/armor_regeneration_ability_test.gd
+  --script res://tools/tests/mob_equipment_ability_test.gd
+
+& 'C:\Godot\Godot_v4.7-stable_win64_console.exe' `
+  --headless --path . `
+  --script res://tools/tests/helmet_shield_ability_test.gd
+
+& 'C:\Godot\Godot_v4.7-stable_win64_console.exe' `
+  --headless --path . `
+  --script res://tools/tests/mob_ability_telegraph_test.gd
+
+& 'C:\Godot\Godot_v4.7-stable_win64_console.exe' `
+  --headless --path . `
+  --script res://tools/tests/battle_arena_mob_loadout_test.gd
 ```

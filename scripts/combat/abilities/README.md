@@ -3,8 +3,9 @@
 Equipment abilities are split into data and runtime behavior:
 
 - `weapon_ability_definition.gd` describes one spell: energy cost, cooldown,
-  range, damage, animation, impact timing, optional damage immunity, finite
-  absorb shields, missing-energy restoration, and tooltip presentation.
+  range, damage type, damage scaling, animation, impact timing, optional damage
+  immunity, finite absorb shields, missing-energy restoration, and tooltip
+  presentation.
 - `weapon_ability_catalog.gd` maps network-safe ids to trusted resources.
 - Ability resources live under `assets/combat/abilities/`.
 - `player_weapon_abilities.gd` owns targeting, casting, impact, and cooldowns
@@ -53,10 +54,13 @@ self-cast that grants an 834-point absorb shield for three seconds, restores
 25% of missing energy, and starts a 21.14-second cooldown. Tune those values in
 `assets/combat/abilities/energizing_shield.tres`.
 
-Ability damage uses `base_damage + auto_attack_damage * damage_multiplier`,
-then applies the physical ability bonus. This supports fixed-damage spells,
-stat-scaling spells, and hybrids from the same data resource. Sword Slash uses
-100 base damage and zero auto-attack scaling.
+Raw ability damage uses
+`(base_damage + auto_attack_damage * damage_multiplier) * (1 + matching_bonus / 100)`.
+Physical abilities use the physical ability percentage bonus, magical
+abilities use the magical ability percentage bonus, and true damage currently
+uses no type bonus. The shared `DamageResolver` then checks armor for physical
+damage, magical resistance for magical damage, or bypasses defense for true
+damage. Sword Slash uses 100 base physical damage and zero auto-attack scaling.
 
 Mana is checked when an ability is requested and charged only when its cast
 actually begins. Approaching a target or losing it before cast start is free;

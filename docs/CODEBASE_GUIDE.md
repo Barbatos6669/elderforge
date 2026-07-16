@@ -4,8 +4,8 @@ This guide is a learning map for Elderforge's current Godot prototype. Read it
 when you want to understand where things live, how the player prefab works, and
 where to make the next small change.
 
-The codebase is intentionally small right now. The main idea is to keep each
-system in its own script or scene so the MMO can grow without turning the player
+The codebase is intentionally modular. The main idea is to keep each system in
+its own script or scene so the MMO can grow without turning the player
 controller into one giant file.
 
 ## First Read Order
@@ -14,13 +14,14 @@ Start here if you are new to the project:
 
 1. `project.godot` - tells Godot which scene runs first.
 2. `docs/START_HERE.md` - the short orientation page.
-3. `scenes/world/starting_city/StartingCity.tscn` - the current test world.
-4. `scenes/levels/PlayableLevelShell.tscn` - the shared playable level setup.
-5. `scenes/player/Player.tscn` - the reusable player prefab.
-6. `scripts/player/controllers/player_controller.gd` - coordinates the player
+3. `scenes/bootstrap/SignInGateway.tscn` - the normal account-flow entry scene.
+4. `scenes/world/starting_city/StartingCity.tscn` - the current test world.
+5. `scenes/levels/PlayableLevelShell.tscn` - the shared playable level setup.
+6. `scenes/player/Player.tscn` - the reusable player prefab.
+7. `scripts/player/controllers/player_controller.gd` - coordinates the player
    sub-systems.
-7. `scripts/README.md` - GDScript syntax notes and the script folder map.
-8. The smaller scripts under `scripts/player/` - movement, input, animation,
+8. `scripts/README.md` - GDScript syntax notes and the script folder map.
+9. The smaller scripts under `scripts/player/` - movement, input, animation,
    audio, stats, visuals, and feedback.
 
 ## Project Entry Point
@@ -28,10 +29,18 @@ Start here if you are new to the project:
 `project.godot` points the game at:
 
 ```text
+res://scenes/bootstrap/SignInGateway.tscn
+```
+
+Pressing Play loads sign-in first. A successful account login routes to
+character creation when the account has no character, or character selection
+when it does. Entering the world then loads:
+
+```text
 res://scenes/world/starting_city/StartingCity.tscn
 ```
 
-That means pressing Play in Godot loads `StartingCity.tscn`.
+Dedicated server runs skip the account UI and enter the game scene directly.
 
 `StartingCity.tscn` inherits from `scenes/levels/PlayableLevelShell.tscn`. The
 shell contains the common playable setup:
@@ -62,13 +71,18 @@ assets/
   ui/cursors/       Mouse cursor icons for resource and interaction states.
 
 docs/
+  START_HERE.md         Short navigation and current run path.
+  PROJECT_STATE.md      Current playable systems, risks, and verification.
+  NEXT_TASK.md          Active handoff and acceptance checks.
   CODEBASE_INDEX.md     Fast lookup index for scenes, scripts, and systems.
   CODEBASE_GUIDE.md     This file.
+  COMBAT_ARCHITECTURE.md Shared combat and authority contract.
   DESIGN_BOUNDARIES.md  What we can and cannot copy from other games.
   LICENSING.md          Asset and license rules.
   ROADMAP.md            Milestones.
 
 scenes/
+  bootstrap/  Normal client entry and account-flow scenes.
   camera/    Reusable camera rig scene.
   debug/     Debug-only helper scenes.
   entities/  Prototype gameplay entities such as target dummies.
@@ -84,15 +98,22 @@ scripts/
   README.md    GDScript primer and script folder map.
   audio/     Shared audio data/resources.
   camera/    Camera behavior.
-  combat/    Shared combat components.
+  combat/    Shared timing, health, abilities, and typed damage resolution.
   debug/     Debug helper behavior.
   effects/   Effect behavior.
   gathering/ Prototype gatherable resource metadata.
   interaction/ Shared interaction helpers such as hover detection.
   inventory/ Prototype item definitions, stacks, and inventory storage.
+  network/   Direct-connect playtest replication and authority boundaries.
+  persistence/ Prototype account, character, inventory, and stat storage.
   player/    Player-specific systems.
+  stats/     Shared entity stat and Forged Trait components.
   ui/        UI and world-space display helpers.
   visuals/   Reserved for shared visual helpers.
+
+tools/
+  tests/       Focused headless Godot regression checks.
+  playtest_client/ Windows updater source.
 ```
 
 Every folder under `scripts/` has a local `README.md`. Those files are meant as
@@ -104,17 +125,23 @@ and which GDScript syntax is worth knowing before editing there.
 `scenes/player/Player.tscn` is the main player prefab. The goal is that this
 scene can be dropped into any playable scene and work immediately.
 
-Current child nodes:
+Key current child nodes:
 
 - `Input` reads mouse/keyboard intent.
 - `Targeting` handles local click target selection.
-- `AutoAttack` runs the local-player prototype auto-attack loop.
+- `AutoAttack` runs the local-player melee timeline.
+- `WeaponAbilities` runs equipment-supplied targeting, casts, cooldowns,
+  channels, and movement or damage effects.
 - `Channeling` tracks timed actions such as gathering.
 - `Gathering` handles gather target approach, channel start, and rewards.
 - `Stats` stores player stat values and metadata.
+- `Mana`, `Health`, and `CombatState` own combat resources and state.
+- `Respawn`, `DamageNumbers`, `BloodImpact`, and `DamageImmunityBubble` own
+  defeat and confirmed-damage feedback.
 - `Movement` moves the `CharacterBody3D` toward a destination.
 - `Facing` rotates the visual model toward movement direction.
 - `VisualStyle` applies the current toon-like placeholder material style.
+- `EquipmentVisuals` attaches equipped models to the character rig.
 - `HoverSelectionRing` detects hover and applies the mesh outline highlight.
 - `Animation` loads idle, jog, attack, and gathering animations onto the
   character model.
@@ -133,30 +160,26 @@ own every system.
 
 ## Player Controller Flow
 
-Every physics frame, `PlayerController` does this:
+Every physics frame, `PlayerController` coordinates this simplified flow:
 
-1. If input is disabled, stop movement, animation, footsteps, attacks, and
-   gathering channels.
-2. If `S` is held, stop movement and cancel gathering channels.
-3. Otherwise, ask `PlayerTargeting` whether the current left-click selected a
-   target.
-4. If a gatherable target was clicked, ask `PlayerGathering` to approach it.
-5. If a hostile target was clicked, ask `PlayerAutoAttack` to start attacking.
-6. If Space was pressed while a hostile target is selected, ask `PlayerAutoAttack`
-   to start attacking.
-7. If targeting did not consume the click, ask `PlayerInput` whether the mouse
-   is pointing at a movement target.
-8. If a new click-move started, ask `PlayerClickFeedback` to spawn the click marker.
-9. If auto-attack is active, chase the hostile target until melee range.
-10. If gathering is active, approach the resource and start the channel in range.
-11. Ask `PlayerMovementMotor` to move toward the destination.
-12. Ask `PlayerFacing` to rotate the visual model.
-13. Tell animation and footstep audio whether the player is currently moving.
-14. Face the combat or gathering target once in range.
-15. Advance the auto-attack cooldown, play the attack animation, and apply
-    damage when a swing is ready.
-16. Advance `PlayerChanneling` and let gathering add resources when its channel
-    completes.
+1. Advance equipment-ability state, then honor respawn, control, and full-screen
+   UI locks.
+2. A stop request clears movement and cancels auto-attack, active equipment
+   actions, gathering, and pending world interactions.
+3. Directional movement abilities temporarily own velocity while ordinary
+   input can keep a follow-up destination ready.
+4. Equipment slot input requests Q/W/E/R/D/F/1/2 abilities. Directional
+   targeting receives aim/confirm/cancel input before standard world clicks.
+5. Standard world input selects targets and starts movement, auto-attack,
+   gathering, station, or loot interactions.
+6. Active systems publish approach destinations; the movement motor resolves
+   one movement step.
+7. Facing, animation, footsteps, combat audio, and feedback follow the resolved
+   movement and active target.
+8. Auto-attack and ability impacts revalidate their target and range, create a
+   typed `DamageRequest`, and use `DamageResolver` for mitigation and final
+   health application.
+9. Shared channeling advances gathering and equipment channels.
 
 This means movement, visuals, animation, audio, and feedback can change without
 rewriting the whole player controller.
@@ -167,7 +190,7 @@ rewriting the whole player controller.
 `scripts/interaction/cursor/cursor_override.gd`
 `assets/materials/hover/hover_outline_green.tres`
 `assets/materials/hover/hover_outline.gdshader`
-`assets/ui/cursors/gather_pickaxe_cursor.png`
+`assets/ui/cursors/gather_tool_cursor.png`
 
 The player prefab has a `HoverHitbox` area on a hover-only physics layer and a
 `HoverSelectionRing` node. That node uses `HoverFeedback3D`, which owns the
@@ -241,32 +264,48 @@ Tune the selected ring fill on the `SelectedRing` node with `fill_color` and
 ## Prototype Combat
 
 `scripts/combat/combat_health.gd`
+`scripts/combat/damage_request.gd`
+`scripts/combat/damage_resolver.gd`
+`scripts/combat/damage_result.gd`
 `scripts/player/combat/player_auto_attack.gd`
+`scripts/player/combat/player_weapon_abilities.gd`
+`scripts/entities/enemy_mob_ai.gd`
 
-This is the first local-only combat prototype. It is not server authoritative
-yet and does not include ability formulas, attack animations, or pathfinding.
+Combat is playable for local and trusted friend tests, with shared timing,
+equipment abilities, hostile mob AI, damage feedback, death, respawn, and loot.
+It is not secure server-authoritative combat yet.
 
-- `CombatHealth` stores max/current health, applies damage, and emits health
-  ratio updates for UI.
+- `CombatHealth` owns health, immunity, finite absorb shields, regeneration,
+  damage confirmation, and defeat.
 - `PlayerAutoAttack` validates that the target is hostile, exposes a melee
-  approach destination, checks attack range, applies damage on an interval, and
-  stops when the target is defeated.
+  approach destination, uses wind-up/impact/recovery timing, rechecks range at
+  impact, and stops when the target is defeated.
+- `PlayerWeaponAbilities` reads equipment-authored abilities and owns targeting,
+  energy spending, cooldowns, cast timing, channels, and movement effects.
+- `EnemyMobAI` owns mob aggro, chase, basic attacks, equipment abilities,
+  defeat cleanup, and respawn.
+- Current player and mob impacts create `DamageRequest` objects. The shared
+  resolver checks armor for physical damage, magical resistance for magical
+  damage, and bypasses defense for true damage before calling `CombatHealth`.
+- `DamageResult.applied_damage` is the actual health lost after defense,
+  immunity, absorb shields, and remaining-health limits.
 - Directly clicking a hostile selectable starts auto-attack.
 - Pressing Space starts auto-attack against the currently selected hostile
   target.
-- Friendly and neutral targets cannot be auto-attacked by this module.
-- The player moves into melee range before the first hit, faces the target, and
-  plays the `Punch_Jab` one-shot animation when a hit lands.
+- Equipment owns the active Q/W/E/R/D/F/1/2 action-bar contract.
+- The current playtest server clamps and resolves reported mob damage, but the
+  attacking client still supplies the amount. Server validation of attack
+  intent, range, timing, cooldowns, and authoritative stats is the next combat
+  architecture step.
 
-Current tuning lives on `Player/AutoAttack`:
+Auto-attack timing and fallback tuning lives on `Player/AutoAttack`. Equipment
+ability tuning lives in resources under `assets/combat/abilities/`; do not copy
+ability values into UI or network scripts.
 
 - `attack_damage`
 - `attack_interval`
 - `attack_range`
 - `approach_distance`
-
-`TargetDummy.tscn` has a `Health` child using `CombatHealth`. Its selected-only
-health bar reads that health source, so auto-attacks visibly lower the bar.
 
 ## Input
 

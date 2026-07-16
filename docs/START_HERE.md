@@ -18,9 +18,17 @@ Read these first when coming back after a break:
 Godot currently starts here:
 
 ```text
+scenes/bootstrap/SignInGateway.tscn
+```
+
+The gateway handles account sign-in, then sends the player to character
+selection or character creation before loading:
+
+```text
 scenes/world/starting_city/StartingCity.tscn
 ```
 
+Dedicated server runs skip the account UI and enter the game scene directly.
 `StartingCity.tscn` inherits from:
 
 ```text
@@ -47,7 +55,11 @@ map-specific things you place by hand.
 | Change gathering behavior | `scripts/player/gathering/player_gathering.gd` |
 | Change resource node behavior | `scripts/gathering/gatherable_resource_3d.gd` |
 | Edit the T1 tree prefab | `scenes/gathering/trees/OakTreeT1.tscn` |
+| Run the focused combat arena | `scenes/debug/combat/BattleTestArena.tscn` |
 | Change auto attack | `scripts/player/combat/player_auto_attack.gd` |
+| Change equipment abilities | `scripts/player/combat/player_weapon_abilities.gd` |
+| Change damage or defense rules | `scripts/combat/damage_resolver.gd` |
+| Change playtest networking | `scripts/network/multiplayer_test_manager.gd` |
 | Change player stats | `scripts/player/stats/player_stats.gd` |
 
 ## Folder Rule Of Thumb

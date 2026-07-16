@@ -14,7 +14,7 @@ state for friend playtests:
 - remote player health, mana, and death animation state
 - gatherable resource tick counts, including depletion and replenishment
 - hostile mob health, movement/facing animation, attack-start events, death, hit
-  feedback, and respawn visibility
+  feedback, respawn visibility, and server-routed shared damage resolution
 - bounded inventory/equipment/currency snapshots sent to the server for the
   next inventory-authority pass
 - local chat messages relayed through the server after playtest-code approval
@@ -25,6 +25,12 @@ For now the server relays and lightly clamps client action reports so everyone
 sees the same world during playtests. Hostile mob animation is still client
 reported: the peer currently fighting a mob drives the temporary movement and
 attack animation sync until we replace this with server-owned AI.
+
+Mob damage is also still initiated by a client-reported amount. The server
+clamps it and applies it through `DamageRequest`/`DamageResolver`, but it does
+not yet validate attack intent, range, timing, cooldowns, or authoritative
+attacker stats. Do not treat current combat, PvP, XP, or loot ownership as
+secure until that report is replaced with a server-validated attack request.
 
 See `docs/MULTIPLAYER_READINESS.md` for the current readiness matrix and the
 order we should convert systems to server authority.

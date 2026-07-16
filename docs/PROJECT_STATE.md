@@ -1,6 +1,6 @@
 # Project State
 
-Last updated: 2026-07-15
+Last updated: 2026-07-16
 
 This file is the current high-level memory for Elderforge. Keep it short enough
 to scan before making changes, and update it whenever a feature, architecture
@@ -8,7 +8,10 @@ choice, or playtest flow changes.
 
 ## Current Playtest Shape
 
-- Godot starts from `scenes/world/starting_city/StartingCity.tscn`.
+- Godot starts from `scenes/bootstrap/SignInGateway.tscn`, then routes signed-in
+  accounts through character selection or creation before entering
+  `scenes/world/starting_city/StartingCity.tscn`. Dedicated servers skip the UI
+  and enter the game scene directly.
 - `StartingCity.tscn` inherits from `scenes/levels/PlayableLevelShell.tscn`.
 - The level shell owns common playtest setup: player, camera, UI, lighting,
   atmosphere, ground, debug grid, inventory hooks, refining/crafting windows,
@@ -53,7 +56,12 @@ choice, or playtest flow changes.
   remote animation playback. Leather helmet supplies an instant D absorb shield
   with missing-energy restoration, and leather boots supply a directional F
   dodge with cursor aiming, collision-aware movement, and the imported Roll
-  animation.
+  animation. Typed damage requests/results now flow through a shared
+  `DamageResolver` for armor, magical resistance, and true-damage handling.
+  Player auto-attacks, player equipment abilities, mob basic attacks, mob
+  abilities, and server-routed mob damage all use that path. Hostile equipment
+  abilities show red ground telegraphs during wind-up or movement, and the
+  battle arena can show orange aggro plus blue de-aggro/leash debug rings.
   The player prefab has positional sword swing,
   confirmed-hit, and non-voiced hurt sounds supplied by a swappable combat
   sound set. Confirmed local and replicated damage also drives a reusable
@@ -70,9 +78,19 @@ choice, or playtest flow changes.
 
 ## Recent Important Changes
 
+- Matched the battle-arena mob baseline to player base stats, added reusable
+  hostile ability telegraphs, and exposed live aggro and de-aggro/leash rings
+  for combat tuning. Focused tests cover mob stats, telegraphs, and arena
+  equipment loadouts.
+- Added the first shared damage resolver pass. Damage requests now carry
+  physical, magical, or true damage type metadata; results report requested,
+  mitigated, and applied damage plus the defense used. Armor and magical
+  resistance reduce incoming damage, all current player and mob impact paths
+  use the shared pipeline, and the playtest server wraps reported mob damage
+  through the same resolver while trusted client reports are being replaced.
 - Added the shared three-by-three gameplay HUD contract. Persistent widgets now
-  declare a stable zone, clip to its bounds, and reflow at compact resolutions;
-  a geometry regression test checks all current HUD visuals for overlap.
+  declare a stable zone, clip to its bounds, and reflow at compact resolutions
+  to reduce overlap.
 - Expanded the equipment ability HUD to eight stable circular slots. Equipped
   items bind through one canonical ownership contract: weapon Q/W/E, chest R,
   helmet D, boots F, plus two future utility placeholders. The sword supplies Q,
@@ -134,9 +152,11 @@ choice, or playtest flow changes.
 - Multiplayer still needs hardening. Resource depletion, creature combat,
   animation state, loot, and player appearance should be treated as networked
   systems when changed.
-- Mob damage is still reported by the attacking client in the playtest build.
-  Move attack intent, range/timing validation, mitigation, and final damage to
-  the server before adding PvP or treating combat rewards as secure.
+- Mob damage still starts from an attacking-client report in the playtest
+  build, although the server now clamps and resolves it through the shared
+  damage pipeline. Move attack intent, range/timing validation, stat-derived
+  damage, and final reward authority fully to the server before adding PvP or
+  treating combat rewards as secure.
 - The outfit/head masking path is a practical bridge. Long term, separated body
   sections or explicit body masks will be easier to tune than shader clipping.
 - Some item/resource names may still need final lore alignment. Check
@@ -161,10 +181,18 @@ level setup:
 C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --scene res://scenes/world/starting_city/StartingCity.tscn --quit-after 1
 C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --scene res://scenes/player/Player.tscn --quit-after 1
 C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --scene res://scenes/ui/auth/CharacterCustomizationScreen.tscn --quit-after 1
-C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --script res://tools/tests/hud_grid_layout_test.gd
-C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --script res://tools/tests/equipment_animation_profile_test.gd
+C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --script res://tools/tests/combat_damage_resolver_test.gd
 C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --script res://tools/tests/weapon_ability_test.gd
+C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --script res://tools/tests/mob_damage_resolver_test.gd
+C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --script res://tools/tests/mob_equipment_ability_test.gd
+C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --script res://tools/tests/mob_base_stats_test.gd
+C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --script res://tools/tests/mob_ability_telegraph_test.gd
+C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --script res://tools/tests/battle_arena_mob_loadout_test.gd
 ```
+
+The battle-arena loadout test currently emits dummy-renderer material warnings
+in headless mode, but it should still print its pass message and exit with code
+zero.
 
 Only update the remote server, launcher manifest, or GitHub release when the
 user explicitly asks for a live playtest update.

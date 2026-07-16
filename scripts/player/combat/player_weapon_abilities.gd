@@ -7,6 +7,9 @@ class_name PlayerWeaponAbilities
 extends Node
 
 const AttackTimelineScript := preload("res://scripts/combat/attack_timeline.gd")
+const DamageRequestScript := preload("res://scripts/combat/damage_request.gd")
+const DamageResolverScript := preload("res://scripts/combat/damage_resolver.gd")
+const PlayerStatsScript := preload("res://scripts/player/stats/player_stats.gd")
 const WeaponAbilityCatalogScript := preload("res://scripts/combat/abilities/weapon_ability_catalog.gd")
 const AbilitySlots := preload(
 	"res://scripts/combat/abilities/equipment_ability_slots.gd"
@@ -73,6 +76,7 @@ var _channel_attacker: Node3D
 var _channel_definition: Resource
 var _channel_tick_count := 0
 var _timeline = AttackTimelineScript.new()
+var _damage_resolver = DamageResolverScript.new()
 var _cooldowns_by_ability_id := {}
 
 
@@ -488,9 +492,16 @@ func _resolve_cast_impact(attacker: Node3D) -> void:
 		ability_cast_interrupted.emit(_cast_slot, impact_target, "Target has no health component")
 		return
 
-	var applied_damage := float(health.call("apply_damage", _ability_damage(attacker)))
-	if applied_damage > 0.0:
-		ability_cast_landed.emit(_cast_slot, impact_target, applied_damage)
+	var request := DamageRequestScript.create(
+		attacker,
+		impact_target,
+		_ability_damage(attacker),
+		_ability_damage_type(_cast_definition),
+		health
+	)
+	var result := _damage_resolver.resolve(request)
+	if result.was_applied():
+		ability_cast_landed.emit(_cast_slot, impact_target, result.applied_damage)
 
 
 func _finish_current_cast() -> void:
@@ -561,7 +572,7 @@ func _effective_cooldown_seconds(attacker: Node3D, definition: Resource) -> floa
 	if stats == null or not stats.has_method("get_stat"):
 		return base_cooldown
 
-	var cooldown_rate := maxf(float(stats.call("get_stat", PlayerStats.COOLDOWN_RATE)), 0.0)
+	var cooldown_rate := maxf(float(stats.call("get_stat", PlayerStatsScript.COOLDOWN_RATE)), 0.0)
 	return base_cooldown / (1.0 + cooldown_rate / 100.0)
 
 
@@ -572,7 +583,7 @@ func _effective_energy_cost(attacker: Node3D, definition: Resource) -> float:
 		return base_cost
 
 	var reduction := clampf(
-		float(stats.call("get_stat", PlayerStats.ENERGY_COST_REDUCTION)),
+		float(stats.call("get_stat", PlayerStatsScript.ENERGY_COST_REDUCTION)),
 		0.0,
 		100.0
 	)
@@ -736,16 +747,34 @@ func _is_owned_channel_context(context: Dictionary) -> bool:
 
 func _ability_damage(attacker: Node3D) -> float:
 	var attack_damage := fallback_base_damage
-	var physical_bonus := 0.0
+	var ability_bonus := 0.0
+	var damage_type := _ability_damage_type(_cast_definition)
 	var stats := attacker.get_node_or_null("Stats") if attacker != null else null
 	if stats != null and stats.has_method("get_stat"):
-		attack_damage = float(stats.call("get_stat", PlayerStats.AUTO_ATTACK_DAMAGE))
-		physical_bonus = float(stats.call("get_stat", PlayerStats.PHYSICAL_ABILITY_BONUS))
+		attack_damage = float(stats.call("get_stat", PlayerStatsScript.AUTO_ATTACK_DAMAGE))
+		match damage_type:
+			DamageRequestScript.TYPE_PHYSICAL:
+				ability_bonus = float(stats.call(
+					"get_stat",
+					PlayerStatsScript.PHYSICAL_ABILITY_BONUS
+				))
+			DamageRequestScript.TYPE_MAGICAL:
+				ability_bonus = float(stats.call(
+					"get_stat",
+					PlayerStatsScript.MAGICAL_ABILITY_BONUS
+				))
 
 	var ability_base_damage := float(_cast_definition.get("base_damage")) if _cast_definition != null else 0.0
 	var multiplier := float(_cast_definition.get("damage_multiplier")) if _cast_definition != null else 1.0
 	var scaled_damage := ability_base_damage + attack_damage * multiplier
-	return maxf(scaled_damage * (1.0 + physical_bonus / 100.0), 0.0)
+	return maxf(scaled_damage * (1.0 + ability_bonus / 100.0), 0.0)
+
+
+func _ability_damage_type(definition: Resource) -> StringName:
+	if definition == null:
+		return DamageRequestScript.TYPE_PHYSICAL
+
+	return DamageRequestScript.normalize_damage_type(StringName(String(definition.get("damage_type"))))
 
 
 func _can_complete_current_cast(attacker: Node3D) -> bool:
@@ -823,6 +852,10 @@ func _find_target_health(target: Variant) -> Node:
 		return null
 	if target_node.has_method("apply_damage"):
 		return target_node
+
+	var child_health := target_node.get_node_or_null("Health")
+	if child_health != null:
+		return child_health
 
 	var parent_node := target_node.get_parent()
 	return parent_node.get_node_or_null("Health") if parent_node != null else null

@@ -9,6 +9,9 @@ var source: Node
 var target: Node
 var target_health: Node
 var requested_damage := 0.0
+var mitigated_damage := 0.0
+var mitigation_amount := 0.0
+var defense_value := 0.0
 var applied_damage := 0.0
 var damage_type: StringName = &"physical"
 
@@ -22,6 +25,7 @@ static func from_request(request: Resource) -> Resource:
 	result.target = request.target
 	result.target_health = request.target_health
 	result.requested_damage = request.amount
+	result.mitigated_damage = request.amount
 	result.damage_type = request.damage_type
 	return result
 

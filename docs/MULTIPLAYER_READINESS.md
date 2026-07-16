@@ -24,7 +24,7 @@ a public economy or PvP environment.
 | Player motion | Position, facing, movement animation, and gathering animation are replicated. |
 | Player vitals | Health, mana, and death animation state are replicated to remote player copies. |
 | Resource nodes | Remaining ticks, depletion, and replenishment are synced by scene path. |
-| Hostile mobs | Health, hit feedback, death, respawn, motion/facing, and attack-start animations are synced. |
+| Hostile mobs | Health, hit feedback, death, respawn, motion/facing, attack-start animations, and server-routed shared damage resolution are synced. |
 | Player database | The playtest server has a backend-based `PlayerDatabase` autoload. JSON is active today; SQLite migrations are staged for the next backend. |
 | Inventory snapshots | The local bag, equipped slots, silver, and gold have a bounded network snapshot that the server stores per signed-in playtest account. |
 | Chat | Local chat is server-relayed, length-limited, rate-limited, and hidden from unauthorized peers. |
@@ -39,6 +39,7 @@ a public economy or PvP environment.
 | Crafting costs | Refining/crafting validates cost locally. The server does not authoritatively spend resources yet. |
 | Equipment stats | Equipment visuals and inventory slots exist, but stat changes are not server-authoritative. |
 | Mob AI ownership | The peer fighting a mob can temporarily drive mob motion/attack animation sync. |
+| Combat authority | Mob damage still starts from a trusted client report. The server clamps and resolves it through the shared damage pipeline, but does not yet validate attack intent, range, timing, cooldowns, or stat-derived damage. |
 | Anti-cheat | The server clamps obvious bad values, but it still trusts several client action reports. |
 | Chat moderation | Chat has basic length/rate limits, but no mute list, profanity filter, GM tools, or persistence yet. |
 | Persistence | Accounts, appearance, inventory snapshots, and stat snapshots have prototype JSON persistence. World state, loot containers, and full server-authoritative economy state are not persisted yet. |
@@ -63,9 +64,11 @@ a public economy or PvP environment.
 2. Move gathering rewards, loot pickup, refining, and crafting through server
    requests with success/failure replies.
 3. Give world-spawned loot containers stable network ids and server ownership.
-4. Move hostile mob AI and damage application to the server.
-5. Move character position, world resources, and loot containers into server-owned persistence.
-6. Replace the playtest code gate with real account/session authentication.
+4. Replace client-reported mob damage with server-validated attack intent,
+   range/timing checks, cooldown checks, and stat-derived damage.
+5. Move hostile mob AI ownership fully to the server.
+6. Move character position, world resources, and loot containers into server-owned persistence.
+7. Replace the playtest code gate with real account/session authentication.
 
 ## Quick Test Checklist
 

@@ -1,7 +1,8 @@
 ## Typed input for shared damage resolution.
 ##
-## For this first slice, callers provide already-validated damage. The resolver
-## remains responsible only for applying it through the target health component.
+## Callers still own timing, range, and hostility checks. The resolver owns
+## typed mitigation and the final application through the target health
+## component.
 class_name DamageRequest
 extends Resource
 
@@ -16,6 +17,15 @@ var amount := 0.0
 var damage_type: StringName = TYPE_PHYSICAL
 
 
+static func normalize_damage_type(request_damage_type: StringName) -> StringName:
+	var clean_type := StringName(String(request_damage_type).strip_edges().to_lower())
+	match clean_type:
+		TYPE_PHYSICAL, TYPE_MAGICAL, TYPE_TRUE:
+			return clean_type
+		_:
+			return TYPE_PHYSICAL
+
+
 static func create(
 	request_source: Node,
 	request_target: Node,
@@ -28,5 +38,5 @@ static func create(
 	request.target = request_target
 	request.target_health = request_target_health
 	request.amount = maxf(request_amount, 0.0)
-	request.damage_type = request_damage_type
+	request.damage_type = normalize_damage_type(request_damage_type)
 	return request

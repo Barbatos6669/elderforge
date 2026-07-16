@@ -1,44 +1,49 @@
 # Next Task
 
-Last updated: 2026-07-11
+Last updated: 2026-07-16
 
 This file is the handoff note for the next work session. Replace it when the
 active task changes.
 
 ## Current Focus
 
-Keep migrating real gameplay data into the new full-screen master menu while
-protecting the current playable loop.
+Continue the combat authority lane by replacing trusted client-reported mob
+damage with server-validated attack intent, range, timing, and stat-derived
+damage.
 
 ## Immediate Follow-Up
 
-1. Visually verify the character outfit fix in gameplay and character creation.
-   Outfits should hide the base torso/limbs, but the customized head should
-   remain visible.
-2. Tune the head clip values only if the neck or face is visibly cut off.
-3. Continue plugging real data into master menu pages. Crafting is connected;
-   likely next pages are Character stats/traits, Inventory, or Creatures.
+1. Replace the current mob-damage report payload with an attack-intent request
+   that identifies attacker, target, ability or attack id, and client timing.
+2. Validate attacker state, hostility, distance, cooldown/recovery timing, and
+   line of sight on the server before creating the `DamageRequest`.
+3. Derive final damage from server-owned stats, equipment, and ability data,
+   then replicate a compact result for hit feedback, death, XP, and loot hooks.
 
 ## Useful Files
 
 - `docs/PROJECT_STATE.md`
 - `docs/DECISIONS.md`
-- `docs/lore/RESOURCE_NAME_ALIGNMENT.md`
-- `scripts/ui/menu/master_menu.gd`
-- `scripts/crafting/crafting_recipe_catalog.gd`
-- `scripts/player/visuals/player_visual_style.gd`
-- `scripts/ui/auth/character_appearance_preview.gd`
-- `scripts/visuals/character_appearance_assets.gd`
-- `assets/materials/characters/experimental_toon.gdshader`
-- `assets/materials/characters/toon_black_outline.gdshader`
+- `docs/COMBAT_ARCHITECTURE.md`
+- `docs/MULTIPLAYER_READINESS.md`
+- `scripts/combat/damage_request.gd`
+- `scripts/combat/damage_resolver.gd`
+- `scripts/combat/damage_result.gd`
+- `scripts/network/multiplayer_test_manager.gd`
+- `scripts/player/combat/player_auto_attack.gd`
+- `scripts/entities/enemy_mob_ai.gd`
+- `tools/tests/combat_damage_resolver_test.gd`
+- `tools/tests/mob_damage_resolver_test.gd`
+- `tools/tests/weapon_ability_test.gd`
 
 ## Acceptance Checks
 
 - `git diff --check` passes.
-- Starting city scene loads headless.
-- Player scene loads headless after player visual changes.
-- Character customization scene loads headless after appearance changes.
-- The master menu can open with Enter and close without breaking gameplay input.
+- `combat_damage_resolver_test.gd` passes.
+- `weapon_ability_test.gd` passes.
+- `mob_damage_resolver_test.gd` passes.
+- A two-client smoke test still shows mob hit numbers, health changes, death,
+  and respawn on both clients.
 
 ## Working Rules
 

@@ -10,7 +10,7 @@ Use this as the quick rulebook for where files should go.
 | `scenes/` | Godot scenes and prefabs you can instance in the editor. |
 | `scripts/` | GDScript behavior attached to scenes or reusable gameplay systems. |
 | `docs/` | Learning notes, roadmap, design rules, lore, and project guides. |
-| `tools/` | Small automation helpers that do not depend on deleted imported model folders. |
+| `tools/` | Focused tests, playtest packaging, update-client sources, and art/build helpers. |
 
 ## Current Art Rule
 
@@ -31,6 +31,9 @@ come from project-owned assets or Godot-native prototypes.
 | Folder | Purpose |
 | --- | --- |
 | `tools/art/` | Small helper scripts for generated textures or images. |
+| `tools/blender/` | Blender-side import, material, and mesh workflow helpers. |
+| `tools/playtest_client/` | Source for the Windows playtest updater. |
+| `tools/tests/` | Headless Godot regression checks for focused gameplay systems. |
 
 ## Naming Rules
 

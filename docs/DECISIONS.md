@@ -1,6 +1,6 @@
 # Decisions
 
-Last updated: 2026-07-11
+Last updated: 2026-07-16
 
 Use this as the short architecture and product decision log. Add entries when a
 choice changes how future work should be done.
@@ -48,6 +48,10 @@ choice changes how future work should be done.
 - Gameplay systems should be multiplayer-ready by default. New combat,
   gathering, loot, appearance, and animation changes should consider what other
   clients need to see.
+- Combat damage should flow through typed `DamageRequest`, `DamageResolver`, and
+  `DamageResult` objects. Defense mitigation belongs in the shared resolver, not
+  in UI scripts or one-off ability code, and public/PvP/reward-sensitive combat
+  must validate attack intent, range, timing, and stats on the server.
 
 ## Open Decisions
 
