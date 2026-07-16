@@ -1,0 +1,151 @@
+# Combat Architecture
+
+This document records the combat contract that player abilities, equipment,
+mobs, traits, and multiplayer validation should share.
+
+## Current melee contract
+
+1. Clicking a hostile or pressing Space with one selected engages it.
+2. The attacker automatically approaches until it reaches `attack_range`.
+3. A swing starts and roots the attacker for its wind-up.
+4. Impact validates that both actors are alive, still hostile, and within range.
+5. Valid impact applies damage; invalid impact interrupts without damage.
+6. Recovery must finish before another swing can start.
+7. A movement or stop order clears auto-attack. It does not clear recovery.
+
+At the base player speed of one attack per second, the default cycle is:
+
+- Wind-up: `0.32s`
+- Impact: end of wind-up
+- Recovery: `0.68s`
+
+The exact wind-up can be tuned per player or mob in the Inspector. Equipped
+weapons may instead supply a normalized contact point through their
+`EquipmentAnimationProfile`; the one-handed sword currently impacts at `0.49`
+of its cycle. Its complete animation is fitted to the same stat-driven cycle,
+so attack-speed changes preserve the visual contact point. A small
+`impact_range_leeway` prevents normal network/movement jitter from cancelling
+a swing after it has already committed.
+
+## Equipment ability contract
+
+1. An equipped item supplies an `ability_paths` dictionary keyed by action-bar
+   slot. Main-hand weapons own Q/W/E, chest armor owns R, helmets own D, and
+   boots own F. Weapon passives are always-on and do not consume a cast key.
+2. Pressing a bound key or clicking its HUD slot requests the same ability path.
+3. `selected_target` abilities approach and validate their hostile target.
+4. `direction` abilities preview a ground indicator while ordinary locomotion
+   continues. Left-click confirms, right-click steers movement, and Escape
+   cancels.
+5. `self` channels can use `PlayerChanneling`, including its shared progress
+   bar, while item data controls movement speed and interruption rules.
+6. A committed cast spends energy, starts its cooldown by stable ability id,
+   and plays its authored animation.
+7. Damage resolves at its authored impact point; movement abilities ask the
+   movement motor for collision-aware forced movement.
+8. Every bound HUD slot observes the component and renders remaining cooldown.
+
+The first implementation is `Sword Slash`: a five-second cooldown using the
+UAL2 `Sword_Regular_A` strike followed by `Sword_Regular_A_Rec`. Ability data lives in
+`assets/combat/abilities/one_handed_sword_q.tres`; adding another weapon Q is a
+data hookup unless it needs behavior beyond the common targeted-melee contract.
+
+The first directional implementation is `Dodge Roll`: a five-second-cooldown F
+ability supplied by leather boots. It uses the UAL1 `Roll` clip and travels up
+to four meters. A collision can shorten the movement. Input cannot replace the
+committed roll's velocity. Held right-click still refreshes the queued cursor
+destination, so normal locomotion resumes on the first frame after the roll.
+At cast start, the ability grants a data-authored `0.8`-second damage-immunity
+window. `CombatHealth` enforces that window, and `DamageImmunityBubble3D`
+listens to the same state so the visible shield cannot outlive its protection.
+Remote casts apply to the server-side player representation before being
+relayed, allowing the authority and observing clients to share the same state.
+
+The first self-channel implementation is `Moonleaf Binding`, supplied by
+leather chest armor on R. It can start only outside combat, lasts seven seconds,
+slows ordinary movement by 50%, and restores 9% max health plus 7.5% max energy
+on each one-second pulse. Damage or combat entry interrupts it. The generic
+channel timer owns only elapsed time; `PlayerWeaponAbilities` owns the pulses,
+cooldown, and equipment-channel context, while `PlayerController` owns the
+temporary movement multiplier and combat interruption hooks.
+
+The first instant self-effect implementation is `Energizing Shield`, supplied
+by leather helmets on D. It grants an 834-point finite absorb shield for three
+seconds, restores 25% of missing energy, and starts a 21.14-second cooldown.
+`CombatHealth` drains the absorb pool before health damage and emits shield
+state changes that `DamageImmunityBubble3D` mirrors with the same bubble visual
+used by short damage-immunity windows.
+
+## Damage feedback
+
+`CombatHealth.damage_taken` is the shared confirmation point for floating
+numbers and `BloodImpactEmitter3D`. Effects therefore appear only after damage
+actually lowers health, at the authored weapon contact frame. Replicated mob
+damage emits the same signal on remote clients.
+
+## Ownership
+
+- `scripts/combat/attack_timeline.gd` owns timing only.
+- `scripts/player/combat/player_auto_attack.gd` owns player target/range checks
+  and resolves player impacts.
+- `scripts/player/combat/player_weapon_abilities.gd` owns equipped slot ability
+  lookup, target/aim state, ability impacts or movement requests, and cooldowns.
+- `scripts/combat/abilities/weapon_ability_definition.gd` owns authored spell
+  values; `weapon_ability_catalog.gd` owns network-safe id lookup.
+- `scripts/entities/enemy_mob_ai.gd` owns mob aggro, chase, and mob impacts.
+- `scripts/combat/combat_health.gd` owns current/max health and defeat signals.
+- `scripts/player/controllers/player_controller.gd` coordinates movement,
+  facing, animation, combat state, and input cancellation.
+- `scripts/player/animation/equipment_animation_profile.gd` optionally owns an
+  equipped weapon's clip and normalized visual contact timing.
+- `scripts/network/multiplayer_test_manager.gd` mirrors attack-start visuals,
+  weapon-ability visuals, and current playtest mob health.
+
+## Multiplayer boundary
+
+The current playtest transport still accepts client-reported mob damage. That
+is adequate only for trusted prototype testing. Before PvP or a public test,
+replace it with a server-authoritative resolver:
+
+1. Client sends attack intent and target id.
+2. Server validates attacker state, hostility, range, line of sight, and timing.
+3. Server computes damage from authoritative stats and defenses.
+4. Server applies health changes and broadcasts the result.
+5. Clients predict animation/feedback but never decide final damage.
+
+Do not build PvP, critical hits, armor formulas, or valuable loot security on
+the current client-reported damage RPC.
+
+## Next combat layers
+
+Implement these in order so later systems use one resolver instead of inventing
+their own damage rules:
+
+1. Typed damage request/result (`physical`, `magical`, `true`, source, target).
+2. Armor and magical-resistance mitigation.
+3. Server-authoritative attack intent and cooldown validation.
+4. Energy costs and cast/channel interruption rules for abilities.
+5. Buff/debuff and crowd-control effects.
+6. Threat tables, assists, kill credit, XP, and loot ownership.
+
+## Validation
+
+Run the focused timing test from the repository root:
+
+```powershell
+& 'C:\Godot\Godot_v4.7-stable_win64_console.exe' `
+  --headless --path . `
+  --script res://tools/tests/combat_attack_timeline_test.gd
+
+& 'C:\Godot\Godot_v4.7-stable_win64_console.exe' `
+  --headless --path . `
+  --script res://tools/tests/weapon_ability_test.gd
+
+& 'C:\Godot\Godot_v4.7-stable_win64_console.exe' `
+  --headless --path . `
+  --script res://tools/tests/boots_dodge_roll_test.gd
+
+& 'C:\Godot\Godot_v4.7-stable_win64_console.exe' `
+  --headless --path . `
+  --script res://tools/tests/armor_regeneration_ability_test.gd
+```

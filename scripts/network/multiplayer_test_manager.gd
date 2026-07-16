@@ -9,6 +9,7 @@ signal chat_message_received(sender_peer_id: int, sender_name: String, channel: 
 signal chat_system_message_received(message: String)
 
 const PLAYER_SCENE := preload("res://scenes/player/Player.tscn")
+const WeaponAbilityCatalogScript := preload("res://scripts/combat/abilities/weapon_ability_catalog.gd")
 const DEFAULT_PORT := 24565
 const PLAYTEST_CONFIG_FILE := "playtest_server.cfg"
 const PLAYTEST_VERSION_FILE := "playtest_version.json"
@@ -66,6 +67,7 @@ var _player_inventory_snapshots := {}
 var _peer_display_names := {}
 var _peer_account_names := {}
 var _peer_last_chat_seconds := {}
+var _peer_ability_ready_at_msec := {}
 var _authorized_peers := {}
 var _send_elapsed := 0.0
 var _mob_send_elapsed := 0.0
@@ -448,6 +450,49 @@ func _client_receive_resource_state(resource_path: String, remaining_ticks: int,
 
 
 @rpc("any_peer", "reliable")
+func _server_receive_player_attack_event(speed_scale: float) -> void:
+	if not multiplayer.is_server() or not _is_network_active():
+		return
+
+	var sender_id := multiplayer.get_remote_sender_id()
+	if sender_id <= 0 or not _is_peer_authorized(sender_id):
+		return
+
+	_broadcast_player_attack_event(sender_id, clampf(speed_scale, 0.1, 5.0))
+
+
+@rpc("authority", "reliable")
+func _client_receive_player_attack_event(attacker_peer_id: int, speed_scale: float) -> void:
+	_play_remote_attack_for_peer(attacker_peer_id, clampf(speed_scale, 0.1, 5.0))
+
+
+@rpc("any_peer", "reliable")
+func _server_receive_player_weapon_ability_event(ability_id: String) -> void:
+	if not multiplayer.is_server() or not _is_network_active():
+		return
+
+	var sender_id := multiplayer.get_remote_sender_id()
+	if sender_id <= 0 or not _is_peer_authorized(sender_id):
+		return
+	if not WeaponAbilityCatalogScript.has_ability(ability_id):
+		return
+	if not _server_accept_ability_cooldown(sender_id, ability_id):
+		return
+
+	# Apply the cast to the server-side remote representation before relaying it.
+	# This keeps short defensive windows authoritative instead of visual-only.
+	_play_remote_weapon_ability_for_peer(sender_id, ability_id)
+	_broadcast_player_weapon_ability_event(sender_id, ability_id)
+
+
+@rpc("authority", "reliable")
+func _client_receive_player_weapon_ability_event(attacker_peer_id: int, ability_id: String) -> void:
+	if not WeaponAbilityCatalogScript.has_ability(ability_id):
+		return
+	_play_remote_weapon_ability_for_peer(attacker_peer_id, ability_id)
+
+
+@rpc("any_peer", "reliable")
 func _server_receive_mob_damage(mob_path: String, damage: float) -> void:
 	if not multiplayer.is_server() or not _is_network_active():
 		return
@@ -484,7 +529,6 @@ func _client_receive_mob_combat_event(
 ) -> void:
 	var is_local_attacker := attacker_peer_id == multiplayer.get_unique_id()
 	if not is_local_attacker:
-		_play_remote_attack_for_peer(attacker_peer_id)
 		_emit_mob_damage_feedback(mob_path, damage)
 
 	_apply_mob_health_state(mob_path, current_health, max_health, false)
@@ -636,10 +680,26 @@ func _connect_local_world_action_sources() -> void:
 			gathering.connect("gathering_completed", gathering_callback)
 
 	var auto_attack := local_player.get_node_or_null("AutoAttack")
-	if auto_attack != null and auto_attack.has_signal("attack_landed"):
-		var attack_callback := Callable(self, "_on_local_attack_landed")
-		if not auto_attack.is_connected("attack_landed", attack_callback):
-			auto_attack.connect("attack_landed", attack_callback)
+	if auto_attack != null:
+		if auto_attack.has_signal("attack_started"):
+			var attack_started_callback := Callable(self, "_on_local_player_attack_started")
+			if not auto_attack.is_connected("attack_started", attack_started_callback):
+				auto_attack.connect("attack_started", attack_started_callback)
+		if auto_attack.has_signal("attack_landed"):
+			var attack_callback := Callable(self, "_on_local_attack_landed")
+			if not auto_attack.is_connected("attack_landed", attack_callback):
+				auto_attack.connect("attack_landed", attack_callback)
+
+	var weapon_abilities := local_player.get_node_or_null("WeaponAbilities")
+	if weapon_abilities != null:
+		if weapon_abilities.has_signal("ability_cast_started"):
+			var ability_started_callback := Callable(self, "_on_local_weapon_ability_started")
+			if not weapon_abilities.is_connected("ability_cast_started", ability_started_callback):
+				weapon_abilities.connect("ability_cast_started", ability_started_callback)
+		if weapon_abilities.has_signal("ability_cast_landed"):
+			var ability_landed_callback := Callable(self, "_on_local_weapon_ability_landed")
+			if not weapon_abilities.is_connected("ability_cast_landed", ability_landed_callback):
+				weapon_abilities.connect("ability_cast_landed", ability_landed_callback)
 
 	_connect_local_inventory_source()
 
@@ -716,6 +776,48 @@ func _on_local_attack_landed(target: Node, damage: float) -> void:
 		return
 
 	rpc_id(1, "_server_receive_mob_damage", mob_path, maxf(damage, 0.0))
+
+
+func _on_local_player_attack_started(target: Node) -> void:
+	if _networked_mob_from_target(target) == null:
+		return
+
+	var speed_scale := _local_player_attack_speed_scale()
+	if multiplayer.is_server():
+		_broadcast_player_attack_event(multiplayer.get_unique_id(), speed_scale)
+		return
+	if not _client_playtest_code_accepted:
+		return
+
+	rpc_id(1, "_server_receive_player_attack_event", speed_scale)
+
+
+func _on_local_weapon_ability_started(_slot_id: StringName, target: Node, definition: Resource) -> void:
+	if definition == null:
+		return
+	# Damage casts still require a server-known mob target. Directional movement
+	# abilities have no target, but their animation must reach remote clients.
+	if (
+		String(definition.get("targeting_mode")) == "selected_target"
+		and _networked_mob_from_target(target) == null
+	):
+		return
+
+	var ability_id := String(definition.get("ability_id"))
+	if not WeaponAbilityCatalogScript.has_ability(ability_id):
+		return
+
+	if multiplayer.is_server():
+		_broadcast_player_weapon_ability_event(multiplayer.get_unique_id(), ability_id)
+		return
+	if not _client_playtest_code_accepted:
+		return
+
+	rpc_id(1, "_server_receive_player_weapon_ability_event", ability_id)
+
+
+func _on_local_weapon_ability_landed(_slot_id: StringName, target: Node, damage: float) -> void:
+	_on_local_attack_landed(target, damage)
 
 
 func _on_local_mob_attack_landed(_target: Node, _damage: float, mob: Node) -> void:
@@ -833,6 +935,20 @@ func _broadcast_mob_state(mob: Node, current_health: float, max_health: float) -
 		return
 
 	rpc("_client_receive_mob_state", mob_path, current_health, max_health)
+
+
+func _broadcast_player_attack_event(attacker_peer_id: int, speed_scale: float) -> void:
+	rpc(
+		"_client_receive_player_attack_event",
+		attacker_peer_id,
+		clampf(speed_scale, 0.1, 5.0)
+	)
+
+
+func _broadcast_player_weapon_ability_event(attacker_peer_id: int, ability_id: String) -> void:
+	if not WeaponAbilityCatalogScript.has_ability(ability_id):
+		return
+	rpc("_client_receive_player_weapon_ability_event", attacker_peer_id, ability_id)
 
 
 func _broadcast_mob_combat_event(attacker_peer_id: int, mob: Node, damage: float) -> void:
@@ -1021,7 +1137,7 @@ func _emit_mob_damage_feedback(mob_path: String, damage: float) -> void:
 	health.emit_signal("damage_taken", damage)
 
 
-func _play_remote_attack_for_peer(peer_id: int) -> void:
+func _play_remote_attack_for_peer(peer_id: int, speed_scale: float = 1.0) -> void:
 	if peer_id == multiplayer.get_unique_id():
 		return
 	if not _remote_players.has(peer_id):
@@ -1029,7 +1145,47 @@ func _play_remote_attack_for_peer(peer_id: int) -> void:
 
 	var remote_player := _remote_players[peer_id] as Node
 	if remote_player != null and is_instance_valid(remote_player) and remote_player.has_method("play_remote_attack"):
-		remote_player.call("play_remote_attack")
+		remote_player.call("play_remote_attack", maxf(speed_scale, 0.01))
+
+
+func _play_remote_weapon_ability_for_peer(peer_id: int, ability_id: String) -> void:
+	if peer_id == multiplayer.get_unique_id():
+		return
+	if not _remote_players.has(peer_id):
+		return
+
+	var remote_player := _remote_players[peer_id] as Node
+	if (
+		remote_player != null
+		and is_instance_valid(remote_player)
+		and remote_player.has_method("play_remote_weapon_ability")
+	):
+		remote_player.call("play_remote_weapon_ability", ability_id)
+
+
+func _local_player_attack_speed_scale() -> float:
+	var local_player := _get_local_player()
+	var stats := local_player.get_node_or_null("Stats") if local_player != null else null
+	if stats != null and stats.has_method("get_stat"):
+		return maxf(float(stats.call("get_stat", PlayerStats.AUTO_ATTACK_SPEED)), 0.01)
+
+	return 1.0
+
+
+func _server_accept_ability_cooldown(peer_id: int, ability_id: String) -> bool:
+	var definition: Resource = WeaponAbilityCatalogScript.get_definition(ability_id)
+	if definition == null:
+		return false
+
+	var now_msec := Time.get_ticks_msec()
+	var ready_by_ability: Dictionary = _peer_ability_ready_at_msec.get(peer_id, {})
+	if now_msec < int(ready_by_ability.get(ability_id, 0)):
+		return false
+
+	var cooldown_msec := roundi(maxf(float(definition.get("cooldown_seconds")), 0.0) * 1000.0)
+	ready_by_ability[ability_id] = now_msec + cooldown_msec
+	_peer_ability_ready_at_msec[peer_id] = ready_by_ability
+	return true
 
 
 func _server_player_profile(account_key: String, display_name: String, appearance: Dictionary) -> Dictionary:
@@ -1434,6 +1590,7 @@ func _on_peer_disconnected(peer_id: int) -> void:
 	_peer_display_names.erase(peer_id)
 	_peer_account_names.erase(peer_id)
 	_peer_last_chat_seconds.erase(peer_id)
+	_peer_ability_ready_at_msec.erase(peer_id)
 	if multiplayer.is_server():
 		rpc("_client_remove_remote_player", peer_id)
 		if _is_command_line_server:

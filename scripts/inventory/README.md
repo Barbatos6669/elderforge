@@ -6,17 +6,17 @@ Inventory state and item data live here. UI rendering for inventory lives in
 Files:
 
 - `item_definition.gd`: static data for one item type, such as name, tier,
-  icon id, stack limit, weight, equip slot, equipment scene path, and optional
-  attachment and animation profile paths.
+  icon id, stack limit, weight, equip slot, equipment scene path, additive stat
+  modifiers, and optional attachment, animation profile, and slot ability paths.
 - `item_family_definition.gd`: data shape for one tiered item family, such as
   logs I-VIII or axes I-VIII. The authored `.tres` files live in
   `assets/items/families/`.
 - `item_stack.gd`: runtime quantity of one item definition.
 - `prototype_item_catalog.gd`: temporary catalog builder for logs, planks,
   blocks, ingots, cloth, worked leather, stone, ore, cotton, hide, axe tools,
-  hammer tools, pickaxe tools, sickle tools, skinning knife tools, and the first
-  one-handed sword weapon family. It reads item family `.tres` data and creates
-  one `ItemDefinition` per tier.
+  hammer tools, pickaxe tools, sickle tools, skinning knife tools, the first
+  one-handed sword weapon family, and starter leather armor pieces. It reads
+  item family `.tres` data and creates one `ItemDefinition` per tier.
 - `player_inventory.gd`: local prototype owner for bag slots, currency, and
   equipped-slot state. Use `get_equipped_slot("main_hand")` when gameplay needs
   one equipped item, such as checking the currently held gathering tool. Systems
@@ -54,6 +54,16 @@ GDScript notes:
   reusable local offset for a character socket.
 - Equipment can set `equipment_animation_profile_path` when the item needs
   tool-specific or weapon-specific animation choices.
+- Equipment can set `ability_paths` to supply spells by action-bar slot without
+  adding item-specific branches to the player controller or HUD. Tiered family
+  resources author these through `ability_path_templates`. Weapons own Q/W/E,
+  chest armor owns R, helmets own D, and boots own F; the starter sword supplies
+  Q, leather chest supplies R, leather helmet supplies D, and leather boots
+  supply F. `q_ability_path` remains a legacy compatibility field while older
+  item resources are migrated. Passives do not use an active action-bar slot.
+- Equippable items can set `stat_modifiers` with stable `PlayerStats` ids. The
+  player adds those values only while the item is equipped; for example, the
+  starter sword grants `auto_attack_damage = 20` on top of the base 20.
 - `persist_to_player_database` saves/restores signed-in account inventories
   through the `PlayerDatabase` autoload. Public playtests now require a signed-in
   account so each player keeps one persistent profile.

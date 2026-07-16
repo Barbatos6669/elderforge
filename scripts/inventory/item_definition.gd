@@ -10,9 +10,19 @@ extends Resource
 @export var category := "Item"
 @export var family_id := ""
 @export var equip_slot := ""
+@export_enum("socket", "skeleton") var equipment_visual_mode := "socket"
 @export_file("*.tscn") var equipment_scene_path := ""
+## Optional body-specific alternatives used by fitted armor visuals.
+@export var equipment_scene_paths_by_body: Dictionary = {}
+## Outfit mesh-name fragments replaced by this equipped visual.
+@export var equipment_replaces_outfit_parts: PackedStringArray = PackedStringArray()
 @export_file("*.tres") var equipment_attachment_profile_path := ""
 @export_file("*.tres") var equipment_animation_profile_path := ""
+@export_file("*.tres") var q_ability_path := ""
+## Equipment-provided action-bar abilities keyed by stable slot id.
+@export var ability_paths: Dictionary = {}
+## Additive player stat bonuses granted while this item is equipped.
+@export var stat_modifiers: Dictionary = {}
 @export_range(0, 8, 1) var tier := 0
 @export var tier_roman := ""
 @export var icon_id := ""
@@ -32,9 +42,15 @@ func to_display_dict(quantity: int) -> Dictionary:
 		"category": category,
 		"family_id": family_id,
 		"equip_slot": equip_slot,
+		"equipment_visual_mode": equipment_visual_mode,
 		"equipment_scene_path": equipment_scene_path,
+		"equipment_scene_paths_by_body": equipment_scene_paths_by_body.duplicate(true),
+		"equipment_replaces_outfit_parts": equipment_replaces_outfit_parts.duplicate(),
 		"equipment_attachment_profile_path": equipment_attachment_profile_path,
 		"equipment_animation_profile_path": equipment_animation_profile_path,
+		"q_ability_path": q_ability_path,
+		"ability_paths": ability_paths.duplicate(true),
+		"stat_modifiers": stat_modifiers.duplicate(true),
 		"tier": tier,
 		"tier_roman": tier_roman,
 		"icon": icon_id,

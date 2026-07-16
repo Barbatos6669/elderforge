@@ -9,6 +9,7 @@ extends RefCounted
 const BODY_SCENE_META_KEY := &"appearance_body_scene_path"
 const MODEL_ROOT_NAME := "BaseCharacter"
 const SKELETON_PATH := NodePath("Armature/Skeleton3D")
+const CLEAN_MALE_SOURCE_BLEND_PATH := "res://assets/characters/base/source/Male_base_character_original_desktop.blend"
 
 const MALE_BODY_SCENE_PATH := "res://assets/characters/universal_base_character_package/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Male_FullBody.gltf"
 const FEMALE_BODY_SCENE_PATH := "res://assets/characters/universal_base_character_package/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Female_FullBody.gltf"
@@ -32,6 +33,33 @@ const OUTFIT_SCENE_PATHS := {
 	},
 }
 
+const OUTFIT_BODY_MASKS := {
+	"starter_peasant": {
+		"male": {
+			"local_y_clip_min": 1.56,
+			"local_y_neck_min": 1.50,
+			"local_x_neck_half_width": 0.135,
+		},
+		"female": {
+			"local_y_clip_min": 1.51,
+			"local_y_neck_min": 1.47,
+			"local_x_neck_half_width": 0.10,
+		},
+	},
+	"ranger": {
+		"male": {
+			"local_y_clip_min": 1.56,
+			"local_y_neck_min": 1.50,
+			"local_x_neck_half_width": 0.135,
+		},
+		"female": {
+			"local_y_clip_min": 1.51,
+			"local_y_neck_min": 1.47,
+			"local_x_neck_half_width": 0.10,
+		},
+	},
+}
+
 
 static func body_scene_path(body_type: String) -> String:
 	return FEMALE_BODY_SCENE_PATH if sanitize_body_type(body_type) == "female" else MALE_BODY_SCENE_PATH
@@ -52,6 +80,43 @@ static func outfit_scene_path(outfit_style: String, body_type: String) -> String
 
 	var style_paths: Dictionary = OUTFIT_SCENE_PATHS.get(style, {})
 	return String(style_paths.get(sanitize_body_type(body_type), ""))
+
+
+static func outfit_hides_base_body(outfit_style: String, body_type: String) -> bool:
+	return not outfit_scene_path(outfit_style, body_type).is_empty()
+
+
+static func outfit_body_clip_min_y(outfit_style: String, body_type: String) -> float:
+	var style := sanitize_outfit_style(outfit_style)
+	var sanitized_body_type := sanitize_body_type(body_type)
+	var style_masks: Dictionary = OUTFIT_BODY_MASKS.get(style, {})
+	var body_mask: Dictionary = style_masks.get(sanitized_body_type, {})
+	if body_mask.has("local_y_clip_min"):
+		return float(body_mask["local_y_clip_min"])
+
+	return head_only_clip_min_y(sanitized_body_type)
+
+
+static func outfit_body_neck_min_y(outfit_style: String, body_type: String) -> float:
+	var style := sanitize_outfit_style(outfit_style)
+	var sanitized_body_type := sanitize_body_type(body_type)
+	var style_masks: Dictionary = OUTFIT_BODY_MASKS.get(style, {})
+	var body_mask: Dictionary = style_masks.get(sanitized_body_type, {})
+	if body_mask.has("local_y_neck_min"):
+		return float(body_mask["local_y_neck_min"])
+
+	return 1.47 if sanitized_body_type == "female" else 1.50
+
+
+static func outfit_body_neck_half_width(outfit_style: String, body_type: String) -> float:
+	var style := sanitize_outfit_style(outfit_style)
+	var sanitized_body_type := sanitize_body_type(body_type)
+	var style_masks: Dictionary = OUTFIT_BODY_MASKS.get(style, {})
+	var body_mask: Dictionary = style_masks.get(sanitized_body_type, {})
+	if body_mask.has("local_x_neck_half_width"):
+		return float(body_mask["local_x_neck_half_width"])
+
+	return 0.10 if sanitized_body_type == "female" else 0.135
 
 
 static func sanitize_body_type(value: String) -> String:
@@ -101,10 +166,10 @@ static func is_full_body_base_mesh(mesh_instance: MeshInstance3D) -> bool:
 
 static func head_only_clip_min_y(body_type: String) -> float:
 	# Full-body base meshes include head, torso, arms, and legs in one surface.
-	# When an outfit is active, keep the full head and upper neck so service NPCs
-	# and players do not lose their faces, while the outfit still owns the torso,
-	# arms, and legs.
-	return 1.42 if sanitize_body_type(body_type) == "female" else 1.46
+	# This fallback keeps the face and upper neck while hiding the torso, arms,
+	# and legs under clothing. Prefer `outfit_body_clip_min_y()` for outfit-
+	# specific tuning.
+	return 1.51 if sanitize_body_type(body_type) == "female" else 1.56
 
 
 static func _is_head_or_full_body_mesh_name(mesh_name: String) -> bool:

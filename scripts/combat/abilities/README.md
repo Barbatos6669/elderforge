@@ -1,0 +1,75 @@
+# Equipment Abilities
+
+Equipment abilities are split into data and runtime behavior:
+
+- `weapon_ability_definition.gd` describes one spell: energy cost, cooldown,
+  range, damage, animation, impact timing, optional damage immunity, finite
+  absorb shields, missing-energy restoration, and tooltip presentation.
+- `weapon_ability_catalog.gd` maps network-safe ids to trusted resources.
+- Ability resources live under `assets/combat/abilities/`.
+- `player_weapon_abilities.gd` owns targeting, casting, impact, and cooldowns
+  for the local player.
+
+An equipped item exposes an `ability_paths` dictionary keyed by action-bar slot.
+Tiered item families author the same relationship through
+`ability_path_templates`. The canonical active layout is Q/W/E for the weapon,
+R for chest armor, D for the helmet, and F for boots. Weapon passives are
+always-on data and do not consume an active key. Adding another common
+equipment spell normally means creating a `.tres` ability and pointing the
+item family at it instead of editing player code.
+
+Targeted cast requests accept an untrusted `Variant` at their public boundary,
+then normalize it to a live `Node`. This matters because Godot Node references
+do not keep a defeated or unloaded target alive; stale targets are rejected
+before typed combat helpers or signals receive them.
+
+Abilities support two targeting modes:
+
+- `selected_target` approaches and attacks the selected hostile target.
+- `direction` previews a ground indicator toward the mouse before the player
+  confirms or cancels the cast.
+- `self` commits immediately against the wearer. It can either use the shared
+  `PlayerChanneling` timer or apply an instant self effect.
+
+The starter leather boots provide `Dodge Roll` on F. Press F or click its HUD
+slot to aim, move the mouse to choose a direction, and left-click to roll.
+Right-click continues issuing movement orders while aiming; Escape cancels.
+The roll uses the UAL1 `Roll` animation, travels up to four meters with
+collision, and has a five-second cooldown. Held right-click keeps refreshing
+the queued destination, which resumes immediately when the roll finishes.
+Its data resource also grants `0.8` seconds of damage immunity at cast start;
+`CombatHealth` owns the exact timer while the player bubble mirrors that state.
+
+The starter leather chest provides `Moonleaf Binding` on R. It is a
+seven-second out-of-combat channel that permits movement at half speed. Every
+second it restores `9%` maximum health and `7.5%` maximum energy. Damage,
+entering combat, starting another action, death, or equipment reset interrupts
+the channel; its 30-second cooldown starts when the binding begins. Tune those
+values in `assets/combat/abilities/moonleaf_binding.tres` rather than in the
+controller.
+
+The starter leather helmet provides `Energizing Shield` on D. It is an instant
+self-cast that grants an 834-point absorb shield for three seconds, restores
+25% of missing energy, and starts a 21.14-second cooldown. Tune those values in
+`assets/combat/abilities/energizing_shield.tres`.
+
+Ability damage uses `base_damage + auto_attack_damage * damage_multiplier`,
+then applies the physical ability bonus. This supports fixed-damage spells,
+stat-scaling spells, and hybrids from the same data resource. Sword Slash uses
+100 base damage and zero auto-attack scaling.
+
+Mana is checked when an ability is requested and charged only when its cast
+actually begins. Approaching a target or losing it before cast start is free;
+an interrupted committed cast remains paid. `ResourcePool.try_spend()` prevents
+partial payments when the player cannot afford the full cost.
+
+GDScript notes:
+
+- `&"q"` is a `StringName`, an efficient identifier used for stable slots.
+- `equipment_ability_slots.gd` is the canonical list of active keys, HUD slots,
+  and equipment ownership. Change that contract instead of copying new key
+  lists into several scripts.
+- `Dictionary` stores slot-to-ability relationships without adding one field
+  for every future action-bar key.
+- `signal name(arguments)` declares an event other scripts can observe.
+- `as Resource` safely casts a loaded object; a failed cast returns `null`.

@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="ItemFamilyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_family_definition.gd" id="1_family"]
+
+[resource]
+script = ExtResource("1_family")
+family_id = "leather_helmet"
+icon_id = "helmet"
+item_id_prefix = "leather_helmet"
+category = "Armor"
+tier_names = PackedStringArray("Wolfhide Hood", "Deerhide Hood", "Thick Leather Hood", "Cured Leather Hood", "Hardened Leather Hood", "Pristine Leather Hood", "Royal Leather Hood", "Elder Leather Hood")
+tier_descriptions = PackedStringArray("A wolfhide hood stitched with copper-thread focus knots. When charged, the knots pull ambient energy into a short-lived protective shield.", "A deerhide hood with cleaner focus stitching, favored by scouts who need a quick ward before retreating.")
+base_weight = 0.9
+weight_per_tier = 0.06
+usage_text = "warding, leather armor, and energy shielding"
+max_stack = 1
+equip_slot = "head"
+equipment_visual_mode = "skeleton"
+equipment_scene_path_templates_by_body = {
+"female": "res://assets/characters/universal_base_character_package/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Modular Parts/Female_Ranger_Head_Hood.gltf",
+"male": "res://assets/characters/universal_base_character_package/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Modular Parts/Male_Ranger_Head_Hood.gltf"
+}
+equipment_replaces_outfit_parts = PackedStringArray("hair")
+ability_path_templates = {
+"d": "res://assets/combat/abilities/energizing_shield.tres"
+}

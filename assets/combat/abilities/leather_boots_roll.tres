@@ -1,0 +1,45 @@
+[gd_resource type="Resource" script_class="WeaponAbilityDefinition" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/abilities/weapon_ability_definition.gd" id="1_definition"]
+[ext_resource type="Script" path="res://scripts/combat/abilities/ability_tooltip_effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Resource_movement"]
+script = ExtResource("2_effect")
+label = "Movement"
+value = "Roll up to 4 meters"
+tone = "mobility"
+
+[sub_resource type="Resource" id="Resource_aim"]
+script = ExtResource("2_effect")
+label = "Targeting"
+value = "LMB cast; RMB move"
+tone = "utility"
+
+[sub_resource type="Resource" id="Resource_protection"]
+script = ExtResource("2_effect")
+label = "Protection"
+value = "Damage immune for 0.8 seconds"
+tone = "buff"
+
+[resource]
+script = ExtResource("1_definition")
+ability_id = "leather_boots_roll"
+display_name = "Dodge Roll"
+description = "Aim along the ground while moving, then roll quickly in the chosen direction. A brief shield protects you during the roll, and collision shortens the movement rather than passing through obstacles."
+tooltip_tags = PackedStringArray("Mobility", "Dodge", "Defense", "Directional")
+tooltip_effects = Array[Resource]([SubResource("Resource_movement"), SubResource("Resource_aim"), SubResource("Resource_protection")])
+input_slot = &"f"
+icon_id = "dodge_roll"
+targeting_mode = "direction"
+execution_type = "dodge"
+energy_cost = 0.0
+cooldown_seconds = 5.0
+cast_duration_seconds = 0.8
+damage_immunity_seconds = 0.8
+impact_fraction = 0.0
+movement_distance = 4.0
+indicator_width = 1.1
+base_damage = 0.0
+damage_multiplier = 0.0
+animation_scene_path = "res://assets/animations/universal_animation_library_1/UAL1_Standard.glb"
+animation_name = &"Roll"

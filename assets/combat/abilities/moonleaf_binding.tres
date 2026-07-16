@@ -1,0 +1,54 @@
+[gd_resource type="Resource" script_class="WeaponAbilityDefinition" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/abilities/weapon_ability_definition.gd" id="1_definition"]
+[ext_resource type="Script" path="res://scripts/combat/abilities/ability_tooltip_effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Resource_health"]
+script = ExtResource("2_effect")
+label = "Health"
+value = "9% max health every second"
+tone = "healing"
+
+[sub_resource type="Resource" id="Resource_energy"]
+script = ExtResource("2_effect")
+label = "Energy"
+value = "7.5% max energy every second"
+tone = "recovery"
+
+[sub_resource type="Resource" id="Resource_movement"]
+script = ExtResource("2_effect")
+label = "Movement"
+value = "50% speed while channeling"
+tone = "debuff"
+
+[sub_resource type="Resource" id="Resource_restriction"]
+script = ExtResource("2_effect")
+label = "Restriction"
+value = "Out of combat; breaks on damage"
+tone = "survival"
+
+[resource]
+script = ExtResource("1_definition")
+ability_id = "moonleaf_binding"
+display_name = "Moonleaf Binding"
+description = "Crush the Moonleaf poultice sewn beneath the armor and bind your wounds. Channel for seven seconds outside combat while moving at half speed. Each pulse restores health and energy, but taking damage tears the binding open."
+tooltip_tags = PackedStringArray("Healing", "Channel", "Survival", "Out of Combat")
+tooltip_effects = Array[Resource]([SubResource("Resource_health"), SubResource("Resource_energy"), SubResource("Resource_movement"), SubResource("Resource_restriction")])
+input_slot = &"r"
+icon_id = "moonleaf_binding"
+targeting_mode = "self"
+execution_type = "regeneration"
+energy_cost = 0.0
+cooldown_seconds = 30.0
+cast_duration_seconds = 7.0
+requires_out_of_combat = true
+cancel_on_damage = true
+channel_tick_interval_seconds = 1.0
+health_restore_percent_per_tick = 9.0
+energy_restore_percent_per_tick = 7.5
+movement_speed_multiplier = 0.5
+impact_fraction = 0.0
+attack_range = 0.0
+approach_distance = 0.0
+base_damage = 0.0
+damage_multiplier = 0.0

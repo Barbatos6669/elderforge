@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/refining/RefiningPanel.tscn" id="6_refining_panel"]
 [ext_resource type="PackedScene" path="res://scenes/ui/loot/LootPanel.tscn" id="7_loot_panel"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/PlayerStatusHud.tscn" id="8_player_status_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud/WeaponAbilityHud.tscn" id="8_weapon_ability_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/HudMap.tscn" id="8_hud_map"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/WorldTimeHud.tscn" id="8_world_time_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/DeathMessageHud.tscn" id="9_death_message_hud"]
@@ -216,6 +217,9 @@ start_visible = false
 player_name = "Player"
 health_path = NodePath("../World/Player/Health")
 mana_path = NodePath("../World/Player/Mana")
+
+[node name="WeaponAbilityHud" parent="." instance=ExtResource("8_weapon_ability_hud")]
+ability_component_path = NodePath("../World/Player/WeaponAbilities")
 
 [node name="WorldTimeHud" parent="." instance=ExtResource("8_world_time_hud")]
 

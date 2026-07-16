@@ -7,7 +7,7 @@
 [ext_resource type="PackedScene" path="res://scenes/camera/IsometricCameraRig.tscn" id="5_camera_rig"]
 [ext_resource type="Script" uid="uid://cbx45o07luo52" path="res://scripts/player/feedback/player_click_feedback.gd" id="6_feedback"]
 [ext_resource type="PackedScene" path="res://scenes/effects/ClickMoveIndicator.tscn" id="7_click_indicator"]
-[ext_resource type="PackedScene" uid="uid://hywtsvmqjd7i" path="res://assets/characters/base/BaseCharacter.glb" id="8_base_character"]
+[ext_resource type="PackedScene" path="res://assets/characters/universal_base_character_package/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Male_FullBody.gltf" id="8_base_character"]
 [ext_resource type="Script" uid="uid://cw62d0ikuxg7t" path="res://scripts/player/animation/player_animation_controller.gd" id="10_animation"]
 [ext_resource type="PackedScene" uid="uid://crtjf3qpcvdd2" path="res://assets/animations/universal_animation_library_1/UAL1_Standard.glb" id="11_animation_library"]
 [ext_resource type="Script" uid="uid://e4vucijm23n4" path="res://scripts/player/audio/player_footstep_audio.gd" id="12_footstep_audio"]
@@ -32,6 +32,13 @@
 [ext_resource type="Script" path="res://scripts/player/visuals/player_occlusion_silhouette.gd" id="31_occlusion_silhouette"]
 [ext_resource type="Script" path="res://scripts/player/visuals/player_visual_style.gd" id="32_visual_style"]
 [ext_resource type="Script" path="res://scripts/stats/forged_trait_loadout.gd" id="33_forged_traits"]
+[ext_resource type="Script" path="res://scripts/player/combat/player_weapon_abilities.gd" id="34_weapon_abilities"]
+[ext_resource type="PackedScene" path="res://scenes/effects/BloodImpactEmitter3D.tscn" id="35_blood_impact"]
+[ext_resource type="Script" path="res://scripts/player/audio/player_combat_audio.gd" id="36_combat_audio"]
+[ext_resource type="Resource" path="res://assets/audio/combat/sets/basic_sword_combat.tres" id="37_combat_sound_set"]
+[ext_resource type="PackedScene" path="res://scenes/effects/DirectionalAbilityIndicator.tscn" id="38_directional_indicator"]
+[ext_resource type="PackedScene" path="res://scenes/effects/DamageImmunityBubble3D.tscn" id="39_immunity_bubble"]
+[ext_resource type="PackedScene" path="res://scenes/effects/MoonleafChannelAura3D.tscn" id="40_moonleaf_aura"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -53,6 +60,9 @@ script = ExtResource("18_targeting")
 [node name="AutoAttack" type="Node" parent="." unique_id=858738264]
 script = ExtResource("19_auto_attack")
 
+[node name="WeaponAbilities" type="Node" parent="."]
+script = ExtResource("34_weapon_abilities")
+
 [node name="Channeling" type="Node" parent="." unique_id=1688743502]
 script = ExtResource("20_channeling")
 
@@ -70,7 +80,7 @@ script = ExtResource("29_resource_pool")
 display_name = "Mana"
 max_resource = 120.0
 current_resource = 120.0
-regeneration_per_second = 10.0
+regeneration_per_second = 1.5
 
 [node name="Health" type="Node" parent="." unique_id=110614945]
 script = ExtResource("26_health")
@@ -90,12 +100,20 @@ script = ExtResource("27_damage_numbers")
 spawn_offset = Vector3(0, 1.2, 0)
 damage_color = Color(1, 0.38, 0.28, 1)
 
+[node name="BloodImpact" parent="." instance=ExtResource("35_blood_impact")]
+
+[node name="DamageImmunityBubble" parent="." instance=ExtResource("39_immunity_bubble")]
+
+[node name="MoonleafChannelAura" parent="." instance=ExtResource("40_moonleaf_aura")]
+
 [node name="Movement" type="Node" parent="." unique_id=851313477]
 script = ExtResource("3_movement")
 movement_speed = 3.2
 acceleration = 32.0
 deceleration = 28.0
 direction_change_snap_angle = 0.85
+
+[node name="DirectionalAbilityIndicator" parent="." instance=ExtResource("38_directional_indicator")]
 
 [node name="Facing" type="Node" parent="." unique_id=124228613]
 script = ExtResource("4_facing")
@@ -121,6 +139,22 @@ move_speed_scale = 0.68
 script = ExtResource("12_footstep_audio")
 surface_set = ExtResource("13_footstep_set")
 
+[node name="CombatAudio" type="Node" parent="."]
+script = ExtResource("36_combat_audio")
+sound_set = ExtResource("37_combat_sound_set")
+
+[node name="Swing" type="AudioStreamPlayer3D" parent="CombatAudio"]
+unit_size = 5.0
+max_distance = 28.0
+
+[node name="Impact" type="AudioStreamPlayer3D" parent="CombatAudio"]
+unit_size = 5.0
+max_distance = 28.0
+
+[node name="Hurt" type="AudioStreamPlayer3D" parent="CombatAudio"]
+unit_size = 5.0
+max_distance = 28.0
+
 [node name="ClickFeedback" type="Node" parent="." unique_id=921554887]
 script = ExtResource("6_feedback")
 click_indicator_scene = ExtResource("7_click_indicator")
@@ -137,6 +171,7 @@ bone_name = "Head"
 script = ExtResource("32_visual_style")
 model_root_path = NodePath("../Visuals/BaseCharacter")
 use_auth_session_appearance = true
+outfit_style = "starter_peasant"
 
 [node name="MainHandAttachment" type="BoneAttachment3D" parent="Visuals/BaseCharacter/Armature/Skeleton3D"]
 bone_name = "hand_r"

@@ -44,6 +44,11 @@ const TOOL_FAMILY_PATHS := [
 const WEAPON_FAMILY_PATHS := [
 	"res://assets/items/families/weapons/one_handed_sword.tres",
 ]
+const ARMOR_FAMILY_PATHS := [
+	"res://assets/items/families/armor/leather_armor.tres",
+	"res://assets/items/families/armor/leather_helmet.tres",
+	"res://assets/items/families/armor/leather_boots.tres",
+]
 
 
 ## Builds the current gathering resource item pass.
@@ -66,12 +71,18 @@ static func create_weapon_preview_definitions() -> Array:
 	return _create_definitions_from_paths(WEAPON_FAMILY_PATHS)
 
 
+## Builds temporary wearable armor items before the full crafting tree exists.
+static func create_armor_preview_definitions() -> Array:
+	return _create_definitions_from_paths(ARMOR_FAMILY_PATHS)
+
+
 ## Builds every temporary item definition known to the prototype.
 static func create_prototype_definitions() -> Array:
 	var definitions := create_gathering_definitions()
 	definitions.append_array(create_refined_resource_definitions())
 	definitions.append_array(create_equipment_preview_definitions())
 	definitions.append_array(create_weapon_preview_definitions())
+	definitions.append_array(create_armor_preview_definitions())
 	return definitions
 
 
@@ -129,9 +140,15 @@ static func _append_family_definition(definitions: Array, family_definition: Res
 	var usage_text := String(family_definition.get("usage_text"))
 	var max_stack := maxi(1, int(family_definition.get("max_stack")))
 	var equip_slot := String(family_definition.get("equip_slot"))
+	var equipment_visual_mode := String(family_definition.get("equipment_visual_mode"))
 	var equipment_scene_path_template := String(family_definition.get("equipment_scene_path_template"))
+	var equipment_scene_path_templates_by_body := family_definition.get("equipment_scene_path_templates_by_body") as Dictionary
+	var equipment_replaces_outfit_parts := PackedStringArray(family_definition.get("equipment_replaces_outfit_parts"))
 	var equipment_attachment_profile_path := String(family_definition.get("equipment_attachment_profile_path"))
 	var equipment_animation_profile_path_template := String(family_definition.get("equipment_animation_profile_path_template"))
+	var q_ability_path_template := String(family_definition.get("q_ability_path_template"))
+	var ability_path_templates := family_definition.get("ability_path_templates") as Dictionary
+	var stat_modifiers := family_definition.get("stat_modifiers") as Dictionary
 
 	if family_id.is_empty() or item_id_prefix.is_empty() or tier_names.is_empty():
 		push_warning("Item family definition is missing required data: %s" % source_path)
@@ -148,9 +165,18 @@ static func _append_family_definition(definitions: Array, family_definition: Res
 		definition.category = category
 		definition.family_id = family_id
 		definition.equip_slot = equip_slot
+		definition.equipment_visual_mode = equipment_visual_mode if not equipment_visual_mode.is_empty() else "socket"
 		definition.equipment_scene_path = _resolve_tier_path(equipment_scene_path_template, tier)
+		definition.equipment_scene_paths_by_body = _resolve_body_scene_paths(
+			equipment_scene_path_templates_by_body,
+			tier
+		)
+		definition.equipment_replaces_outfit_parts = equipment_replaces_outfit_parts.duplicate()
 		definition.equipment_attachment_profile_path = equipment_attachment_profile_path
 		definition.equipment_animation_profile_path = _resolve_tier_path(equipment_animation_profile_path_template, tier)
+		definition.q_ability_path = _resolve_tier_path(q_ability_path_template, tier)
+		definition.ability_paths = _resolve_ability_paths(ability_path_templates, tier)
+		definition.stat_modifiers = stat_modifiers.duplicate(true) if stat_modifiers != null else {}
 		definition.tier = tier
 		definition.tier_roman = roman
 		definition.icon_id = icon_id
@@ -167,6 +193,20 @@ static func _append_family_definition(definitions: Array, family_definition: Res
 		definitions.append(definition)
 
 
+static func _resolve_ability_paths(path_templates: Dictionary, tier: int) -> Dictionary:
+	var resolved_paths := {}
+	if path_templates == null:
+		return resolved_paths
+
+	for raw_slot_id in path_templates:
+		var slot_id := String(raw_slot_id).strip_edges().to_lower()
+		var path_template := String(path_templates[raw_slot_id])
+		if slot_id.is_empty() or path_template.is_empty():
+			continue
+		resolved_paths[slot_id] = _resolve_tier_path(path_template, tier)
+	return resolved_paths
+
+
 static func _resolve_tier_path(path_template: String, tier: int) -> String:
 	var placeholder_count := path_template.count("%d")
 	if placeholder_count <= 0:
@@ -175,6 +215,19 @@ static func _resolve_tier_path(path_template: String, tier: int) -> String:
 		return path_template % tier
 
 	return path_template % [tier, tier]
+
+
+static func _resolve_body_scene_paths(path_templates: Dictionary, tier: int) -> Dictionary:
+	var resolved_paths := {}
+	if path_templates == null:
+		return resolved_paths
+
+	for body_type in path_templates.keys():
+		var path_template := String(path_templates[body_type])
+		if path_template.is_empty():
+			continue
+		resolved_paths[String(body_type)] = _resolve_tier_path(path_template, tier)
+	return resolved_paths
 
 
 static func _definition_description(

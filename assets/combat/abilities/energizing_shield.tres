@@ -1,0 +1,46 @@
+[gd_resource type="Resource" script_class="WeaponAbilityDefinition" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/abilities/weapon_ability_definition.gd" id="1_definition"]
+[ext_resource type="Script" path="res://scripts/combat/abilities/ability_tooltip_effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Resource_protection"]
+script = ExtResource("2_effect")
+label = "Shield"
+value = "Absorbs 834 damage for 3 seconds"
+tone = "buff"
+
+[sub_resource type="Resource" id="Resource_energy"]
+script = ExtResource("2_effect")
+label = "Energy"
+value = "Restores 25% missing energy"
+tone = "recovery"
+
+[sub_resource type="Resource" id="Resource_timing"]
+script = ExtResource("2_effect")
+label = "Timing"
+value = "Instant self-cast"
+tone = "utility"
+
+[resource]
+script = ExtResource("1_definition")
+ability_id = "energizing_shield"
+display_name = "Energizing Shield"
+description = "Gather ambient energy to gain a Shield, absorbing up to 834 damage before resistances for 3 seconds. Restores 25% of your missing Energy."
+tooltip_tags = PackedStringArray("Buff", "Shield", "Recovery", "Self")
+tooltip_effects = Array[Resource]([SubResource("Resource_protection"), SubResource("Resource_energy"), SubResource("Resource_timing")])
+input_slot = &"d"
+icon_id = "energizing_shield"
+targeting_mode = "self"
+execution_type = "shield"
+energy_cost = 0.0
+cooldown_seconds = 21.14
+cast_duration_seconds = 0.0
+damage_immunity_seconds = 0.0
+absorb_shield_amount = 834.0
+absorb_shield_duration_seconds = 3.0
+missing_energy_restore_percent = 25.0
+impact_fraction = 0.0
+attack_range = 0.0
+approach_distance = 0.0
+base_damage = 0.0
+damage_multiplier = 0.0

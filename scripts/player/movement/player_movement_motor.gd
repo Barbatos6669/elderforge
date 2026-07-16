@@ -24,6 +24,10 @@ extends Node
 
 var _has_destination := false
 var _destination := Vector3.ZERO
+var _forced_direction := Vector3.ZERO
+var _forced_speed := 0.0
+var _forced_remaining_seconds := 0.0
+var _speed_multipliers: Dictionary = {}
 
 
 ## Sets a new destination in world space.
@@ -32,14 +36,60 @@ func set_destination(destination: Vector3) -> void:
 	_has_destination = true
 
 
+## Starts collision-aware movement that temporarily owns the motor. This is
+## used by committed mobility abilities such as Dodge Roll.
+func start_forced_movement(direction: Vector3, distance: float, duration_seconds: float) -> bool:
+	var flat_direction := Vector3(direction.x, 0.0, direction.z)
+	var safe_distance := maxf(distance, 0.0)
+	var safe_duration := maxf(duration_seconds, 0.01)
+	if flat_direction.length_squared() <= 0.0001 or safe_distance <= 0.0:
+		return false
+
+	_forced_direction = flat_direction.normalized()
+	_forced_speed = safe_distance / safe_duration
+	_forced_remaining_seconds = safe_duration
+	return true
+
+
+func is_forced_moving() -> bool:
+	return _forced_remaining_seconds > 0.0 and _forced_direction != Vector3.ZERO
+
+
+## Adds or updates a named ordinary-movement multiplier. Independent systems
+## use distinct source ids so removing one slow never clears another effect.
+func set_speed_multiplier(source_id: StringName, multiplier: float) -> void:
+	if String(source_id).is_empty():
+		return
+	_speed_multipliers[String(source_id)] = maxf(multiplier, 0.0)
+
+
+## Removes one named movement effect without disturbing other modifiers.
+func clear_speed_multiplier(source_id: StringName) -> void:
+	_speed_multipliers.erase(String(source_id))
+
+
+## Returns base movement speed after every active multiplier is applied.
+func get_effective_movement_speed() -> float:
+	var effective_speed := maxf(movement_speed, 0.0)
+	for raw_multiplier in _speed_multipliers.values():
+		effective_speed *= maxf(float(raw_multiplier), 0.0)
+	return effective_speed
+
+
 ## Clears destination state and stops the character immediately.
 func stop(character: CharacterBody3D) -> void:
 	_has_destination = false
+	_forced_direction = Vector3.ZERO
+	_forced_speed = 0.0
+	_forced_remaining_seconds = 0.0
 	character.velocity = Vector3.ZERO
 
 
 ## Advances movement for one physics frame and returns intended direction.
 func move_to_destination(character: CharacterBody3D, delta: float) -> Vector3:
+	if is_forced_moving():
+		return _move_forced(character, delta)
+
 	if not _has_destination:
 		return _decelerate(character, delta)
 
@@ -50,7 +100,7 @@ func move_to_destination(character: CharacterBody3D, delta: float) -> Vector3:
 		character.move_and_slide()
 		return Vector3.ZERO
 
-	var target_velocity := movement_direction * movement_speed
+	var target_velocity := movement_direction * get_effective_movement_speed()
 	var current_horizontal_velocity := Vector3(character.velocity.x, 0.0, character.velocity.z)
 
 	if _should_snap_direction(current_horizontal_velocity, movement_direction):
@@ -68,6 +118,26 @@ func move_to_destination(character: CharacterBody3D, delta: float) -> Vector3:
 		stop(character)
 
 	return movement_direction
+
+
+func _move_forced(character: CharacterBody3D, delta: float) -> Vector3:
+	var elapsed := minf(maxf(delta, 0.0), _forced_remaining_seconds)
+	character.velocity.x = _forced_direction.x * _forced_speed
+	_apply_vertical_velocity(character, elapsed)
+	character.velocity.z = _forced_direction.z * _forced_speed
+	character.move_and_slide()
+	_forced_remaining_seconds = maxf(_forced_remaining_seconds - elapsed, 0.0)
+
+	if _forced_remaining_seconds <= 0.0:
+		var completed_direction := _forced_direction
+		_forced_direction = Vector3.ZERO
+		_forced_speed = 0.0
+		if not _has_destination:
+			character.velocity.x = 0.0
+			character.velocity.z = 0.0
+		return completed_direction
+
+	return _forced_direction
 
 
 ## Returns the current horizontal velocity direction, or Vector3.ZERO if stopped.

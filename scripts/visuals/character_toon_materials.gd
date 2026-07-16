@@ -18,11 +18,19 @@ static func make_character_material(
 	use_outline := true,
 	outline_width := 0.012,
 	use_local_y_clip := false,
-	local_y_clip_min := 0.0
+	local_y_clip_min := 0.0,
+	local_y_neck_min := 0.0,
+	local_x_neck_half_width := 0.0
 ) -> Material:
 	var material: Material
-	if style == STYLE_EXPERIMENTAL_SHADER:
-		material = _make_experimental_shader_material(color, use_local_y_clip, local_y_clip_min)
+	if style == STYLE_EXPERIMENTAL_SHADER or use_local_y_clip:
+		material = _make_experimental_shader_material(
+			color,
+			use_local_y_clip,
+			local_y_clip_min,
+			local_y_neck_min,
+			local_x_neck_half_width
+		)
 	else:
 		material = _make_standard_toon_material(color, cull_disabled)
 
@@ -31,7 +39,9 @@ static func make_character_material(
 			outline_width,
 			Color(0.015, 0.012, 0.01, 1.0),
 			use_local_y_clip,
-			local_y_clip_min
+			local_y_clip_min,
+			local_y_neck_min,
+			local_x_neck_half_width
 		)
 
 	return material
@@ -42,16 +52,34 @@ static func make_textured_character_material(
 	fallback_color := Color(0.68, 0.62, 0.54, 1.0),
 	style := STYLE_EXPERIMENTAL_SHADER,
 	use_outline := true,
-	outline_width := 0.012
+	outline_width := 0.012,
+	use_local_y_clip := false,
+	local_y_clip_min := 0.0,
+	local_y_neck_min := 0.0,
+	local_x_neck_half_width := 0.0
 ) -> Material:
 	var material: Material
-	if style == STYLE_EXPERIMENTAL_SHADER:
-		material = _make_experimental_shader_material_from_source(source_material, fallback_color)
+	if style == STYLE_EXPERIMENTAL_SHADER or use_local_y_clip:
+		material = _make_experimental_shader_material_from_source(
+			source_material,
+			fallback_color,
+			use_local_y_clip,
+			local_y_clip_min,
+			local_y_neck_min,
+			local_x_neck_half_width
+		)
 	else:
 		material = _make_standard_toon_material_from_source(source_material, fallback_color)
 
 	if use_outline:
-		material.next_pass = make_outline_material(outline_width)
+		material.next_pass = make_outline_material(
+			outline_width,
+			Color(0.015, 0.012, 0.01, 1.0),
+			use_local_y_clip,
+			local_y_clip_min,
+			local_y_neck_min,
+			local_x_neck_half_width
+		)
 
 	return material
 
@@ -69,7 +97,9 @@ static func make_outline_material(
 	outline_width := 0.012,
 	outline_color := Color(0.015, 0.012, 0.01, 1.0),
 	use_local_y_clip := false,
-	local_y_clip_min := 0.0
+	local_y_clip_min := 0.0,
+	local_y_neck_min := 0.0,
+	local_x_neck_half_width := 0.0
 ) -> ShaderMaterial:
 	var material := ShaderMaterial.new()
 	material.shader = TOON_OUTLINE_SHADER
@@ -77,13 +107,17 @@ static func make_outline_material(
 	material.set_shader_parameter("outline_width", maxf(outline_width, 0.0))
 	material.set_shader_parameter("use_local_y_clip", use_local_y_clip)
 	material.set_shader_parameter("local_y_clip_min", local_y_clip_min)
+	material.set_shader_parameter("local_y_neck_min", local_y_neck_min)
+	material.set_shader_parameter("local_x_neck_half_width", local_x_neck_half_width)
 	return material
 
 
 static func _make_experimental_shader_material(
 	color: Color,
 	use_local_y_clip := false,
-	local_y_clip_min := 0.0
+	local_y_clip_min := 0.0,
+	local_y_neck_min := 0.0,
+	local_x_neck_half_width := 0.0
 ) -> ShaderMaterial:
 	var material := ShaderMaterial.new()
 	material.shader = EXPERIMENTAL_TOON_SHADER
@@ -101,11 +135,26 @@ static func _make_experimental_shader_material(
 	material.set_shader_parameter("specular", 0.0)
 	material.set_shader_parameter("use_local_y_clip", use_local_y_clip)
 	material.set_shader_parameter("local_y_clip_min", local_y_clip_min)
+	material.set_shader_parameter("local_y_neck_min", local_y_neck_min)
+	material.set_shader_parameter("local_x_neck_half_width", local_x_neck_half_width)
 	return material
 
 
-static func _make_experimental_shader_material_from_source(source_material: Material, fallback_color: Color) -> ShaderMaterial:
-	var material := _make_experimental_shader_material(_source_albedo_color(source_material, fallback_color))
+static func _make_experimental_shader_material_from_source(
+	source_material: Material,
+	fallback_color: Color,
+	use_local_y_clip := false,
+	local_y_clip_min := 0.0,
+	local_y_neck_min := 0.0,
+	local_x_neck_half_width := 0.0
+) -> ShaderMaterial:
+	var material := _make_experimental_shader_material(
+		_source_albedo_color(source_material, fallback_color),
+		use_local_y_clip,
+		local_y_clip_min,
+		local_y_neck_min,
+		local_x_neck_half_width
+	)
 	var albedo_texture := _source_albedo_texture(source_material)
 	if albedo_texture != null:
 		material.set_shader_parameter("use_albedo_texture", true)

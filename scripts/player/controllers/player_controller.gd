@@ -5,9 +5,14 @@
 class_name PlayerController
 extends CharacterBody3D
 
+const AbilitySlots := preload(
+	"res://scripts/combat/abilities/equipment_ability_slots.gd"
+)
 const WORLD_INPUT_BLOCKER_GROUP := "blocking_world_input"
 const NETWORK_ACTION_NONE := ""
 const NETWORK_ACTION_GATHERING := "gathering"
+const NETWORK_ACTION_EQUIPMENT_ABILITY := "equipment_ability"
+const EQUIPMENT_CHANNEL_SPEED_SOURCE := &"equipment_channel"
 
 ## Allows scenes or tests to temporarily disable local player control.
 @export var input_enabled: bool = true
@@ -26,6 +31,7 @@ const NETWORK_ACTION_GATHERING := "gathering"
 @onready var stats: PlayerStats = $Stats
 @onready var targeting = $Targeting
 @onready var auto_attack = $AutoAttack
+@onready var weapon_abilities = $WeaponAbilities
 @onready var channeling = $Channeling
 @onready var gathering = $Gathering
 @onready var movement_motor = $Movement
@@ -41,6 +47,7 @@ const NETWORK_ACTION_GATHERING := "gathering"
 @onready var respawn = get_node_or_null("Respawn")
 @onready var visuals: Node3D = $Visuals
 @onready var visual_style = get_node_or_null("VisualStyle")
+@onready var moonleaf_channel_aura = get_node_or_null("MoonleafChannelAura")
 
 var _pending_refining_station: Node
 var _pending_loot_container: Node
@@ -70,6 +77,11 @@ func _ready() -> void:
 
 	auto_attack.attack_started.connect(_on_auto_attack_started)
 	auto_attack.attack_landed.connect(_on_auto_attack_landed)
+	weapon_abilities.ability_cast_started.connect(_on_weapon_ability_cast_started)
+	weapon_abilities.ability_cast_landed.connect(_on_weapon_ability_cast_landed)
+	weapon_abilities.ability_cast_interrupted.connect(_on_weapon_ability_cast_interrupted)
+	weapon_abilities.ability_cast_finished.connect(_on_weapon_ability_cast_finished)
+	weapon_abilities.directional_movement_started.connect(_on_directional_ability_movement_started)
 	channeling.channel_started.connect(_on_channel_started)
 	channeling.channel_completed.connect(_on_channel_completed)
 	channeling.channel_cancelled.connect(_on_channel_cancelled)
@@ -88,6 +100,8 @@ func _physics_process(delta: float) -> void:
 		_update_remote_network_interpolation(delta)
 		return
 
+	weapon_abilities.update_abilities(self, delta)
+
 	if _is_player_respawn_locked():
 		_pause_player_for_respawn()
 		return
@@ -97,6 +111,7 @@ func _physics_process(delta: float) -> void:
 		animation.set_moving(false)
 		footstep_audio.set_moving(false)
 		auto_attack.stop_attack()
+		weapon_abilities.cancel_current_action("Control disabled")
 		_cancel_gathering_action("Control disabled")
 		_clear_pending_refining_station()
 		_clear_pending_loot_container()
@@ -109,51 +124,31 @@ func _physics_process(delta: float) -> void:
 	if input_reader.is_stop_requested():
 		movement_motor.stop(self)
 		auto_attack.stop_attack()
+		weapon_abilities.cancel_current_action("Stopped")
 		_cancel_gathering_action("Stopped")
 		_clear_pending_refining_station()
 		_clear_pending_loot_container()
+	elif weapon_abilities.is_directional_movement_active():
+		# The roll owns velocity, while held right-click keeps refreshing the
+		# destination that should take over as soon as the roll ends.
+		var followup_move_target = input_reader.get_mobility_followup_move_target(self)
+		if followup_move_target is Vector3:
+			_apply_directional_aim_movement(
+				followup_move_target as Vector3,
+				input_reader.was_click_move_started()
+			)
+		targeting.consume_current_click_state()
 	else:
-		var clicked_target: Node = targeting.try_select_on_click(self)
-		if clicked_target != null:
-			input_reader.block_click_move_until_mouse_release()
-			if gathering.start_gather(clicked_target, self):
-				auto_attack.stop_attack()
-				_clear_pending_refining_station()
-				_clear_pending_loot_container()
-				if channeling.is_channeling():
-					channeling.cancel_channel("New action")
-			elif _start_refining_station_interaction(clicked_target):
-				auto_attack.stop_attack()
-				_cancel_gathering_action("New action")
-				_clear_pending_loot_container()
-			elif _start_loot_container_interaction(clicked_target):
-				auto_attack.stop_attack()
-				_cancel_gathering_action("New action")
-				_clear_pending_refining_station()
-			elif auto_attack.start_attack(clicked_target, self):
-				_cancel_gathering_action("New action")
-				_clear_pending_refining_station()
-				_clear_pending_loot_container()
-				movement_motor.stop(self)
+		for ability_slot in AbilitySlots.ACTIVE_SLOT_IDS:
+			if input_reader.was_ability_slot_pressed(ability_slot):
+				request_ability_activation(ability_slot)
+
+		if weapon_abilities.is_directional_targeting():
+			_update_directional_ability_targeting()
 		else:
-			if input_reader.was_auto_attack_pressed():
-				if auto_attack.start_attack(targeting.get_current_target(), self):
-					_cancel_gathering_action("New action")
-					_clear_pending_refining_station()
-					_clear_pending_loot_container()
-					movement_motor.stop(self)
+			_process_standard_world_input()
 
-			var move_target = input_reader.get_click_move_target(self)
-			if move_target != null:
-				if input_reader.was_click_move_started():
-					auto_attack.stop_attack()
-					_cancel_gathering_action("Moved")
-					_clear_pending_refining_station()
-					_clear_pending_loot_container()
-				movement_motor.set_destination(move_target)
-				if input_reader.was_click_move_started():
-					click_feedback.spawn(move_target, self)
-
+	_update_weapon_ability_movement()
 	_update_auto_attack_movement()
 	_update_gathering_movement()
 	_update_refining_station_movement()
@@ -163,7 +158,11 @@ func _physics_process(delta: float) -> void:
 	var visual_direction: Vector3 = movement_motor.get_horizontal_velocity_direction(self)
 	if visual_direction == Vector3.ZERO:
 		visual_direction = movement_direction
-	if auto_attack.has_active_target() and auto_attack.is_target_in_range(self):
+	if weapon_abilities.has_active_request():
+		var ability_direction: Vector3 = weapon_abilities.get_direction_to_target(self)
+		if ability_direction != Vector3.ZERO:
+			visual_direction = ability_direction
+	elif auto_attack.has_active_target() and auto_attack.should_hold_position(self):
 		var target_direction: Vector3 = auto_attack.get_direction_to_target(self)
 		if target_direction != Vector3.ZERO:
 			visual_direction = target_direction
@@ -188,7 +187,8 @@ func _physics_process(delta: float) -> void:
 	facing.face_direction(visual_direction)
 	animation.set_moving(is_moving)
 	footstep_audio.set_moving(is_moving)
-	auto_attack.update_attack(self, delta)
+	if not weapon_abilities.is_directional_movement_active():
+		auto_attack.update_attack(self, delta)
 	channeling.update_channel(delta)
 
 
@@ -210,6 +210,7 @@ func _pause_player_for_respawn() -> void:
 	animation.set_moving(false)
 	footstep_audio.set_moving(false)
 	auto_attack.stop_attack()
+	weapon_abilities.reset_cast_state()
 	_cancel_gathering_action("Defeated")
 	_clear_pending_refining_station()
 	_clear_pending_loot_container()
@@ -221,8 +222,120 @@ func _pause_world_movement_for_ui(delta: float) -> void:
 	movement_motor.stop(self)
 	animation.set_moving(false)
 	footstep_audio.set_moving(false)
+	weapon_abilities.cancel_directional_targeting()
 	auto_attack.update_attack(self, delta)
 	channeling.update_channel(delta)
+
+
+## Public entry point shared by keyboard hotkeys and clickable HUD slots.
+## `from_pointer` prevents the HUD click that opened an aim preview from also
+## confirming it on the same press.
+func request_ability_activation(slot_id: StringName, from_pointer := false) -> bool:
+	var definition: Resource = weapon_abilities.get_active_ability(slot_id)
+	if definition == null:
+		return false
+
+	var targeting_mode := String(definition.get("targeting_mode"))
+	var accepted := false
+	if targeting_mode == "direction":
+		accepted = weapon_abilities.begin_directional_targeting(slot_id, self)
+	elif targeting_mode == "self":
+		accepted = weapon_abilities.request_self_cast(slot_id, self)
+	else:
+		accepted = weapon_abilities.request_cast(slot_id, targeting.get_current_target(), self)
+	if not accepted:
+		return false
+
+	if targeting_mode == "direction":
+		if from_pointer:
+			input_reader.block_click_move_until_mouse_release()
+		return true
+
+	auto_attack.stop_attack()
+	_cancel_gathering_action("Equipment ability")
+	_clear_pending_refining_station()
+	_clear_pending_loot_container()
+	return true
+
+
+func _update_directional_ability_targeting() -> void:
+	var aim_input: Dictionary = input_reader.get_directional_aim_input(self)
+	var world_position: Variant = aim_input.get("world_position")
+	if world_position is Vector3:
+		weapon_abilities.update_directional_targeting(self, world_position as Vector3)
+	var movement_world_position: Variant = aim_input.get("movement_world_position")
+	if movement_world_position is Vector3:
+		_apply_directional_aim_movement(
+			movement_world_position as Vector3,
+			bool(aim_input.get("movement_started", false))
+		)
+
+	if bool(aim_input.get("cancelled", false)):
+		weapon_abilities.cancel_directional_targeting()
+	elif bool(aim_input.get("confirmed", false)):
+		weapon_abilities.confirm_directional_cast(self)
+		input_reader.block_click_move_until_mouse_release(MOUSE_BUTTON_LEFT)
+
+
+func _apply_directional_aim_movement(move_target: Vector3, movement_started: bool) -> void:
+	if movement_started:
+		auto_attack.stop_attack()
+		_cancel_gathering_action("Moved")
+		_clear_pending_refining_station()
+		_clear_pending_loot_container()
+		click_feedback.spawn(move_target, self)
+	movement_motor.set_destination(move_target)
+
+
+func _process_standard_world_input() -> void:
+	var clicked_target: Node = targeting.try_select_on_click(self)
+	if clicked_target != null:
+		input_reader.block_click_move_until_mouse_release()
+		if gathering.start_gather(clicked_target, self):
+			auto_attack.stop_attack()
+			weapon_abilities.cancel_current_action("New action")
+			_clear_pending_refining_station()
+			_clear_pending_loot_container()
+			if channeling.is_channeling():
+				channeling.cancel_channel("New action")
+		elif _start_refining_station_interaction(clicked_target):
+			auto_attack.stop_attack()
+			weapon_abilities.cancel_current_action("New action")
+			_cancel_gathering_action("New action")
+			_clear_pending_loot_container()
+		elif _start_loot_container_interaction(clicked_target):
+			auto_attack.stop_attack()
+			weapon_abilities.cancel_current_action("New action")
+			_cancel_gathering_action("New action")
+			_clear_pending_refining_station()
+		elif auto_attack.start_attack(clicked_target, self):
+			weapon_abilities.cancel_current_action("New action")
+			_cancel_gathering_action("New action")
+			_clear_pending_refining_station()
+			_clear_pending_loot_container()
+			movement_motor.stop(self)
+		return
+
+	if input_reader.was_auto_attack_pressed():
+		if auto_attack.start_attack(targeting.get_current_target(), self):
+			weapon_abilities.cancel_current_action("New action")
+			_cancel_gathering_action("New action")
+			_clear_pending_refining_station()
+			_clear_pending_loot_container()
+			movement_motor.stop(self)
+
+	var move_target = input_reader.get_click_move_target(self)
+	if move_target == null:
+		return
+	if input_reader.was_click_move_started():
+		auto_attack.stop_attack()
+		weapon_abilities.cancel_current_action("Moved", false)
+		_cancel_gathering_action("Moved")
+		_clear_pending_refining_station()
+		_clear_pending_loot_container()
+	movement_motor.set_destination(move_target)
+	if input_reader.was_click_move_started():
+		click_feedback.spawn(move_target, self)
 
 
 func _is_world_input_blocked() -> bool:
@@ -239,13 +352,33 @@ func _is_world_input_blocked() -> bool:
 
 
 func _update_auto_attack_movement() -> void:
+	if (
+		weapon_abilities.has_active_request()
+		and not weapon_abilities.is_directional_targeting()
+	):
+		return
 	if not auto_attack.has_active_target():
 		return
 
-	if auto_attack.is_target_in_range(self):
+	if auto_attack.should_hold_position(self):
 		movement_motor.stop(self)
 	else:
 		movement_motor.set_destination(auto_attack.get_approach_destination(self))
+
+
+func _update_weapon_ability_movement() -> void:
+	if not weapon_abilities.has_active_request():
+		return
+	if (
+		weapon_abilities.is_directional_targeting()
+		or weapon_abilities.is_directional_movement_active()
+	):
+		return
+
+	if weapon_abilities.should_hold_position(self):
+		movement_motor.stop(self)
+	else:
+		movement_motor.set_destination(weapon_abilities.get_approach_destination(self))
 
 
 func _update_gathering_movement() -> void:
@@ -293,7 +426,7 @@ func _update_loot_container_movement() -> void:
 
 func _cancel_gathering_action(reason: String) -> void:
 	gathering.cancel_gathering()
-	if channeling.is_channeling():
+	if channeling.is_channel_type("gathering"):
 		channeling.cancel_channel(reason)
 	else:
 		animation.set_gathering(false)
@@ -442,19 +575,133 @@ func _direction_to_loot_container(loot_container: Node) -> Vector3:
 
 func _on_auto_attack_started(_target: Node) -> void:
 	_mark_combat_activity()
+	animation.play_attack(_auto_attack_animation_speed_scale())
 
 
 func _on_auto_attack_landed(_target: Node, _damage: float) -> void:
 	_mark_combat_activity()
-	animation.play_attack(_auto_attack_animation_speed_scale())
 
 
-## Plays an attack on a visual-only remote player after another peer lands a hit.
+func _on_weapon_ability_cast_started(_slot_id: StringName, target: Node, definition: Resource) -> void:
+	_apply_ability_start_effects(definition)
+	var execution_type := String(definition.get("execution_type"))
+	if execution_type == "damage":
+		_mark_combat_activity()
+		movement_motor.stop(self)
+	else:
+		_cancel_gathering_action("Equipment ability")
+		_clear_pending_refining_station()
+		_clear_pending_loot_container()
+	if execution_type == "regeneration":
+		movement_motor.set_speed_multiplier(
+			EQUIPMENT_CHANNEL_SPEED_SOURCE,
+			maxf(float(definition.get("movement_speed_multiplier")), 0.0)
+		)
+	var target_3d := target as Node3D
+	if target_3d != null:
+		var direction := target_3d.global_position - global_position
+		direction.y = 0.0
+		facing.face_direction(direction)
+	_play_weapon_ability_animation(definition)
+
+
+func _on_directional_ability_movement_started(
+	_slot_id: StringName,
+	direction: Vector3,
+	distance: float,
+	duration_seconds: float
+) -> void:
+	if direction.length_squared() <= 0.0001:
+		return
+	facing.face_direction(direction)
+	movement_motor.start_forced_movement(direction, distance, duration_seconds)
+
+
+func _on_weapon_ability_cast_landed(_slot_id: StringName, _target: Node, _damage: float) -> void:
+	_mark_combat_activity()
+
+
+func _on_weapon_ability_cast_interrupted(
+	_slot_id: StringName,
+	_target: Node,
+	_reason: String
+) -> void:
+	movement_motor.clear_speed_multiplier(EQUIPMENT_CHANNEL_SPEED_SOURCE)
+
+
+func _on_weapon_ability_cast_finished(_slot_id: StringName) -> void:
+	movement_motor.clear_speed_multiplier(EQUIPMENT_CHANNEL_SPEED_SOURCE)
+
+
+## Plays a swing on a visual-only remote player when another peer begins its wind-up.
 func play_remote_attack(speed_scale: float = 1.0) -> void:
 	if is_local_player:
 		return
 	if animation != null:
 		animation.play_attack(speed_scale)
+
+
+## Mirrors an equipped weapon spell on a visual-only remote player.
+func play_remote_weapon_ability(ability_id: String) -> void:
+	if is_local_player or weapon_abilities == null:
+		return
+	var definition: Resource = weapon_abilities.get_known_ability(ability_id)
+	_apply_ability_start_effects(definition)
+	_play_weapon_ability_animation(definition)
+
+
+func _apply_ability_start_effects(definition: Resource) -> void:
+	_apply_ability_damage_immunity(definition)
+	_apply_ability_absorb_shield(definition)
+	_apply_ability_missing_energy_restore(definition)
+
+
+func _apply_ability_damage_immunity(definition: Resource) -> void:
+	if definition == null or health == null or not health.has_method("grant_damage_immunity"):
+		return
+
+	var duration_seconds := maxf(float(definition.get("damage_immunity_seconds")), 0.0)
+	if duration_seconds > 0.0:
+		health.call("grant_damage_immunity", duration_seconds)
+
+
+func _apply_ability_absorb_shield(definition: Resource) -> void:
+	if definition == null or health == null or not health.has_method("grant_absorb_shield"):
+		return
+
+	var shield_amount := maxf(float(definition.get("absorb_shield_amount")), 0.0)
+	var duration_seconds := maxf(float(definition.get("absorb_shield_duration_seconds")), 0.0)
+	if shield_amount > 0.0 and duration_seconds > 0.0:
+		health.call("grant_absorb_shield", shield_amount, duration_seconds)
+
+
+func _apply_ability_missing_energy_restore(definition: Resource) -> void:
+	if definition == null or mana == null or not mana.has_method("restore"):
+		return
+
+	var restore_percent := maxf(float(definition.get("missing_energy_restore_percent")), 0.0)
+	if restore_percent <= 0.0:
+		return
+
+	var max_resource := maxf(float(mana.get("max_resource")), 0.0)
+	var current_resource := clampf(float(mana.get("current_resource")), 0.0, max_resource)
+	var missing_resource := maxf(max_resource - current_resource, 0.0)
+	mana.call("restore", missing_resource * restore_percent / 100.0)
+
+
+func _play_weapon_ability_animation(definition: Resource) -> void:
+	if animation == null or definition == null or not animation.has_method("play_weapon_ability"):
+		return
+	var animation_name := StringName(String(definition.get("animation_name")))
+	if String(animation_name).is_empty():
+		return
+	animation.call(
+		"play_weapon_ability",
+		String(definition.get("animation_scene_path")),
+		animation_name,
+		maxf(float(definition.get("cast_duration_seconds")), 0.01),
+		StringName(String(definition.get("recovery_animation_name")))
+	)
 
 
 func _auto_attack_animation_speed_scale() -> float:
@@ -466,10 +713,13 @@ func _auto_attack_animation_speed_scale() -> float:
 
 
 func _on_health_damage_taken(_amount: float) -> void:
+	weapon_abilities.cancel_active_channel_on_damage()
 	_mark_combat_activity()
 
 
-func _on_combat_state_changed(_is_in_combat: bool) -> void:
+func _on_combat_state_changed(is_in_combat: bool) -> void:
+	if is_in_combat:
+		weapon_abilities.cancel_out_of_combat_channel()
 	_sync_health_regeneration_with_combat()
 
 
@@ -480,7 +730,8 @@ func _on_player_death_started(_respawn_delay: float) -> void:
 	movement_motor.stop(self)
 	velocity = Vector3.ZERO
 	footstep_audio.set_moving(false)
-	auto_attack.stop_attack()
+	auto_attack.reset_attack_cycle()
+	weapon_abilities.reset_cast_state()
 	_cancel_gathering_action("Defeated")
 	targeting.clear_current_target()
 	_clear_pending_refining_station()
@@ -497,6 +748,8 @@ func _on_player_respawned() -> void:
 	movement_motor.stop(self)
 	animation.set_moving(false)
 	footstep_audio.set_moving(false)
+	auto_attack.reset_attack_cycle()
+	weapon_abilities.reset_cast_state()
 	_sync_health_regeneration_with_combat()
 
 
@@ -586,6 +839,9 @@ func get_network_state() -> Dictionary:
 	if channeling != null and channeling.is_channel_type(NETWORK_ACTION_GATHERING):
 		action_state = NETWORK_ACTION_GATHERING
 		action_context = _network_action_context_from_channel(channeling.get_context())
+	elif channeling != null and channeling.is_channel_type(NETWORK_ACTION_EQUIPMENT_ABILITY):
+		action_state = NETWORK_ACTION_EQUIPMENT_ABILITY
+		action_context = _network_action_context_from_channel(channeling.get_context())
 
 	return {
 		"position": global_position,
@@ -638,6 +894,7 @@ func _configure_remote_runtime() -> void:
 	_disable_remote_node(input_reader)
 	_disable_remote_node(targeting)
 	_disable_remote_node(auto_attack)
+	_disable_remote_node(weapon_abilities)
 	_disable_remote_node(channeling)
 	_disable_remote_node(gathering)
 	_disable_remote_node(movement_motor)
@@ -699,20 +956,23 @@ func _set_remote_moving(is_moving: bool) -> void:
 
 
 func _set_remote_action_state(action_state: String, action_context: Dictionary) -> void:
-	if animation == null:
-		return
-
-	if action_state == NETWORK_ACTION_GATHERING:
+	if animation != null and action_state == NETWORK_ACTION_GATHERING:
 		var context := action_context.duplicate(true)
 		context["type"] = NETWORK_ACTION_GATHERING
 		animation.set_gathering(true, context)
-	else:
+	elif animation != null:
 		animation.set_gathering(false)
+
+	if moonleaf_channel_aura != null and moonleaf_channel_aura.has_method("set_remote_channel_state"):
+		moonleaf_channel_aura.call("set_remote_channel_state", action_state, action_context)
 
 
 func _network_action_context_from_channel(context: Dictionary) -> Dictionary:
 	return {
 		"type": String(context.get("type", "")),
+		"slot_id": String(context.get("slot_id", "")),
+		"ability_id": String(context.get("ability_id", "")),
+		"execution_type": String(context.get("execution_type", "")),
 		"resource_family_id": String(context.get("resource_family_id", "")),
 		"required_tool_family_id": String(context.get("required_tool_family_id", "")),
 		"tool_family_id": String(context.get("tool_family_id", "")),
@@ -817,7 +1077,7 @@ func _on_channel_started(_action_name: String, _duration: float, context: Dictio
 func _on_channel_completed(context: Dictionary) -> void:
 	if _is_gathering_channel_context(context):
 		animation.set_gathering(false)
-	gathering.complete_gather(context)
+		gathering.complete_gather(context)
 
 
 func _on_channel_cancelled(_reason: String, context: Dictionary) -> void:

@@ -166,6 +166,15 @@ func _draw_item_art() -> void:
 	if item_type == "one_handed_sword":
 		_draw_one_handed_sword_art()
 		return
+	if item_type == "boots":
+		_draw_boots_art()
+		return
+	if item_type == "chest_armor":
+		_draw_chest_armor_art()
+		return
+	if item_type == "helmet":
+		_draw_helmet_art()
+		return
 
 	var texture: Texture2D = ICON_TEXTURES.get(item_type)
 	if texture == null:
@@ -248,6 +257,190 @@ func _draw_one_handed_sword_art() -> void:
 
 	draw_circle(origin + Vector2(unit * 0.50, unit * 0.92), unit * 0.055, guard_color)
 	draw_arc(origin + Vector2(unit * 0.50, unit * 0.92), unit * 0.055, 0.0, TAU, 18, Color(0.82, 0.64, 0.32, 1.0), maxf(unit * 0.01, 1.0))
+
+
+func _draw_boots_art() -> void:
+	var unit := _unit_size()
+	var origin := _origin()
+	var leather := Color(0.34, 0.17, 0.075, 1.0)
+	var leather_light := Color(0.58, 0.34, 0.16, 1.0)
+	var sole := Color(0.075, 0.055, 0.04, 1.0)
+	var trim := Color(0.80, 0.62, 0.31, 1.0)
+	var outline := Color(0.025, 0.02, 0.015, 1.0)
+
+	_draw_boot_shape(origin, unit, -1.0, leather, leather_light, sole, trim, outline)
+	_draw_boot_shape(origin, unit, 1.0, leather, leather_light, sole, trim, outline)
+
+
+func _draw_chest_armor_art() -> void:
+	var unit := _unit_size()
+	var origin := _origin()
+	var leather := Color(0.34, 0.17, 0.075, 1.0)
+	var leather_light := Color(0.58, 0.34, 0.16, 1.0)
+	var trim := Color(0.80, 0.62, 0.31, 1.0)
+	var moonleaf := Color(0.48, 0.79, 0.43, 1.0)
+	var outline := Color(0.025, 0.02, 0.015, 1.0)
+	var jerkin := PackedVector2Array([
+		origin + Vector2(unit * 0.31, unit * 0.24),
+		origin + Vector2(unit * 0.43, unit * 0.18),
+		origin + Vector2(unit * 0.50, unit * 0.27),
+		origin + Vector2(unit * 0.57, unit * 0.18),
+		origin + Vector2(unit * 0.69, unit * 0.24),
+		origin + Vector2(unit * 0.79, unit * 0.45),
+		origin + Vector2(unit * 0.68, unit * 0.53),
+		origin + Vector2(unit * 0.66, unit * 0.82),
+		origin + Vector2(unit * 0.34, unit * 0.82),
+		origin + Vector2(unit * 0.32, unit * 0.53),
+		origin + Vector2(unit * 0.21, unit * 0.45),
+	])
+	draw_colored_polygon(jerkin, leather)
+	var jerkin_outline := PackedVector2Array(jerkin)
+	jerkin_outline.append(jerkin[0])
+	draw_polyline(jerkin_outline, outline, maxf(unit * 0.018, 1.0), true)
+
+	var chest_panel := PackedVector2Array([
+		origin + Vector2(unit * 0.37, unit * 0.34),
+		origin + Vector2(unit * 0.50, unit * 0.42),
+		origin + Vector2(unit * 0.63, unit * 0.34),
+		origin + Vector2(unit * 0.61, unit * 0.72),
+		origin + Vector2(unit * 0.39, unit * 0.72),
+	])
+	draw_colored_polygon(chest_panel, leather_light)
+	draw_polyline(
+		PackedVector2Array([chest_panel[0], chest_panel[1], chest_panel[2]]),
+		trim,
+		maxf(unit * 0.018, 1.0),
+		true
+	)
+
+	for strap_x in [0.39, 0.61]:
+		draw_line(
+			origin + Vector2(unit * strap_x, unit * 0.31),
+			origin + Vector2(unit * strap_x, unit * 0.76),
+			trim,
+			maxf(unit * 0.022, 1.0),
+			true
+		)
+
+	var leaf_center := origin + Vector2(unit * 0.50, unit * 0.56)
+	var leaf := PackedVector2Array([
+		leaf_center + Vector2(0.0, -unit * 0.09),
+		leaf_center + Vector2(unit * 0.065, 0.0),
+		leaf_center + Vector2(0.0, unit * 0.09),
+		leaf_center + Vector2(-unit * 0.065, 0.0),
+	])
+	draw_colored_polygon(leaf, moonleaf)
+	draw_line(
+		leaf_center + Vector2(0.0, -unit * 0.07),
+		leaf_center + Vector2(0.0, unit * 0.08),
+		outline,
+		maxf(unit * 0.012, 1.0),
+		true
+	)
+
+
+func _draw_helmet_art() -> void:
+	var unit := _unit_size()
+	var origin := _origin()
+	var leather := Color(0.30, 0.15, 0.075, 1.0)
+	var leather_light := Color(0.54, 0.32, 0.17, 1.0)
+	var trim := Color(0.80, 0.62, 0.31, 1.0)
+	var energy := Color(0.33, 0.78, 1.0, 1.0)
+	var outline := Color(0.025, 0.02, 0.015, 1.0)
+	var hood := PackedVector2Array([
+		origin + Vector2(unit * 0.20, unit * 0.49),
+		origin + Vector2(unit * 0.25, unit * 0.30),
+		origin + Vector2(unit * 0.38, unit * 0.18),
+		origin + Vector2(unit * 0.50, unit * 0.13),
+		origin + Vector2(unit * 0.62, unit * 0.18),
+		origin + Vector2(unit * 0.75, unit * 0.30),
+		origin + Vector2(unit * 0.80, unit * 0.49),
+		origin + Vector2(unit * 0.70, unit * 0.70),
+		origin + Vector2(unit * 0.58, unit * 0.82),
+		origin + Vector2(unit * 0.42, unit * 0.82),
+		origin + Vector2(unit * 0.30, unit * 0.70),
+	])
+	draw_colored_polygon(hood, leather)
+	var hood_outline := PackedVector2Array(hood)
+	hood_outline.append(hood[0])
+	draw_polyline(hood_outline, outline, maxf(unit * 0.018, 1.0), true)
+
+	var face_opening := PackedVector2Array([
+		origin + Vector2(unit * 0.34, unit * 0.43),
+		origin + Vector2(unit * 0.43, unit * 0.31),
+		origin + Vector2(unit * 0.50, unit * 0.28),
+		origin + Vector2(unit * 0.57, unit * 0.31),
+		origin + Vector2(unit * 0.66, unit * 0.43),
+		origin + Vector2(unit * 0.60, unit * 0.61),
+		origin + Vector2(unit * 0.50, unit * 0.67),
+		origin + Vector2(unit * 0.40, unit * 0.61),
+	])
+	draw_colored_polygon(face_opening, Color(0.05, 0.04, 0.03, 1.0))
+	var face_outline := PackedVector2Array(face_opening)
+	face_outline.append(face_opening[0])
+	draw_polyline(face_outline, trim, maxf(unit * 0.018, 1.0), true)
+
+	for strap_x in [0.31, 0.69]:
+		draw_line(
+			origin + Vector2(unit * strap_x, unit * 0.48),
+			origin + Vector2(unit * 0.50, unit * 0.79),
+			leather_light,
+			maxf(unit * 0.035, 1.0),
+			true
+		)
+	draw_arc(origin + Vector2(unit * 0.50, unit * 0.47), unit * 0.24, 3.35, 6.08, 24, energy, maxf(unit * 0.025, 1.0), true)
+	draw_circle(origin + Vector2(unit * 0.50, unit * 0.18), unit * 0.035, energy)
+
+
+func _draw_boot_shape(
+	origin: Vector2,
+	unit: float,
+	direction: float,
+	leather: Color,
+	leather_light: Color,
+	sole: Color,
+	trim: Color,
+	outline: Color
+) -> void:
+	var center_x := 0.37 if direction < 0.0 else 0.63
+	var toe_x := center_x - 0.18 if direction < 0.0 else center_x + 0.18
+	var inner_x := center_x + 0.07 if direction < 0.0 else center_x - 0.07
+	var boot := PackedVector2Array([
+		origin + Vector2(unit * (center_x - 0.075), unit * 0.24),
+		origin + Vector2(unit * (center_x + 0.075), unit * 0.24),
+		origin + Vector2(unit * inner_x, unit * 0.60),
+		origin + Vector2(unit * toe_x, unit * 0.69),
+		origin + Vector2(unit * (toe_x - 0.035 * direction), unit * 0.82),
+		origin + Vector2(unit * (center_x + 0.11 * direction), unit * 0.82),
+		origin + Vector2(unit * (center_x - 0.08 * direction), unit * 0.67),
+	])
+	draw_colored_polygon(boot, leather)
+	var boot_outline := PackedVector2Array(boot)
+	boot_outline.append(boot[0])
+	draw_polyline(boot_outline, outline, maxf(unit * 0.018, 1.0), true)
+
+	var cuff := Rect2(
+		origin + Vector2(unit * (center_x - 0.09), unit * 0.22),
+		Vector2(unit * 0.18, unit * 0.10)
+	)
+	draw_rect(cuff, leather_light)
+	draw_rect(cuff, trim, false, maxf(unit * 0.016, 1.0))
+
+	var sole_line := PackedVector2Array([
+		origin + Vector2(unit * (toe_x - 0.035 * direction), unit * 0.82),
+		origin + Vector2(unit * (center_x + 0.11 * direction), unit * 0.82),
+	])
+	draw_polyline(sole_line, sole, maxf(unit * 0.045, 1.0), true)
+
+	for strap_index in range(3):
+		var strap_y := unit * (0.39 + float(strap_index) * 0.09)
+		draw_line(
+			origin + Vector2(unit * (center_x - 0.07), strap_y),
+			origin + Vector2(unit * (center_x + 0.07), strap_y),
+			trim,
+			maxf(unit * 0.016, 1.0),
+			true
+		)
 
 
 func _draw_tier_badge() -> void:

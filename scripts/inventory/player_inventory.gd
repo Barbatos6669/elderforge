@@ -24,6 +24,9 @@ signal equipped_slots_changed
 @export_range(1, 999, 1) var debug_seed_quantity := 1
 ## Optional debug item id to equip into the main-hand slot during startup.
 @export var debug_main_hand_item_id := ""
+## Optional debug item ids equipped into each definition's declared slot.
+## This keeps test scenes data-driven as more armor slots become playable.
+@export var debug_equipped_item_ids: PackedStringArray = []
 ## Prototype silver amount until wallet/economy state exists.
 @export var starting_silver := 0
 ## Prototype gold amount until wallet/economy state exists.
@@ -550,20 +553,29 @@ func _seed_debug_items() -> void:
 
 
 func _seed_debug_equipment() -> void:
-	if debug_main_hand_item_id.is_empty():
+	if not debug_main_hand_item_id.is_empty():
+		_seed_debug_equipped_item(debug_main_hand_item_id, "main_hand")
+
+	for item_id in debug_equipped_item_ids:
+		_seed_debug_equipped_item(String(item_id))
+
+
+func _seed_debug_equipped_item(item_id: String, required_slot := "") -> void:
+	if item_id.is_empty():
 		return
 
-	var definition := get_definition(debug_main_hand_item_id)
+	var definition := get_definition(item_id)
 	if definition == null:
-		push_warning("Debug main-hand item id is unknown: %s" % debug_main_hand_item_id)
+		push_warning("Debug equipped item id is unknown: %s" % item_id)
 		return
 
+	var equipment_slot_id := required_slot if not required_slot.is_empty() else String(definition.get("equip_slot"))
 	var stack := _create_stack(definition, 1)
-	if not _can_equip_stack_to_slot(stack, "main_hand"):
-		push_warning("Debug main-hand item cannot equip to main_hand: %s" % debug_main_hand_item_id)
+	if equipment_slot_id.is_empty() or not _can_equip_stack_to_slot(stack, equipment_slot_id):
+		push_warning("Debug item '%s' cannot equip to slot '%s'." % [item_id, equipment_slot_id])
 		return
 
-	_equipped_slots["main_hand"] = stack
+	_equipped_slots[equipment_slot_id] = stack
 
 
 func _get_prototype_definitions() -> Array:

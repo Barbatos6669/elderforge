@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="ItemFamilyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_family_definition.gd" id="1_family"]
+
+[resource]
+script = ExtResource("1_family")
+family_id = "leather_boots"
+icon_id = "boots"
+item_id_prefix = "leather_boots"
+category = "Armor"
+tier_names = PackedStringArray("Wolfhide Boots", "Deerhide Boots", "Thick Leather Boots", "Cured Leather Boots", "Hardened Leather Boots", "Pristine Leather Boots", "Royal Leather Boots", "Elder Leather Boots")
+tier_descriptions = PackedStringArray("Sturdy boots made from worked Hearthvale wolf hide. Their thick soles suit new gatherers, guards, and travelers.", "Supple boots made from worked deer hide, valued for quiet steps and long woodland journeys.")
+base_weight = 1.2
+weight_per_tier = 0.08
+usage_text = "travel, gathering, leather armor, and early combat equipment"
+max_stack = 1
+equip_slot = "shoes"
+equipment_visual_mode = "skeleton"
+equipment_scene_path_templates_by_body = {
+"female": "res://assets/characters/universal_base_character_package/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Modular Parts/Female_Ranger_Feet.gltf",
+"male": "res://assets/characters/universal_base_character_package/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Modular Parts/Male_Ranger_Feet_Boots.gltf"
+}
+equipment_replaces_outfit_parts = PackedStringArray("feet")
+ability_path_templates = {
+"f": "res://assets/combat/abilities/leather_boots_roll.tres"
+}

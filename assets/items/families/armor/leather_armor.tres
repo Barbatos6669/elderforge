@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="ItemFamilyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/inventory/item_family_definition.gd" id="1_family"]
+
+[resource]
+script = ExtResource("1_family")
+family_id = "leather_armor"
+icon_id = "chest_armor"
+item_id_prefix = "leather_armor"
+category = "Armor"
+tier_names = PackedStringArray("Wolfhide Jerkin", "Deerhide Jerkin", "Thick Leather Jerkin", "Cured Leather Jerkin", "Hardened Leather Jerkin", "Pristine Leather Jerkin", "Royal Leather Jerkin", "Elder Leather Jerkin")
+tier_descriptions = PackedStringArray("A flexible wolfhide jerkin lined with dried Moonleaf. When crushed against a wound, the hidden leaves release a restorative sap used by Hearthgrove wardens.", "A supple deerhide jerkin with a carefully stitched Moonleaf lining, favored by woodland scouts who must recover far from a healer.")
+base_weight = 4.0
+weight_per_tier = 0.25
+usage_text = "survival, leather armor, and restorative fieldcraft"
+max_stack = 1
+equip_slot = "chest"
+equipment_visual_mode = "skeleton"
+equipment_scene_path_templates_by_body = {
+"female": "res://assets/characters/universal_base_character_package/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Modular Parts/Female_Ranger_Body.gltf",
+"male": "res://assets/characters/universal_base_character_package/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Modular Parts/Male_Ranger_Body.gltf"
+}
+equipment_replaces_outfit_parts = PackedStringArray("body")
+ability_path_templates = {
+"r": "res://assets/combat/abilities/moonleaf_binding.tres"
+}

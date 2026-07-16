@@ -7,14 +7,16 @@
 class_name PlayerVisualStyle
 extends Node
 
+const EQUIPMENT_ATTACHMENT_META := &"character_equipment_attachment"
+
 ## Root node of the visible imported character model.
 @export var model_root_path: NodePath = NodePath("../Visuals/BaseCharacter")
 ## Local player instances can pull their look from PrototypeAuthSession.
 @export var use_auth_session_appearance := false
 ## Selected base body scene.
 @export_enum("male", "female") var body_type := "male"
-## Body material color.
-@export var body_color: Color = Color(0.42, 0.58, 0.64, 1.0)
+## Body material fallback color used when an imported skin material has no texture.
+@export var body_color: Color = Color(0.82, 0.62, 0.48, 1.0)
 ## Hair material color.
 @export var hair_color: Color = Color(0.16, 0.11, 0.08, 1.0)
 ## Imported Universal Base Character hairstyle to show on the player.
@@ -36,6 +38,7 @@ var _hair_material: Material
 var _eye_material: Material
 var _hair_root: Node3D
 var _outfit_root: Node3D
+var _equipment_outfit_replacements := {}
 
 
 func _ready() -> void:
@@ -82,6 +85,30 @@ func get_network_appearance() -> Dictionary:
 	}
 
 
+## Returns the body variant currently driving fitted equipment selection.
+func get_body_type() -> String:
+	return CharacterAppearanceAssets.sanitize_body_type(body_type)
+
+
+## Applies the same character material treatment used by imported outfits.
+func apply_equipment_materials(equipment_root: Node) -> void:
+	for mesh_instance in CharacterRigAttachment.collect_mesh_instances(equipment_root):
+		_apply_outfit_materials(mesh_instance)
+
+
+## Records which built-in outfit pieces an equipped item visually replaces.
+## Multiple slots can replace different pieces without overwriting each other.
+func set_equipment_outfit_replacements(slot_id: String, part_markers: PackedStringArray) -> void:
+	if slot_id.is_empty():
+		return
+
+	if part_markers.is_empty():
+		_equipment_outfit_replacements.erase(slot_id)
+	else:
+		_equipment_outfit_replacements[slot_id] = part_markers.duplicate()
+	_sync_equipment_outfit_part_visibility()
+
+
 func _apply_style() -> void:
 	_apply_auth_session_appearance()
 
@@ -95,7 +122,7 @@ func _apply_style() -> void:
 	_head_only_body_material = CharacterToonMaterials.make_head_only_character_material(
 		_body_color_for_preset(),
 		material_style,
-		CharacterAppearanceAssets.head_only_clip_min_y(body_type)
+		CharacterAppearanceAssets.outfit_body_clip_min_y(outfit_style, body_type)
 	)
 	_hair_material = _create_toon_material(_sanitize_color(hair_color), true)
 	_eye_material = _create_toon_material(eye_color)
@@ -218,12 +245,18 @@ func _refresh_model_dependents() -> void:
 
 
 func _refresh_material_dependents() -> void:
+	var equipment_visuals := get_node_or_null("../EquipmentVisuals")
+	if equipment_visuals != null and equipment_visuals.has_method("refresh_materials"):
+		equipment_visuals.call("refresh_materials")
+
 	var occlusion_silhouette := get_node_or_null("../OcclusionSilhouette")
 	if occlusion_silhouette != null and occlusion_silhouette.has_method("refresh_targets"):
 		occlusion_silhouette.call("refresh_targets")
 
 
 func _apply_to_meshes(node: Node) -> void:
+	if bool(node.get_meta(EQUIPMENT_ATTACHMENT_META, false)):
+		return
 	if node.name in ["MainHandAttachment", "HairAttachment", "AppearanceHair", "AppearanceOutfit"]:
 		return
 
@@ -235,21 +268,21 @@ func _apply_to_meshes(node: Node) -> void:
 
 
 func _apply_to_mesh_instance(mesh_instance: MeshInstance3D) -> void:
-	var material := _material_for_mesh(mesh_instance)
 	var surface_count := mesh_instance.mesh.get_surface_count() if mesh_instance.mesh != null else 0
 
 	for surface_index in range(surface_count):
+		var material := _material_for_mesh(mesh_instance, _source_material_for_surface(mesh_instance, surface_index))
 		mesh_instance.set_surface_override_material(surface_index, material)
 
 
-func _material_for_mesh(mesh_instance: MeshInstance3D) -> Material:
+func _material_for_mesh(mesh_instance: MeshInstance3D, source_material: Material) -> Material:
 	var mesh_name := mesh_instance.name.to_lower()
 	if mesh_name.contains("eye"):
-		return _eye_material
+		return _textured_material(source_material, eye_color)
 	if mesh_name.contains("hair") or mesh_name.contains("eyebrow"):
-		return _hair_material
+		return _textured_material(source_material, _sanitize_color(hair_color))
 
-	return _body_material
+	return _textured_material(source_material, _body_color_for_preset())
 
 
 func _sync_base_body_mesh_visibility(model_root: Node) -> void:
@@ -260,7 +293,10 @@ func _sync_base_body_mesh_visibility(model_root: Node) -> void:
 
 		if CharacterAppearanceAssets.is_full_body_base_mesh(mesh_instance):
 			mesh_instance.visible = true
-			_apply_material_to_mesh(mesh_instance, _head_only_body_material if has_outfit else _body_material)
+			if has_outfit:
+				_apply_head_only_body_material_to_mesh(mesh_instance)
+			else:
+				_apply_to_mesh_instance(mesh_instance)
 		elif CharacterAppearanceAssets.is_base_body_mesh(mesh_instance):
 			mesh_instance.visible = not has_outfit
 
@@ -272,7 +308,17 @@ func _is_runtime_attachment_mesh(mesh_instance: MeshInstance3D) -> bool:
 	return (
 		(_hair_root != null and is_instance_valid(_hair_root) and _hair_root.is_ancestor_of(mesh_instance))
 		or (_outfit_root != null and is_instance_valid(_outfit_root) and _outfit_root.is_ancestor_of(mesh_instance))
+		or _has_equipment_attachment_ancestor(mesh_instance)
 	)
+
+
+func _has_equipment_attachment_ancestor(node: Node) -> bool:
+	var ancestor := node.get_parent()
+	while ancestor != null:
+		if bool(ancestor.get_meta(EQUIPMENT_ATTACHMENT_META, false)):
+			return true
+		ancestor = ancestor.get_parent()
+	return false
 
 
 func _create_toon_material(color: Color, cull_disabled := false) -> Material:
@@ -285,6 +331,39 @@ func _apply_material_to_mesh(mesh_instance: MeshInstance3D, material: Material) 
 
 	for surface_index in range(mesh_instance.mesh.get_surface_count()):
 		mesh_instance.set_surface_override_material(surface_index, material)
+
+
+func _apply_head_only_body_material_to_mesh(mesh_instance: MeshInstance3D) -> void:
+	if mesh_instance.mesh == null:
+		return
+
+	for surface_index in range(mesh_instance.mesh.get_surface_count()):
+		var material := CharacterToonMaterials.make_textured_character_material(
+			_source_material_for_surface(mesh_instance, surface_index),
+			_body_color_for_preset(),
+			material_style,
+			true,
+			0.012,
+			true,
+			CharacterAppearanceAssets.outfit_body_clip_min_y(outfit_style, body_type),
+			CharacterAppearanceAssets.outfit_body_neck_min_y(outfit_style, body_type),
+			CharacterAppearanceAssets.outfit_body_neck_half_width(outfit_style, body_type)
+		)
+		mesh_instance.set_surface_override_material(surface_index, material)
+
+
+func _source_material_for_surface(mesh_instance: MeshInstance3D, surface_index: int) -> Material:
+	if mesh_instance == null or mesh_instance.mesh == null:
+		return null
+	return mesh_instance.mesh.surface_get_material(surface_index)
+
+
+func _textured_material(source_material: Material, fallback_color: Color) -> Material:
+	return CharacterToonMaterials.make_textured_character_material(
+		source_material,
+		fallback_color,
+		material_style
+	)
 
 
 func _apply_auth_session_appearance() -> void:
@@ -336,6 +415,7 @@ func _rebuild_outfit_scene(model_root: Node) -> void:
 
 	for mesh_instance in CharacterRigAttachment.collect_mesh_instances(_outfit_root):
 		_apply_outfit_materials(mesh_instance)
+	_sync_equipment_outfit_part_visibility()
 
 
 func _apply_outfit_materials(mesh_instance: MeshInstance3D) -> void:
@@ -347,7 +427,7 @@ func _apply_outfit_materials(mesh_instance: MeshInstance3D) -> void:
 		if source_material == null:
 			source_material = mesh_instance.mesh.surface_get_material(surface_index)
 
-		var material := _body_material if CharacterAppearanceAssets.is_skin_material(source_material) else _make_outfit_material(source_material)
+		var material := _textured_material(source_material, _body_color_for_preset()) if CharacterAppearanceAssets.is_skin_material(source_material) else _make_outfit_material(source_material)
 		mesh_instance.set_surface_override_material(surface_index, material)
 
 	mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
@@ -359,6 +439,27 @@ func _make_outfit_material(source_material: Material) -> Material:
 		Color(0.52, 0.39, 0.24, 1.0),
 		material_style
 	)
+
+
+func _sync_equipment_outfit_part_visibility() -> void:
+	if _outfit_root == null or not is_instance_valid(_outfit_root):
+		return
+
+	var hidden_markers := PackedStringArray()
+	for slot_id in _equipment_outfit_replacements.keys():
+		for marker in PackedStringArray(_equipment_outfit_replacements[slot_id]):
+			var normalized_marker := String(marker).strip_edges().to_lower()
+			if not normalized_marker.is_empty() and not hidden_markers.has(normalized_marker):
+				hidden_markers.append(normalized_marker)
+
+	for mesh_instance in CharacterRigAttachment.collect_mesh_instances(_outfit_root):
+		var mesh_name := mesh_instance.name.to_lower()
+		var is_replaced := false
+		for marker in hidden_markers:
+			if mesh_name.contains(marker):
+				is_replaced = true
+				break
+		mesh_instance.visible = not is_replaced
 
 
 func _rebuild_hair_scene(model_root: Node) -> void:
@@ -398,7 +499,10 @@ func _apply_hair_materials(node: Node) -> void:
 		var mesh_instance := node as MeshInstance3D
 		var surface_count := mesh_instance.mesh.get_surface_count() if mesh_instance.mesh != null else 0
 		for surface_index in range(surface_count):
-			mesh_instance.set_surface_override_material(surface_index, _hair_material)
+			mesh_instance.set_surface_override_material(
+				surface_index,
+				_textured_material(_source_material_for_surface(mesh_instance, surface_index), _sanitize_color(hair_color))
+			)
 		mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
 	for child in node.get_children():

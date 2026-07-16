@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CombatSoundSet" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/audio/combat/combat_sound_set.gd" id="1_set"]
+[ext_resource type="AudioStream" path="res://assets/audio/combat/basic_sword/sword_swing_angrycrazii_277322.mp3" id="2_swing"]
+[ext_resource type="AudioStream" path="res://assets/audio/combat/basic_sword/sword_hit_qubodup_442769.mp3" id="3_impact"]
+[ext_resource type="AudioStream" path="res://assets/audio/combat/basic_sword/flesh_hit_magnuswaker_522091.mp3" id="4_hurt"]
+
+[resource]
+script = ExtResource("1_set")
+swing_streams = Array[AudioStream]([ExtResource("2_swing")])
+impact_streams = Array[AudioStream]([ExtResource("3_impact")])
+hurt_streams = Array[AudioStream]([ExtResource("4_hurt")])
+swing_volume_db = -6.0
+impact_volume_db = -5.0
+hurt_volume_db = -8.0
+pitch_variation = 0.05
