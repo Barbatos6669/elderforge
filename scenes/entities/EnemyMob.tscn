@@ -1,4 +1,4 @@
-[gd_scene load_steps=26 format=3]
+[gd_scene load_steps=27 format=3]
 
 [ext_resource type="Script" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="1_hover_feedback"]
 [ext_resource type="Script" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
@@ -23,6 +23,7 @@
 [ext_resource type="Script" path="res://scripts/entities/mob_equipment_loadout.gd" id="21_mob_loadout"]
 [ext_resource type="Script" path="res://scripts/player/equipment/player_equipment_visuals.gd" id="22_equipment_visuals"]
 [ext_resource type="Script" path="res://scripts/player/equipment/equipment_socket_3d.gd" id="23_equipment_socket"]
+[ext_resource type="Script" path="res://scripts/debug/mob_aggro_zone_debug_3d.gd" id="24_aggro_zone"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -66,6 +67,9 @@ hostile_hover_cursor_hotspot = Vector2(6, 2)
 script = ExtResource("3_selection_feedback")
 selectable_path = NodePath("../Selectable")
 ring_color = Color(1, 0.08, 0.06, 1)
+
+[node name="DebugAggroZone" type="MeshInstance3D" parent="."]
+script = ExtResource("24_aggro_zone")
 
 [node name="Health" type="Node" parent="."]
 script = ExtResource("6_health")

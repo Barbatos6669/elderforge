@@ -49,6 +49,8 @@ func _run_test() -> void:
 			return
 		if not _has_player_base_stats(raider, raider_name):
 			return
+		if not _has_debug_aggro_zone(raider, raider_name):
+			return
 
 	var expected_item_ids := PackedStringArray([
 		"one_handed_sword_t1",
@@ -162,6 +164,33 @@ func _has_player_base_stats(raider: Node, raider_name: String) -> bool:
 	):
 		return false
 
+	return true
+
+
+func _has_debug_aggro_zone(raider: Node, raider_name: String) -> bool:
+	var ai := raider.get_node_or_null("AI")
+	var aggro_zone := raider.get_node_or_null("DebugAggroZone")
+	if ai == null or aggro_zone == null:
+		_fail("%s should include AI and DebugAggroZone nodes." % raider_name)
+		return false
+	if not aggro_zone.has_method("get_radius"):
+		_fail("%s DebugAggroZone should expose its radius for tests." % raider_name)
+		return false
+	if not bool(ai.get("debug_show_aggro_zone")):
+		_fail("%s should enable its debug aggro zone in the battle arena." % raider_name)
+		return false
+	if not bool(aggro_zone.get("visible")):
+		_fail("%s debug aggro zone should be visible." % raider_name)
+		return false
+
+	var expected_radius := float(ai.get("aggro_radius"))
+	var actual_radius := float(aggro_zone.call("get_radius"))
+	if not is_equal_approx(actual_radius, expected_radius):
+		_fail(
+			"%s debug aggro zone radius should be %.2f, found %.2f."
+			% [raider_name, expected_radius, actual_radius]
+		)
+		return false
 	return true
 
 

@@ -48,6 +48,8 @@ signal respawned
 @export var equipment_loadout_path: NodePath = NodePath("../EquipmentLoadout")
 ## Optional energy pool used by equipment abilities.
 @export var resource_pool_path: NodePath = NodePath("../Mana")
+## Optional debug ring that visualizes `aggro_radius`.
+@export var debug_aggro_zone_path: NodePath = NodePath("../DebugAggroZone")
 
 @export_group("Aggro")
 ## Distance from the mob where players first pull aggro.
@@ -56,6 +58,8 @@ signal respawned
 @export_range(1.0, 60.0, 0.1) var leash_radius := 12.0
 ## Distance from home where the mob stops returning and idles.
 @export_range(0.05, 2.0, 0.01) var home_arrival_distance := 0.18
+## Shows the aggro radius as a debug ground ring.
+@export var debug_show_aggro_zone := false
 
 @export_group("Movement")
 @export_range(0.1, 12.0, 0.1) var movement_speed := 3.2
@@ -110,6 +114,7 @@ var _visuals: Node3D
 var _loot_dropper: Node
 var _equipment_loadout: Node
 var _resource_pool: Node
+var _debug_aggro_zone: Node
 var _target: Node3D
 var _collision_shapes: Array[CollisionShape3D] = []
 var _home_position := Vector3.ZERO
@@ -157,6 +162,7 @@ func _ready() -> void:
 	_loot_dropper = get_node_or_null(loot_dropper_path)
 	_equipment_loadout = get_node_or_null(equipment_loadout_path)
 	_resource_pool = get_node_or_null(resource_pool_path)
+	_debug_aggro_zone = get_node_or_null(debug_aggro_zone_path)
 	_collect_collision_shapes(_body)
 
 	if _health != null and _health.has_signal("defeated"):
@@ -167,6 +173,11 @@ func _ready() -> void:
 	_refresh_equipped_abilities(true)
 	_connect_stats_signals()
 	_sync_health_stats(true)
+	_sync_debug_aggro_zone(true)
+
+
+func _process(_delta: float) -> void:
+	_sync_debug_aggro_zone()
 
 
 func _physics_process(delta: float) -> void:
@@ -400,6 +411,7 @@ func _respawn() -> void:
 	_cooldown_remaining = 0.0
 	_reset_active_ability_state()
 	_is_respawning = false
+	_sync_debug_aggro_zone(true)
 	respawned.emit()
 
 
@@ -419,6 +431,7 @@ func apply_network_alive_state() -> void:
 		_animation.call("reset_animation_state")
 	_cooldown_remaining = 0.0
 	_reset_active_ability_state()
+	_sync_debug_aggro_zone(true)
 	respawned.emit()
 
 
@@ -1131,6 +1144,7 @@ func _set_defeated_state(is_defeated: bool, should_hide_body: bool = true) -> vo
 		_selectable.set("selection_enabled", not is_defeated)
 		if is_defeated and _selectable.has_method("set_selected"):
 			_selectable.call("set_selected", false)
+	_sync_debug_aggro_zone(true)
 
 
 func _play_death_animation() -> float:
@@ -1236,6 +1250,33 @@ func _face_direction(direction: Vector3, delta: float = -1.0) -> void:
 func _set_moving_animation(is_moving: bool) -> void:
 	if _animation != null and _animation.has_method("set_moving"):
 		_animation.call("set_moving", is_moving)
+
+
+func _sync_debug_aggro_zone(force_refresh := false) -> void:
+	if _debug_aggro_zone == null and not debug_aggro_zone_path.is_empty():
+		_debug_aggro_zone = get_node_or_null(debug_aggro_zone_path)
+	if _debug_aggro_zone == null:
+		return
+
+	if (
+		_debug_aggro_zone.has_method("set_radius")
+		and (
+			force_refresh
+			or not _debug_aggro_zone.has_method("get_radius")
+			or not is_equal_approx(float(_debug_aggro_zone.call("get_radius")), aggro_radius)
+		)
+	):
+		_debug_aggro_zone.call("set_radius", aggro_radius)
+
+	var should_show := (
+		debug_show_aggro_zone
+		and not _is_respawning
+		and not _is_self_defeated()
+	)
+	if _debug_aggro_zone.has_method("set_debug_visible"):
+		_debug_aggro_zone.call("set_debug_visible", should_show)
+	else:
+		_debug_aggro_zone.visible = should_show
 
 
 func _connect_stats_signals() -> void:

@@ -102,6 +102,9 @@ equipped_item_ids = PackedStringArray("one_handed_sword_t1", "leather_helmet_t1"
 [node name="MainHandPreview" parent="World/LevelContent/Mobs/HeavyRaider/Visuals/BaseCharacter/Armature/Skeleton3D/MainHandAttachment" index="0" instance=ExtResource("4_sword_preview")]
 transform = Transform3D(-3.93402e-08, 0, 0.9, 0.9, -3.93402e-08, 3.93402e-08, 3.93402e-08, 0.9, 1.72063e-15, -0.04, 0.11, 0.02)
 
+[node name="AI" parent="World/LevelContent/Mobs/HeavyRaider" index="14"]
+debug_show_aggro_zone = true
+
 [node name="StandardRaider" parent="World/LevelContent/Mobs" parent_id_path=PackedInt32Array(1514346223) index="4" unique_id=1668829225 instance=ExtResource("2_enemy")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -9)
 
@@ -111,6 +114,9 @@ equipped_item_ids = PackedStringArray("one_handed_sword_t1")
 [node name="MainHandPreview" parent="World/LevelContent/Mobs/StandardRaider/Visuals/BaseCharacter/Armature/Skeleton3D/MainHandAttachment" index="0" instance=ExtResource("4_sword_preview")]
 transform = Transform3D(-3.93402e-08, 0, 0.9, 0.9, -3.93402e-08, 3.93402e-08, 3.93402e-08, 0.9, 1.72063e-15, -0.04, 0.11, 0.02)
 
+[node name="AI" parent="World/LevelContent/Mobs/StandardRaider" index="14"]
+debug_show_aggro_zone = true
+
 [node name="SwiftRaider" parent="World/LevelContent/Mobs" parent_id_path=PackedInt32Array(1514346223) index="5" unique_id=1532366594 instance=ExtResource("2_enemy")]
 transform = Transform3D(0.92, 0, 0, 0, 0.92, 0, 0, 0, 0.92, 11, 0, -8)
 
@@ -119,6 +125,9 @@ equipped_item_ids = PackedStringArray("one_handed_sword_t1", "leather_boots_t1")
 
 [node name="MainHandPreview" parent="World/LevelContent/Mobs/SwiftRaider/Visuals/BaseCharacter/Armature/Skeleton3D/MainHandAttachment" index="0" instance=ExtResource("4_sword_preview")]
 transform = Transform3D(-3.93402e-08, 0, 0.9, 0.9, -3.93402e-08, 3.93402e-08, 3.93402e-08, 0.9, 1.72063e-15, -0.04, 0.11, 0.02)
+
+[node name="AI" parent="World/LevelContent/Mobs/SwiftRaider" index="14"]
+debug_show_aggro_zone = true
 
 [node name="AbilityRaider" parent="World/LevelContent/Mobs" parent_id_path=PackedInt32Array(1514346223) index="6" instance=ExtResource("2_enemy")]
 transform = Transform3D(1.02, 0, 0, 0, 1.02, 0, 0, 0, 1.02, 12, 0, 4)
@@ -146,6 +155,7 @@ aggro_radius = 7.0
 leash_radius = 14.0
 attack_damage = 20.0
 attack_speed = 1.0
+debug_show_aggro_zone = true
 loot_dropper_path = NodePath("")
 respawn_delay = 5.0
 
