@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3]
+[gd_scene load_steps=24 format=3]
 
 [ext_resource type="Script" path="res://scripts/interaction/hover/hover_feedback_3d.gd" id="1_hover_feedback"]
 [ext_resource type="Script" path="res://scripts/interaction/selection/selectable_3d.gd" id="2_selectable"]
@@ -19,6 +19,8 @@
 [ext_resource type="Script" path="res://scripts/stats/entity_stats.gd" id="17_entity_stats"]
 [ext_resource type="Script" path="res://scripts/stats/forged_trait_loadout.gd" id="18_forged_traits"]
 [ext_resource type="Script" path="res://scripts/stats/forged_trait_auto_allocator.gd" id="19_trait_allocator"]
+[ext_resource type="Script" path="res://scripts/combat/resource_pool.gd" id="20_resource_pool"]
+[ext_resource type="Script" path="res://scripts/entities/mob_equipment_loadout.gd" id="21_mob_loadout"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -67,6 +69,16 @@ ring_color = Color(1, 0.08, 0.06, 1)
 script = ExtResource("6_health")
 max_health = 120.0
 current_health = 120.0
+
+[node name="Mana" type="Node" parent="."]
+script = ExtResource("20_resource_pool")
+display_name = "Energy"
+max_resource = 120.0
+current_resource = 120.0
+regeneration_per_second = 10.0
+
+[node name="EquipmentLoadout" type="Node" parent="."]
+script = ExtResource("21_mob_loadout")
 
 [node name="ForgedTraits" type="Node" parent="."]
 script = ExtResource("18_forged_traits")

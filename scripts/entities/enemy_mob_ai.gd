@@ -6,13 +6,26 @@
 class_name EnemyMobAI
 extends Node
 
+const AttackTimelineScript := preload("res://scripts/combat/attack_timeline.gd")
 const DamageRequestScript := preload("res://scripts/combat/damage_request.gd")
 const DamageResolverScript := preload("res://scripts/combat/damage_resolver.gd")
+const AbilitySlots := preload("res://scripts/combat/abilities/equipment_ability_slots.gd")
+const TARGETING_SELECTED := "selected_target"
+const TARGETING_DIRECTION := "direction"
+const TARGETING_SELF := "self"
+const EXECUTION_DAMAGE := "damage"
+const EXECUTION_DODGE := "dodge"
+const EXECUTION_REGENERATION := "regeneration"
+const EXECUTION_SHIELD := "shield"
 
 signal aggro_started(target: Node)
 signal aggro_dropped
 signal attack_started(target: Node, speed_scale: float)
 signal attack_landed(target: Node, damage: float)
+signal ability_cast_started(slot_id: StringName, target: Node, definition: Resource)
+signal ability_cast_landed(slot_id: StringName, target: Node, damage: float)
+signal ability_cast_interrupted(slot_id: StringName, target: Node, reason: String)
+signal ability_cast_finished(slot_id: StringName)
 signal respawned
 
 ## Group used to find player characters that can draw aggro.
@@ -29,6 +42,10 @@ signal respawned
 @export var visuals_path: NodePath = NodePath("../Visuals")
 ## Optional component that spawns a loot bag when this mob dies.
 @export var loot_dropper_path: NodePath = NodePath("../LootDropper")
+## Optional mob-only equipment loadout that exposes equipped item ability data.
+@export var equipment_loadout_path: NodePath = NodePath("../EquipmentLoadout")
+## Optional energy pool used by equipment abilities.
+@export var resource_pool_path: NodePath = NodePath("../Mana")
 
 @export_group("Aggro")
 ## Distance from the mob where players first pull aggro.
@@ -55,6 +72,19 @@ signal respawned
 ## Attacks per second. This also drives attack animation speed.
 @export_range(0.1, 5.0, 0.05) var attack_speed := 0.75
 
+@export_group("Equipment Abilities")
+## Equipment sources keyed by ability slot. Weapons own Q/W/E, chest R, head D, boots F.
+@export var ability_equipment_slots: Dictionary = (
+	AbilitySlots.EQUIPMENT_SLOT_BY_ABILITY.duplicate()
+)
+## Defensive self-casts are saved until the mob has actually been pressured.
+@export_range(0.05, 1.0, 0.05) var defensive_ability_health_ratio := 0.75
+## Mobs use healing/restoration channels only after combat drops.
+@export_range(0.05, 1.0, 0.05) var recovery_ability_health_ratio := 0.55
+## Dodge rolls become defensive at low health and offensive as a gap closer.
+@export_range(0.05, 1.0, 0.05) var dodge_ability_health_ratio := 0.45
+@export_range(0.1, 5.0, 0.05) var defensive_dodge_distance := 1.4
+
 @export_group("Death")
 ## Minimum time the defeated body stays visible before hiding for respawn.
 @export_range(0.0, 5.0, 0.05) var minimum_death_visible_time := 1.2
@@ -72,6 +102,8 @@ var _animation: Node
 var _selectable: Node
 var _visuals: Node3D
 var _loot_dropper: Node
+var _equipment_loadout: Node
+var _resource_pool: Node
 var _target: Node3D
 var _collision_shapes: Array[CollisionShape3D] = []
 var _home_position := Vector3.ZERO
@@ -82,6 +114,22 @@ var _is_respawning := false
 var _suppress_next_loot_drop := false
 var _network_control_timeout := 0.0
 var _damage_resolver = DamageResolverScript.new()
+var _ability_timeline = AttackTimelineScript.new()
+var _active_definitions: Dictionary = {}
+var _active_definition_paths: Dictionary = {}
+var _ability_cooldowns_by_id: Dictionary = {}
+var _ability_cast_slot: StringName = &""
+var _ability_cast_target: Node
+var _ability_cast_definition: Resource
+var _dodge_slot: StringName = &""
+var _dodge_definition: Resource
+var _dodge_direction := Vector3.ZERO
+var _dodge_remaining_seconds := 0.0
+var _dodge_speed := 0.0
+var _channel_slot: StringName = &""
+var _channel_definition: Resource
+var _channel_remaining_seconds := 0.0
+var _channel_tick_count := 0
 
 
 func _ready() -> void:
@@ -100,10 +148,16 @@ func _ready() -> void:
 	_selectable = get_node_or_null(selectable_path)
 	_visuals = get_node_or_null(visuals_path) as Node3D
 	_loot_dropper = get_node_or_null(loot_dropper_path)
+	_equipment_loadout = get_node_or_null(equipment_loadout_path)
+	_resource_pool = get_node_or_null(resource_pool_path)
 	_collect_collision_shapes(_body)
 
 	if _health != null and _health.has_signal("defeated"):
 		_health.defeated.connect(_on_defeated)
+	if _health != null and _health.has_signal("damage_taken"):
+		_health.damage_taken.connect(_on_damage_taken)
+	_connect_equipment_loadout()
+	_refresh_equipped_abilities(true)
 	_connect_stats_signals()
 	_sync_health_stats(true)
 
@@ -115,8 +169,15 @@ func _physics_process(delta: float) -> void:
 	if _body == null or _is_respawning or _is_self_defeated():
 		return
 
+	_advance_ability_cooldowns(delta)
+	if _update_active_ability(delta):
+		return
+
 	if _has_target():
 		_update_aggro(delta)
+		return
+
+	if _try_out_of_combat_recovery_ability():
 		return
 
 	_target = _find_aggro_target()
@@ -141,13 +202,34 @@ func _update_aggro(delta: float) -> void:
 		return
 
 	var distance_to_target := _horizontal_distance_to(_target.global_position)
-	if distance_to_target <= attack_range:
+	if _try_combat_self_ability():
 		_stop_moving(delta)
 		_face_direction(_direction_to(_target.global_position), delta)
+		return
+	if _try_combat_dodge_ability(distance_to_target):
+		return
+
+	var ready_target_ability := _best_ready_target_damage_ability()
+	var ready_target_ability_range := (
+		float(ready_target_ability.get("attack_range"))
+		if ready_target_ability != null
+		else 0.0
+	)
+	var desired_attack_range := maxf(attack_range, ready_target_ability_range)
+	if distance_to_target <= desired_attack_range:
+		_stop_moving(delta)
+		_face_direction(_direction_to(_target.global_position), delta)
+		if _try_target_damage_ability(ready_target_ability):
+			return
+		if distance_to_target > attack_range:
+			return
 		_update_attack(delta)
 		return
 
-	var chase_destination := _target.global_position - _direction_to(_target.global_position) * approach_distance
+	var chase_distance := approach_distance
+	if ready_target_ability != null:
+		chase_distance = float(ready_target_ability.get("approach_distance"))
+	var chase_destination := _target.global_position - _direction_to(_target.global_position) * chase_distance
 	chase_destination.y = _body.global_position.y
 	_move_toward(chase_destination, delta)
 
@@ -258,6 +340,7 @@ func _on_defeated() -> void:
 		return
 
 	_drop_aggro()
+	_reset_active_ability_state()
 	if _body != null:
 		_body.velocity = Vector3.ZERO
 	if _animation != null and _animation.has_method("set_moving"):
@@ -308,6 +391,7 @@ func _respawn() -> void:
 		_animation.call("reset_animation_state")
 
 	_cooldown_remaining = 0.0
+	_reset_active_ability_state()
 	_is_respawning = false
 	respawned.emit()
 
@@ -327,6 +411,7 @@ func apply_network_alive_state() -> void:
 	if _animation != null and _animation.has_method("reset_animation_state"):
 		_animation.call("reset_animation_state")
 	_cooldown_remaining = 0.0
+	_reset_active_ability_state()
 	respawned.emit()
 
 
@@ -381,6 +466,552 @@ func play_network_attack(speed_scale: float = 1.0) -> void:
 	_network_control_timeout = maxf(_network_control_timeout, 0.35)
 	if _animation.has_method("play_attack"):
 		_animation.call("play_attack", speed_scale)
+
+
+func get_active_ability(slot_id: StringName) -> Resource:
+	return _active_definitions.get(String(slot_id)) as Resource
+
+
+func get_ability_cooldown_remaining(slot_id: StringName) -> float:
+	var definition := get_active_ability(slot_id)
+	if definition == null:
+		return 0.0
+	return maxf(float(_ability_cooldowns_by_id.get(String(definition.get("ability_id")), 0.0)), 0.0)
+
+
+func get_ability_cooldown_total(slot_id: StringName) -> float:
+	var definition := get_active_ability(slot_id)
+	return maxf(float(definition.get("cooldown_seconds")), 0.0) if definition != null else 0.0
+
+
+func _connect_equipment_loadout() -> void:
+	if _equipment_loadout == null or not _equipment_loadout.has_signal("equipped_slots_changed"):
+		return
+
+	var callable := Callable(self, "_on_equipped_slots_changed")
+	if not _equipment_loadout.is_connected("equipped_slots_changed", callable):
+		_equipment_loadout.connect("equipped_slots_changed", callable)
+
+
+func _on_equipped_slots_changed() -> void:
+	_refresh_equipped_abilities()
+
+
+func _refresh_equipped_abilities(force_refresh := false) -> void:
+	var next_paths := {}
+	for raw_slot_id in ability_equipment_slots:
+		var slot_id := String(raw_slot_id).strip_edges().to_lower()
+		var equipment_slot_id := String(ability_equipment_slots[raw_slot_id])
+		if slot_id.is_empty() or equipment_slot_id.is_empty():
+			continue
+
+		var equipped_item := {}
+		if _equipment_loadout != null and _equipment_loadout.has_method("get_equipped_slot"):
+			equipped_item = _equipment_loadout.call("get_equipped_slot", equipment_slot_id)
+
+		var ability_paths := equipped_item.get("ability_paths", {}) as Dictionary
+		var definition_path := String(ability_paths.get(slot_id, "")) if ability_paths != null else ""
+		if definition_path.is_empty() and slot_id == "q":
+			definition_path = String(equipped_item.get("q_ability_path", ""))
+		next_paths[slot_id] = definition_path
+
+	if not force_refresh and next_paths == _active_definition_paths:
+		return
+
+	_reset_active_ability_state()
+	_active_definition_paths = next_paths
+	_active_definitions.clear()
+	for slot_key in _active_definition_paths:
+		var definition_path := String(_active_definition_paths[slot_key])
+		if definition_path.is_empty() or not ResourceLoader.exists(definition_path):
+			continue
+		var definition := load(definition_path) as Resource
+		if definition != null:
+			_active_definitions[String(slot_key)] = definition
+
+
+func _advance_ability_cooldowns(delta: float) -> void:
+	var elapsed := maxf(delta, 0.0)
+	if elapsed <= 0.0:
+		return
+
+	for raw_ability_id in _ability_cooldowns_by_id.keys():
+		var previous := maxf(float(_ability_cooldowns_by_id[raw_ability_id]), 0.0)
+		var remaining := maxf(previous - elapsed, 0.0)
+		if remaining <= 0.0:
+			_ability_cooldowns_by_id.erase(raw_ability_id)
+		else:
+			_ability_cooldowns_by_id[raw_ability_id] = remaining
+
+
+func _update_active_ability(delta: float) -> bool:
+	if _update_dodge_ability(delta):
+		return true
+	if _update_channel_ability(delta):
+		return true
+	if _ability_timeline.is_ready():
+		return false
+
+	_stop_moving(delta)
+	var target_3d := _ability_cast_target as Node3D
+	if target_3d != null and is_instance_valid(target_3d):
+		_face_direction(_direction_to(target_3d.global_position), delta)
+
+	if _ability_timeline.is_winding_up() and not _can_complete_current_ability():
+		_interrupt_current_ability("Target lost")
+
+	var timeline_event: int = _ability_timeline.advance(delta)
+	if timeline_event == AttackTimelineScript.TimelineEvent.IMPACT:
+		if _execution_type(_ability_cast_definition) == EXECUTION_DAMAGE:
+			_resolve_ability_impact()
+	elif timeline_event == AttackTimelineScript.TimelineEvent.READY:
+		_finish_current_ability()
+	return true
+
+
+func _try_combat_self_ability() -> bool:
+	if _health_ratio() > defensive_ability_health_ratio or _has_active_absorb_shield():
+		return false
+
+	for slot_id in AbilitySlots.ACTIVE_SLOT_IDS:
+		var definition := get_active_ability(slot_id)
+		if (
+			definition != null
+			and _targeting_mode(definition) == TARGETING_SELF
+			and _execution_type(definition) == EXECUTION_SHIELD
+			and _can_begin_mob_ability(slot_id, definition)
+		):
+			return _begin_self_ability(slot_id, definition)
+	return false
+
+
+func _try_out_of_combat_recovery_ability() -> bool:
+	if _health_ratio() > recovery_ability_health_ratio:
+		return false
+	if _find_aggro_target() != null:
+		return false
+
+	for slot_id in AbilitySlots.ACTIVE_SLOT_IDS:
+		var definition := get_active_ability(slot_id)
+		if (
+			definition != null
+			and _targeting_mode(definition) == TARGETING_SELF
+			and _execution_type(definition) == EXECUTION_REGENERATION
+			and _can_begin_mob_ability(slot_id, definition)
+		):
+			_stop_moving(0.0)
+			return _begin_self_ability(slot_id, definition)
+	return false
+
+
+func _try_combat_dodge_ability(distance_to_target: float) -> bool:
+	var definition := _best_ready_dodge_ability()
+	if definition == null or not _has_target():
+		return false
+
+	var direction := Vector3.ZERO
+	var target_direction := _direction_to(_target.global_position)
+	var movement_distance := maxf(float(definition.get("movement_distance")), 0.0)
+	if _health_ratio() <= dodge_ability_health_ratio and distance_to_target <= defensive_dodge_distance:
+		direction = -target_direction
+	elif distance_to_target > attack_range and distance_to_target <= movement_distance + attack_range:
+		direction = target_direction
+	if direction == Vector3.ZERO:
+		return false
+
+	return _begin_dodge_ability(_slot_for_definition(definition), definition, direction)
+
+
+func _try_target_damage_ability(preferred_definition: Resource = null) -> bool:
+	var definition := preferred_definition if preferred_definition != null else _best_ready_target_damage_ability()
+	if definition == null or not _has_target():
+		return false
+	if not _is_target_in_ability_range(definition, _target):
+		return false
+
+	return _begin_target_ability(_slot_for_definition(definition), _target, definition)
+
+
+func _best_ready_target_damage_ability() -> Resource:
+	if not _has_target():
+		return null
+
+	for slot_id in AbilitySlots.ACTIVE_SLOT_IDS:
+		var definition := get_active_ability(slot_id)
+		if (
+			definition != null
+			and _targeting_mode(definition) == TARGETING_SELECTED
+			and _execution_type(definition) == EXECUTION_DAMAGE
+			and _can_begin_mob_ability(slot_id, definition)
+		):
+			return definition
+	return null
+
+
+func _best_ready_dodge_ability() -> Resource:
+	for slot_id in AbilitySlots.ACTIVE_SLOT_IDS:
+		var definition := get_active_ability(slot_id)
+		if (
+			definition != null
+			and _targeting_mode(definition) == TARGETING_DIRECTION
+			and _execution_type(definition) == EXECUTION_DODGE
+			and _can_begin_mob_ability(slot_id, definition)
+		):
+			return definition
+	return null
+
+
+func _begin_target_ability(slot_id: StringName, target: Node, definition: Resource) -> bool:
+	var cast_duration := maxf(float(definition.get("cast_duration_seconds")), 0.01)
+	var impact_fraction := clampf(float(definition.get("impact_fraction")), 0.0, 1.0)
+	if not _ability_timeline.begin(cast_duration, impact_fraction, 0.0, cast_duration):
+		return false
+	if not _pay_ability_cost(definition):
+		_ability_timeline.reset()
+		ability_cast_interrupted.emit(slot_id, target, "Not enough resource")
+		return false
+
+	_ability_cast_slot = slot_id
+	_ability_cast_target = target
+	_ability_cast_definition = definition
+	_start_ability_cooldown(definition)
+	_play_ability_animation(definition, cast_duration)
+	ability_cast_started.emit(slot_id, target, definition)
+	attack_started.emit(target, 1.0 / cast_duration)
+	return true
+
+
+func _begin_self_ability(slot_id: StringName, definition: Resource) -> bool:
+	if not _pay_ability_cost(definition):
+		ability_cast_interrupted.emit(slot_id, _body, "Not enough resource")
+		return false
+
+	_start_ability_cooldown(definition)
+	ability_cast_started.emit(slot_id, _body, definition)
+	match _execution_type(definition):
+		EXECUTION_SHIELD:
+			_apply_ability_protection(definition)
+			_apply_missing_resource_restore(definition)
+			ability_cast_finished.emit(slot_id)
+			return true
+		EXECUTION_REGENERATION:
+			_channel_slot = slot_id
+			_channel_definition = definition
+			_channel_remaining_seconds = maxf(float(definition.get("cast_duration_seconds")), 0.01)
+			_channel_tick_count = 0
+			return true
+
+	return false
+
+
+func _begin_dodge_ability(slot_id: StringName, definition: Resource, direction: Vector3) -> bool:
+	var safe_direction := direction.normalized()
+	if safe_direction == Vector3.ZERO or not _pay_ability_cost(definition):
+		return false
+
+	var duration := maxf(float(definition.get("cast_duration_seconds")), 0.01)
+	var distance := maxf(float(definition.get("movement_distance")), 0.0)
+	_start_ability_cooldown(definition)
+	_apply_ability_protection(definition)
+	_dodge_slot = slot_id
+	_dodge_definition = definition
+	_dodge_direction = safe_direction
+	_dodge_remaining_seconds = duration
+	_dodge_speed = distance / duration
+	ability_cast_started.emit(slot_id, _target, definition)
+	return true
+
+
+func _update_dodge_ability(delta: float) -> bool:
+	if _dodge_remaining_seconds <= 0.0 or _dodge_definition == null:
+		return false
+
+	_dodge_remaining_seconds = maxf(_dodge_remaining_seconds - maxf(delta, 0.0), 0.0)
+	_body.velocity.x = _dodge_direction.x * _dodge_speed
+	_body.velocity.y = 0.0
+	_body.velocity.z = _dodge_direction.z * _dodge_speed
+	_body.move_and_slide()
+	_face_direction(_dodge_direction, delta)
+	_set_moving_animation(true)
+
+	if _dodge_remaining_seconds <= 0.0:
+		var finished_slot := _dodge_slot
+		_dodge_slot = &""
+		_dodge_definition = null
+		_dodge_direction = Vector3.ZERO
+		_dodge_speed = 0.0
+		ability_cast_finished.emit(finished_slot)
+	return true
+
+
+func _update_channel_ability(delta: float) -> bool:
+	if _channel_definition == null:
+		return false
+	if _requires_out_of_combat(_channel_definition) and _find_aggro_target() != null:
+		_interrupt_active_channel("Entered combat")
+		return true
+
+	_stop_moving(delta)
+	_channel_remaining_seconds = maxf(_channel_remaining_seconds - maxf(delta, 0.0), 0.0)
+	var tick_interval := maxf(float(_channel_definition.get("channel_tick_interval_seconds")), 0.05)
+	var duration := maxf(float(_channel_definition.get("cast_duration_seconds")), 0.01)
+	var elapsed := clampf(duration - _channel_remaining_seconds, 0.0, duration)
+	var maximum_tick_count := floori((duration + 0.0001) / tick_interval)
+	var elapsed_tick_count := mini(
+		floori((elapsed + 0.0001) / tick_interval),
+		maximum_tick_count
+	)
+	while _channel_tick_count < elapsed_tick_count:
+		_channel_tick_count += 1
+		_apply_regeneration_tick(_channel_definition)
+
+	if _channel_remaining_seconds <= 0.0:
+		var finished_slot := _channel_slot
+		_clear_channel_state()
+		ability_cast_finished.emit(finished_slot)
+	return true
+
+
+func _resolve_ability_impact() -> void:
+	var impact_target := _ability_cast_target
+	if not _can_complete_current_ability():
+		ability_cast_interrupted.emit(_ability_cast_slot, impact_target, "Target left ability range")
+		return
+
+	var target_health := _find_health(impact_target)
+	if target_health == null or not target_health.has_method("apply_damage"):
+		ability_cast_interrupted.emit(_ability_cast_slot, impact_target, "Target has no health component")
+		return
+
+	var request := DamageRequestScript.create(
+		_body if _body != null else self,
+		impact_target,
+		_ability_damage(_ability_cast_definition),
+		_ability_damage_type(_ability_cast_definition),
+		target_health
+	)
+	var result := _damage_resolver.resolve(request)
+	if result.was_applied():
+		ability_cast_landed.emit(_ability_cast_slot, impact_target, result.applied_damage)
+		attack_landed.emit(impact_target, result.applied_damage)
+
+
+func _finish_current_ability() -> void:
+	var finished_slot := _ability_cast_slot
+	_ability_cast_slot = &""
+	_ability_cast_target = null
+	_ability_cast_definition = null
+	ability_cast_finished.emit(finished_slot)
+
+
+func _interrupt_current_ability(reason: String) -> void:
+	if not _ability_timeline.interrupt_windup():
+		return
+	var interrupted_slot := _ability_cast_slot
+	var interrupted_target := _ability_cast_target
+	ability_cast_interrupted.emit(interrupted_slot, interrupted_target, reason)
+
+
+func _interrupt_active_channel(reason: String) -> void:
+	var interrupted_slot := _channel_slot
+	_clear_channel_state()
+	ability_cast_interrupted.emit(interrupted_slot, _body, reason)
+
+
+func _clear_channel_state() -> void:
+	_channel_slot = &""
+	_channel_definition = null
+	_channel_remaining_seconds = 0.0
+	_channel_tick_count = 0
+
+
+func _reset_active_ability_state() -> void:
+	_ability_timeline.reset()
+	_ability_cooldowns_by_id.clear()
+	_ability_cast_slot = &""
+	_ability_cast_target = null
+	_ability_cast_definition = null
+	_dodge_slot = &""
+	_dodge_definition = null
+	_dodge_direction = Vector3.ZERO
+	_dodge_remaining_seconds = 0.0
+	_dodge_speed = 0.0
+	_clear_channel_state()
+
+
+func _start_ability_cooldown(definition: Resource) -> void:
+	var ability_id := String(definition.get("ability_id"))
+	if ability_id.is_empty():
+		return
+	_ability_cooldowns_by_id[ability_id] = maxf(float(definition.get("cooldown_seconds")), 0.0)
+
+
+func _can_begin_mob_ability(slot_id: StringName, definition: Resource) -> bool:
+	return (
+		definition != null
+		and _body != null
+		and not _is_self_defeated()
+		and _ability_timeline.is_ready()
+		and _dodge_definition == null
+		and _channel_definition == null
+		and get_ability_cooldown_remaining(slot_id) <= 0.0
+		and _can_pay_ability_cost(definition)
+		and (not _requires_out_of_combat(definition) or not _has_target())
+	)
+
+
+func _can_complete_current_ability() -> bool:
+	if _ability_cast_definition == null or _ability_cast_target == null:
+		return false
+	if _is_target_defeated(_ability_cast_target):
+		return false
+	return _is_target_in_ability_range(
+		_ability_cast_definition,
+		_ability_cast_target,
+		maxf(float(_ability_cast_definition.get("impact_range_leeway")), 0.0)
+	)
+
+
+func _can_pay_ability_cost(definition: Resource) -> bool:
+	var cost := maxf(float(definition.get("energy_cost")), 0.0)
+	if cost <= 0.0:
+		return true
+	return (
+		_resource_pool != null
+		and _resource_pool.has_method("can_spend")
+		and bool(_resource_pool.call("can_spend", cost))
+	)
+
+
+func _pay_ability_cost(definition: Resource) -> bool:
+	var cost := maxf(float(definition.get("energy_cost")), 0.0)
+	if cost <= 0.0:
+		return true
+	return (
+		_resource_pool != null
+		and _resource_pool.has_method("try_spend")
+		and bool(_resource_pool.call("try_spend", cost))
+	)
+
+
+func _apply_ability_protection(definition: Resource) -> void:
+	if _health == null:
+		return
+	var immunity_seconds := maxf(float(definition.get("damage_immunity_seconds")), 0.0)
+	if immunity_seconds > 0.0 and _health.has_method("grant_damage_immunity"):
+		_health.call("grant_damage_immunity", immunity_seconds)
+
+	var shield_amount := maxf(float(definition.get("absorb_shield_amount")), 0.0)
+	var shield_seconds := maxf(float(definition.get("absorb_shield_duration_seconds")), 0.0)
+	if shield_amount > 0.0 and shield_seconds > 0.0 and _health.has_method("grant_absorb_shield"):
+		_health.call("grant_absorb_shield", shield_amount, shield_seconds)
+
+
+func _apply_missing_resource_restore(definition: Resource) -> void:
+	if _resource_pool == null or not _resource_pool.has_method("restore"):
+		return
+	var restore_percent := maxf(float(definition.get("missing_energy_restore_percent")), 0.0)
+	if restore_percent <= 0.0:
+		return
+
+	var max_resource := maxf(float(_resource_pool.get("max_resource")), 0.0)
+	var current_resource := clampf(float(_resource_pool.get("current_resource")), 0.0, max_resource)
+	var missing_resource := maxf(max_resource - current_resource, 0.0)
+	_resource_pool.call("restore", missing_resource * restore_percent / 100.0)
+
+
+func _apply_regeneration_tick(definition: Resource) -> void:
+	if definition == null:
+		return
+	if _health != null and _health.has_method("heal"):
+		var max_health := maxf(float(_health.get("max_health")), 0.0)
+		_health.call(
+			"heal",
+			max_health * maxf(float(definition.get("health_restore_percent_per_tick")), 0.0) / 100.0
+		)
+	if _resource_pool != null and _resource_pool.has_method("restore"):
+		var max_resource := maxf(float(_resource_pool.get("max_resource")), 0.0)
+		_resource_pool.call(
+			"restore",
+			max_resource * maxf(float(definition.get("energy_restore_percent_per_tick")), 0.0) / 100.0
+		)
+
+
+func _play_ability_animation(definition: Resource, duration_seconds: float) -> void:
+	if _animation == null or definition == null:
+		return
+	if _animation.has_method("play_weapon_ability"):
+		_animation.call(
+			"play_weapon_ability",
+			String(definition.get("animation_scene_path")),
+			StringName(String(definition.get("animation_name"))),
+			duration_seconds,
+			StringName(String(definition.get("recovery_animation_name")))
+		)
+	elif _animation.has_method("play_attack"):
+		_animation.call("play_attack", 1.0 / maxf(duration_seconds, 0.01))
+
+
+func _ability_damage(definition: Resource) -> float:
+	if definition == null:
+		return 0.0
+	var ability_base_damage := maxf(float(definition.get("base_damage")), 0.0)
+	var multiplier := maxf(float(definition.get("damage_multiplier")), 0.0)
+	return maxf(ability_base_damage + _attack_damage() * multiplier, 0.0)
+
+
+func _ability_damage_type(definition: Resource) -> StringName:
+	if definition == null:
+		return DamageRequestScript.TYPE_PHYSICAL
+	return DamageRequestScript.normalize_damage_type(StringName(String(definition.get("damage_type"))))
+
+
+func _slot_for_definition(definition: Resource) -> StringName:
+	for slot_key in _active_definitions:
+		if _active_definitions[slot_key] == definition:
+			return StringName(String(slot_key))
+	return StringName(String(definition.get("input_slot"))) if definition != null else &""
+
+
+func _is_target_in_ability_range(definition: Resource, target: Node, extra_range := 0.0) -> bool:
+	var target_3d := target as Node3D
+	if _body == null or target_3d == null or definition == null:
+		return false
+	var offset := target_3d.global_position - _body.global_position
+	offset.y = 0.0
+	return offset.length() <= float(definition.get("attack_range")) + maxf(extra_range, 0.0)
+
+
+func _targeting_mode(definition: Resource) -> String:
+	return String(definition.get("targeting_mode")) if definition != null else ""
+
+
+func _execution_type(definition: Resource) -> String:
+	return String(definition.get("execution_type")) if definition != null else ""
+
+
+func _requires_out_of_combat(definition: Resource) -> bool:
+	return definition != null and bool(definition.get("requires_out_of_combat"))
+
+
+func _health_ratio() -> float:
+	if _health == null:
+		return 1.0
+	if _health.has_method("get_health_ratio"):
+		return float(_health.call("get_health_ratio"))
+	var max_health := maxf(float(_health.get("max_health")), 0.0)
+	if max_health <= 0.0:
+		return 0.0
+	return clampf(float(_health.get("current_health")) / max_health, 0.0, 1.0)
+
+
+func _has_active_absorb_shield() -> bool:
+	return _health != null and _health.has_method("has_absorb_shield") and bool(_health.call("has_absorb_shield"))
+
+
+func _on_damage_taken(_amount: float) -> void:
+	if _channel_definition != null and bool(_channel_definition.get("cancel_on_damage")):
+		_interrupt_active_channel("Damaged")
 
 
 func _set_defeated_state(is_defeated: bool, should_hide_body: bool = true) -> void:

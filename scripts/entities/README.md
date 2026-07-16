@@ -9,7 +9,11 @@ Files:
   leashing back to its spawn point. It emits `attack_started` for multiplayer
   animation sync and `attack_landed` when damage is actually applied. It can
   also call an optional `LootDropper3D` child when the mob is defeated, and can
-  read an optional shared `Stats` child for Forged Trait modifiers.
+  read optional `Stats` and `EquipmentLoadout` children for Forged Trait
+  modifiers and item-authored combat abilities.
+- `mob_equipment_loadout.gd`: mob-only equipped item source. It resolves
+  prototype item ids such as `one_handed_sword_t1` into equipped-slot
+  dictionaries without joining player inventory groups or persistence.
 - `animals/animal_animation_controller.gd`: small animation bridge for imported
   animal GLBs that already contain idle, walk, attack, and death clips.
 - `animals/skinnable_animal_3d.gd`: killable animal behavior. While alive it can
@@ -31,6 +35,9 @@ GDScript notes:
   `Animation`. This keeps combat state, targeting, and visuals modular.
 - Add a `Stats`, `ForgedTraits`, and optional `TraitAllocator` child when a mob
   or creature should use the same trait/stat rules as players.
+- Add an `EquipmentLoadout` child with prototype item ids when a humanoid mob
+  should use the active abilities supplied by weapons, helmets, chest armor, or
+  boots.
 - Defeated mobs are made unselectable/non-colliding immediately, play their
   death animation while still visible, then hide after the visible death window
   until `respawn_delay` finishes.
