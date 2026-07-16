@@ -18,6 +18,7 @@ const EXECUTION_DAMAGE := "damage"
 const EXECUTION_DODGE := "dodge"
 const EXECUTION_REGENERATION := "regeneration"
 const EXECUTION_SHIELD := "shield"
+const SWORD_SLASH_ABILITY_ID := "one_handed_sword_q"
 
 signal aggro_started(target: Node)
 signal aggro_dropped
@@ -726,6 +727,7 @@ func _begin_dodge_ability(slot_id: StringName, definition: Resource, direction: 
 	_dodge_remaining_seconds = duration
 	_dodge_speed = distance / duration
 	_show_direction_ability_telegraph(definition, safe_direction, duration)
+	_play_ability_animation(definition, duration)
 	ability_cast_started.emit(slot_id, _target, definition)
 	return true
 
@@ -977,11 +979,19 @@ func _show_target_ability_telegraph(target: Node, definition: Resource, duration
 	if telegraph == null:
 		return
 
-	var radius := maxf(
-		target_ability_telegraph_radius,
-		maxf(float(definition.get("indicator_width")) * 0.5, 0.0) if definition != null else 0.0
-	)
-	telegraph.call("show_following_circle", target_3d, radius, duration_seconds)
+	if _uses_swing_telegraph(definition):
+		var direction := _direction_to(target_3d.global_position)
+		var radius := maxf(
+			float(definition.get("attack_range")) if definition != null else 0.0,
+			target_ability_telegraph_radius
+		)
+		telegraph.call("show_swing_arc", _body.global_position, direction, radius, duration_seconds)
+	else:
+		var radius := maxf(
+			target_ability_telegraph_radius,
+			maxf(float(definition.get("indicator_width")) * 0.5, 0.0) if definition != null else 0.0
+		)
+		telegraph.call("show_following_circle", target_3d, radius, duration_seconds)
 
 
 func _show_direction_ability_telegraph(definition: Resource, direction: Vector3, duration_seconds: float) -> void:
@@ -1009,6 +1019,10 @@ func _telegraph_warning_duration(definition: Resource, cast_duration: float) -> 
 		return maxf(safe_cast_duration * impact_fraction, minf(safe_cast_duration, 0.2))
 
 	return safe_cast_duration
+
+
+func _uses_swing_telegraph(definition: Resource) -> bool:
+	return definition != null and String(definition.get("ability_id")) == SWORD_SLASH_ABILITY_ID
 
 
 func _create_ability_telegraph() -> Node3D:

@@ -6,6 +6,27 @@ const SlashAbility := preload("res://assets/combat/abilities/one_handed_sword_q.
 const RollAbility := preload("res://assets/combat/abilities/leather_boots_roll.tres")
 
 
+class FakeAnimation:
+	extends Node
+
+	var play_count := 0
+	var last_animation_scene_path := ""
+	var last_animation_name: StringName = &""
+	var last_duration_seconds := 0.0
+
+	func play_weapon_ability(
+		animation_scene_path: String,
+		animation_name: StringName,
+		desired_duration_seconds: float = 0.0,
+		_recovery_animation_name: StringName = &""
+	) -> float:
+		play_count += 1
+		last_animation_scene_path = animation_scene_path
+		last_animation_name = animation_name
+		last_duration_seconds = desired_duration_seconds
+		return desired_duration_seconds
+
+
 func _initialize() -> void:
 	call_deferred("_run_test")
 
@@ -19,6 +40,10 @@ func _run_test() -> void:
 	var mob := CharacterBody3D.new()
 	mob.name = "Mob"
 	fixture.add_child(mob)
+
+	var animation := FakeAnimation.new()
+	animation.name = "Animation"
+	mob.add_child(animation)
 
 	var ai := EnemyMobAIScript.new()
 	ai.name = "AI"
@@ -47,17 +72,20 @@ func _run_test() -> void:
 		return
 
 	var target_telegraph := fixture.get_node_or_null("HostileAbilityTelegraph")
-	if not _is_showing_kind(target_telegraph, &"circle"):
-		_fail("Mob target ability should show a circle telegraph.")
+	if not _is_showing_kind(target_telegraph, &"swing"):
+		_fail("Sword Slash should show a swing telegraph.")
 		return
-	if _horizontal_distance(target_telegraph.global_position, target.global_position) > 0.02:
-		_fail("Target telegraph should start under the targeted player.")
+	if _horizontal_distance(target_telegraph.global_position, mob.global_position) > 0.02:
+		_fail("Sword Slash telegraph should start from the attacking mob.")
 		return
 
-	target.global_position = Vector3(2.0, 0.0, -2.0)
-	target_telegraph.call("_process", 0.01)
-	if _horizontal_distance(target_telegraph.global_position, target.global_position) > 0.02:
-		_fail("Target telegraph should follow the selected target during wind-up.")
+	if not is_equal_approx(float(target_telegraph.call("get_fill_progress")), 0.0):
+		_fail("Sword Slash telegraph should start hollow.")
+		return
+	target_telegraph.call("_process", 60.0)
+	var fill_progress := float(target_telegraph.call("get_fill_progress"))
+	if fill_progress < 0.45 or fill_progress > 0.55:
+		_fail("Sword Slash telegraph should fill toward impact.")
 		return
 
 	ai.call("_update_active_ability", 121.0)
@@ -67,6 +95,7 @@ func _run_test() -> void:
 		return
 
 	ai.call("_reset_active_ability_state")
+	animation.play_count = 0
 	var roll_ability := RollAbility.duplicate()
 	roll_ability.set("energy_cost", 0.0)
 	if not bool(ai.call("_begin_dodge_ability", &"f", roll_ability, Vector3.FORWARD)):
@@ -76,6 +105,12 @@ func _run_test() -> void:
 	var direction_telegraph := fixture.get_node_or_null("HostileAbilityTelegraph")
 	if not _is_showing_kind(direction_telegraph, &"direction"):
 		_fail("Mob dodge ability should show a directional telegraph.")
+		return
+	if animation.play_count != 1 or animation.last_animation_name != &"Roll":
+		_fail("Mob dodge ability should play its authored Roll animation.")
+		return
+	if not is_equal_approx(animation.last_duration_seconds, float(roll_ability.get("cast_duration_seconds"))):
+		_fail("Mob dodge animation should be scaled to the roll duration.")
 		return
 
 	ai.call("_update_dodge_ability", 1.0)
