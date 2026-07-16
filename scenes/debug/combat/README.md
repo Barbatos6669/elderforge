@@ -12,9 +12,10 @@ project's main scene.
   signed-in player's saved inventory.
 - Three stationary training targets test approach distance, target switching,
   sustained attacks, damage numbers, and impact timing.
-- The left hostile is slow, durable, and heavy-hitting.
-- The center hostile represents the current baseline enemy.
-- The right hostile moves and attacks quickly but has less health.
+- The left hostile is slow, durable, heavy-hitting, and carries a sword plus
+  helmet shield.
+- The center hostile represents the current baseline sword enemy.
+- The right hostile moves quickly and carries sword plus boots-roll mobility.
 - The side `Ability Raider` equips the starter sword, chest, helmet, and boots
   so mob equipment abilities can be tested in a live fight.
 - Hostiles have a short five-second respawn and produce no loot, keeping the

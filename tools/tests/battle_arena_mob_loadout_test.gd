@@ -27,6 +27,26 @@ func _run_test() -> void:
 		_fail("Battle arena should include the equipped Ability Raider.")
 		return
 
+	for raider_name in ["HeavyRaider", "StandardRaider", "SwiftRaider", "AbilityRaider"]:
+		var raider := arena.get_node_or_null("World/LevelContent/Mobs/%s" % raider_name)
+		if raider == null:
+			_fail("Battle arena should include %s." % raider_name)
+			return
+		var raider_loadout := raider.get_node_or_null("EquipmentLoadout")
+		if raider_loadout == null:
+			_fail("%s should have an EquipmentLoadout override." % raider_name)
+			return
+		var raider_items := PackedStringArray(raider_loadout.get("equipped_item_ids"))
+		if not raider_items.has("one_handed_sword_t1"):
+			_fail("%s should equip a visible one-handed sword." % raider_name)
+			return
+		var hand_preview := raider.get_node_or_null(
+			"Visuals/BaseCharacter/Armature/Skeleton3D/MainHandAttachment/MainHandPreview"
+		)
+		if hand_preview == null:
+			_fail("%s should have an editor-visible sword preview." % raider_name)
+			return
+
 	var expected_item_ids := PackedStringArray([
 		"one_handed_sword_t1",
 		"leather_armor_t1",
