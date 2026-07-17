@@ -25,6 +25,9 @@ __pycache__/
 Thumbs.db
 .DS_Store
 
+# Private local design documents
+/Elderforge_Lore_Bible_v1.md
+
 # Local secrets, credentials, and tunnel configs
 .env
 .env.*
