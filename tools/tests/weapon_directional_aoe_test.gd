@@ -106,6 +106,9 @@ func _run_test() -> void:
 	if not abilities.confirm_directional_cast(attacker):
 		_fail("Directional AoE should commit after aim confirmation.")
 		return
+	if not abilities.should_hold_position(attacker):
+		_fail("A multi-hit spell should hold movement until every authored swipe lands.")
+		return
 
 	abilities.update_abilities(attacker, 0.35)
 	if not _all_health_equals([front, escaping, behind, outside, friendly], 100.0):
@@ -118,6 +121,9 @@ func _run_test() -> void:
 		return
 	if not is_equal_approx(_health(escaping).current_health, 50.0):
 		_fail("The first swipe should hit every hostile inside the aimed area.")
+		return
+	if not abilities.should_hold_position(attacker):
+		_fail("Whirling Slash should remain committed between its two swipe impacts.")
 		return
 	if (
 		not is_equal_approx(_health(behind).current_health, 100.0)
@@ -141,6 +147,12 @@ func _run_test() -> void:
 		return
 	if _landed_events != 3:
 		_fail("Two area pulses should emit one landed event per actual target hit.")
+		return
+	if abilities.should_hold_position(attacker):
+		_fail("Whirling Slash should release movement immediately after its second swipe.")
+		return
+	if not abilities.is_casting():
+		_fail("Whirling Slash recovery should continue after movement is released.")
 		return
 
 	fixture.queue_free()

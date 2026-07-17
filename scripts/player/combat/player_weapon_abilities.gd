@@ -323,14 +323,22 @@ func update_abilities(attacker: Node3D, delta: float) -> void:
 		_begin_target_cast(attacker)
 
 
-## Cancels an approach or uncommitted target wind-up. A committed dodge keeps
-## running so ordinary click input cannot interrupt movement mid-roll. Callers
-## can preserve a mobile channel when the new action is only a move order.
-func cancel_current_action(reason := "Cancelled", cancel_channel := true) -> void:
+## Cancels an approach or optionally interrupts a damage wind-up. A committed
+## dodge keeps running, and move orders can preserve a cast while queuing their
+## destination for the final impact.
+func cancel_current_action(
+	reason := "Cancelled",
+	cancel_channel := true,
+	interrupt_damage_windup := true
+) -> void:
 	_pending_slot = &""
 	_pending_target = null
 	cancel_directional_targeting()
-	if _timeline.is_winding_up() and _execution_type(_cast_definition) == EXECUTION_DAMAGE:
+	if (
+		interrupt_damage_windup
+		and _timeline.is_winding_up()
+		and _execution_type(_cast_definition) == EXECUTION_DAMAGE
+	):
 		_interrupt_current_cast(reason)
 	if cancel_channel:
 		cancel_active_channel(reason)
@@ -421,6 +429,11 @@ func should_hold_position(attacker: Node3D) -> bool:
 	if is_directional_targeting():
 		return true
 	if not _timeline.is_ready():
+		if (
+			_execution_type(_cast_definition) == EXECUTION_DAMAGE
+			and not _cast_impact_schedule.has_pending_impacts()
+		):
+			return false
 		return not is_directional_movement_active()
 	var pending_target := _valid_target_node(_pending_target)
 	return pending_target != null and _is_target_in_range(attacker, pending_target)

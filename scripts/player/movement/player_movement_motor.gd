@@ -28,6 +28,7 @@ var _forced_direction := Vector3.ZERO
 var _forced_speed := 0.0
 var _forced_remaining_seconds := 0.0
 var _speed_multipliers: Dictionary = {}
+var _hold_requested := false
 
 
 ## Sets a new destination in world space.
@@ -48,6 +49,7 @@ func start_forced_movement(direction: Vector3, distance: float, duration_seconds
 	_forced_direction = flat_direction.normalized()
 	_forced_speed = safe_distance / safe_duration
 	_forced_remaining_seconds = safe_duration
+	_hold_requested = false
 	return true
 
 
@@ -79,14 +81,30 @@ func get_effective_movement_speed() -> float:
 ## Clears destination state and stops the character immediately.
 func stop(character: CharacterBody3D) -> void:
 	_has_destination = false
+	_hold_requested = false
 	_forced_direction = Vector3.ZERO
 	_forced_speed = 0.0
 	_forced_remaining_seconds = 0.0
 	character.velocity = Vector3.ZERO
 
 
+## Pauses horizontal movement for one frame without discarding a queued destination.
+func hold_position_for_frame(character: CharacterBody3D) -> void:
+	_hold_requested = true
+	character.velocity.x = 0.0
+	character.velocity.z = 0.0
+
+
 ## Advances movement for one physics frame and returns intended direction.
 func move_to_destination(character: CharacterBody3D, delta: float) -> Vector3:
+	if _hold_requested:
+		_hold_requested = false
+		character.velocity.x = 0.0
+		_apply_vertical_velocity(character, delta)
+		character.velocity.z = 0.0
+		character.move_and_slide()
+		return Vector3.ZERO
+
 	if is_forced_moving():
 		return _move_forced(character, delta)
 

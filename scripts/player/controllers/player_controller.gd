@@ -332,7 +332,7 @@ func _process_standard_world_input() -> void:
 		return
 	if input_reader.was_click_move_started():
 		auto_attack.stop_attack()
-		weapon_abilities.cancel_current_action("Moved", false)
+		weapon_abilities.cancel_current_action("Moved", false, false)
 		_cancel_gathering_action("Moved")
 		_clear_pending_refining_station()
 		_clear_pending_loot_container()
@@ -390,6 +390,10 @@ func _update_weapon_ability_movement() -> void:
 		weapon_abilities.is_directional_targeting()
 		or weapon_abilities.is_directional_movement_active()
 	):
+		return
+	if weapon_abilities.is_casting():
+		if weapon_abilities.should_hold_position(self):
+			movement_motor.hold_position_for_frame(self)
 		return
 
 	if weapon_abilities.should_hold_position(self):

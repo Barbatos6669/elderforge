@@ -98,6 +98,12 @@ func _run_test() -> void:
 	if not is_equal_approx(health.current_health, 20.0):
 		_fail("Weapon ability did not leave the expected health after armor mitigation.")
 		return
+	if abilities.should_hold_position(attacker):
+		_fail("A single-hit spell should release movement as soon as its impact resolves.")
+		return
+	if not abilities.is_casting():
+		_fail("Movement release should not skip the spell's remaining recovery time.")
+		return
 
 	fixture.queue_free()
 	await process_frame

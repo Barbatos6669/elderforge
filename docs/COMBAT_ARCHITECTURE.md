@@ -45,7 +45,9 @@ a swing after it has already committed.
 6. A committed cast spends energy, starts its cooldown by stable ability id,
    and plays its authored animation.
 7. Damage resolves at each authored impact point; movement abilities ask the
-   movement motor for collision-aware forced movement.
+   movement motor for collision-aware forced movement. Player movement unlocks
+   on the final impact, and any queued move order resumes while animation and
+   cooldown recovery finish normally.
 8. Every bound HUD slot observes the component and renders remaining cooldown.
 
 The first implementation is `Sword Slash`: a five-second cooldown using the

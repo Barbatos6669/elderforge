@@ -230,8 +230,8 @@ func _validate_player_cast(fixture: Node3D, source_definition: Resource) -> bool
 	if not abilities.is_directional_movement_active():
 		return _fail("Sword E should preserve the motor handoff on its landing frame.")
 	abilities.update_abilities(attacker, 0.01)
-	if abilities.is_directional_movement_active() or not abilities.should_hold_position(attacker):
-		return _fail("Sword E should hold its landing recovery instead of sliding afterward.")
+	if abilities.is_directional_movement_active() or abilities.should_hold_position(attacker):
+		return _fail("Sword E should release ordinary movement immediately after landing.")
 	return true
 
 
@@ -319,6 +319,15 @@ func _validate_forced_movement_distance(fixture: Node3D) -> bool:
 		motor.move_to_destination(body, 1.0 / 60.0)
 	if absf(body.global_position.z + 3.65) > 0.02 or motor.is_forced_moving():
 		return _fail("Player E should stop on the warned landing center without overshoot.")
+	body.global_position = Vector3.ZERO
+	motor.set_destination(Vector3(0.0, 0.0, -2.0))
+	motor.hold_position_for_frame(body)
+	motor.move_to_destination(body, 1.0 / 60.0)
+	if absf(body.global_position.z) > 0.001:
+		return _fail("A spell wind-up should hold movement for its committed frame.")
+	motor.move_to_destination(body, 1.0 / 60.0)
+	if body.global_position.z >= -0.001:
+		return _fail("A queued move should resume on the first unlocked frame.")
 	body.queue_free()
 	await process_frame
 	return true

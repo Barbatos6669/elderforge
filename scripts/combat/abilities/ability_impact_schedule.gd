@@ -49,6 +49,10 @@ func get_impact_count() -> int:
 	return _impact_fractions.size()
 
 
+func has_pending_impacts() -> bool:
+	return _next_impact_index < _impact_fractions.size()
+
+
 func get_impact_fraction(index: int) -> float:
 	return _impact_fractions[index] if index >= 0 and index < _impact_fractions.size() else 0.0
 
