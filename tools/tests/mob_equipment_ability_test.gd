@@ -88,10 +88,19 @@ func _test_equipment_abilities_respect_reaction_delay() -> bool:
 		_fail("Mob equipment abilities should not fire on the exact decision frame.")
 		return false
 
+	ai.call("_advance_ability_reaction", 0.15)
+	health.set_current_health(61.0)
+	ai.call("_update_aggro", 0.1)
+	if health.has_absorb_shield():
+		_fail("Mob should cancel a defensive reaction when its condition no longer applies.")
+		return false
+
+	health.set_current_health(60.0)
+	ai.call("_update_aggro", 0.1)
 	ai.call("_advance_ability_reaction", 0.29)
 	ai.call("_update_aggro", 0.1)
 	if health.has_absorb_shield():
-		_fail("Mob equipment abilities should wait for the full reaction delay.")
+		_fail("A canceled mob reaction should restart with the full delay.")
 		return false
 
 	ai.call("_advance_ability_reaction", 0.02)

@@ -26,6 +26,12 @@ const EXECUTION_REGENERATION := "regeneration"
 const EXECUTION_SHIELD := "shield"
 const SWORD_SLASH_ABILITY_ID := "one_handed_sword_q"
 
+enum AbilityAttemptResult {
+	NONE,
+	WAITING,
+	STARTED,
+}
+
 signal aggro_started(target: Node)
 signal aggro_dropped
 signal attack_started(target: Node, speed_scale: float)
@@ -243,14 +249,18 @@ func _update_aggro(delta: float) -> void:
 		return
 
 	var distance_to_target := _horizontal_distance_to(_target.global_position)
-	if _try_combat_self_ability():
+	var self_ability_result := _attempt_combat_self_ability()
+	if self_ability_result != AbilityAttemptResult.NONE:
 		_stop_moving(delta)
 		_face_direction(_direction_to(_target.global_position), delta)
 		return
-	if _try_combat_dodge_ability(distance_to_target):
-		if _dodge_definition == null:
-			_stop_moving(delta)
-			_face_direction(_direction_to(_target.global_position), delta)
+
+	var dodge_ability_result := _attempt_combat_dodge_ability(distance_to_target)
+	if dodge_ability_result == AbilityAttemptResult.WAITING:
+		_stop_moving(delta)
+		_face_direction(_direction_to(_target.global_position), delta)
+		return
+	if dodge_ability_result == AbilityAttemptResult.STARTED:
 		return
 
 	var ready_damage_ability := _best_ready_damage_ability()
@@ -263,7 +273,8 @@ func _update_aggro(delta: float) -> void:
 	if distance_to_target <= desired_attack_range:
 		_stop_moving(delta)
 		_face_direction(_direction_to(_target.global_position), delta)
-		if _try_damage_ability(ready_damage_ability):
+		var damage_ability_result := _attempt_damage_ability(ready_damage_ability)
+		if damage_ability_result != AbilityAttemptResult.NONE:
 			return
 		_clear_ability_reaction()
 		if distance_to_target > attack_range:
@@ -303,11 +314,10 @@ func _update_attack(delta: float) -> void:
 		target_health
 	)
 	var result := _damage_resolver.resolve(request)
+	_cooldown_remaining = _attack_interval()
 	if not result.was_applied():
-		_drop_aggro()
 		return
 
-	_cooldown_remaining = _attack_interval()
 	attack_landed.emit(_target, result.applied_damage)
 
 
@@ -626,9 +636,9 @@ func _update_active_ability(delta: float) -> bool:
 	return true
 
 
-func _try_combat_self_ability() -> bool:
+func _attempt_combat_self_ability() -> int:
 	if _health_ratio() > defensive_ability_health_ratio or _has_active_absorb_shield():
-		return false
+		return AbilityAttemptResult.NONE
 
 	for slot_id in AbilitySlots.ACTIVE_SLOT_IDS:
 		var definition := get_active_ability(slot_id)
@@ -638,10 +648,10 @@ func _try_combat_self_ability() -> bool:
 			and _execution_type(definition) == EXECUTION_SHIELD
 			and _can_begin_mob_ability(slot_id, definition)
 		):
-			if _wait_for_ability_reaction(definition):
-				return true
-			return _begin_self_ability(slot_id, definition)
-	return false
+			if _should_wait_for_ability_reaction(definition):
+				return AbilityAttemptResult.WAITING
+			return _started_ability_result(_begin_self_ability(slot_id, definition))
+	return AbilityAttemptResult.NONE
 
 
 func _try_out_of_combat_recovery_ability() -> bool:
@@ -663,10 +673,10 @@ func _try_out_of_combat_recovery_ability() -> bool:
 	return false
 
 
-func _try_combat_dodge_ability(distance_to_target: float) -> bool:
+func _attempt_combat_dodge_ability(distance_to_target: float) -> int:
 	var definition := _best_ready_dodge_ability()
 	if definition == null or not _has_target():
-		return false
+		return AbilityAttemptResult.NONE
 
 	var direction := Vector3.ZERO
 	var target_direction := _direction_to(_target.global_position)
@@ -676,30 +686,38 @@ func _try_combat_dodge_ability(distance_to_target: float) -> bool:
 	elif distance_to_target > attack_range and distance_to_target <= movement_distance + attack_range:
 		direction = target_direction
 	if direction == Vector3.ZERO:
-		return false
+		return AbilityAttemptResult.NONE
 
-	if _wait_for_ability_reaction(definition):
-		return true
-	return _begin_dodge_ability(_slot_for_definition(definition), definition, direction)
+	if _should_wait_for_ability_reaction(definition):
+		return AbilityAttemptResult.WAITING
+	return _started_ability_result(
+		_begin_dodge_ability(_slot_for_definition(definition), definition, direction)
+	)
 
 
-func _try_damage_ability(preferred_definition: Resource = null) -> bool:
-	var definition := preferred_definition if preferred_definition != null else _best_ready_damage_ability()
+func _attempt_damage_ability(preferred_definition: Resource = null) -> int:
+	var definition := preferred_definition
+	if definition == null:
+		definition = _best_ready_damage_ability()
 	if definition == null or not _has_target():
-		return false
+		return AbilityAttemptResult.NONE
 	if not _is_target_in_ability_activation_range(definition, _target):
-		return false
-	if _wait_for_ability_reaction(definition):
-		return true
+		return AbilityAttemptResult.NONE
+	if _should_wait_for_ability_reaction(definition):
+		return AbilityAttemptResult.WAITING
 
 	var slot_id := _slot_for_definition(definition)
 	if _targeting_mode(definition) == TARGETING_DIRECTION:
-		return _begin_direction_damage_ability(
-			slot_id,
-			definition,
-			_direction_to(_target.global_position)
+		return _started_ability_result(
+			_begin_direction_damage_ability(
+				slot_id,
+				definition,
+				_direction_to(_target.global_position)
+			)
 		)
-	return _begin_target_ability(slot_id, _target, definition)
+	return _started_ability_result(
+		_begin_target_ability(slot_id, _target, definition)
+	)
 
 
 func _best_ready_damage_ability() -> Resource:
@@ -1079,7 +1097,7 @@ func _advance_ability_reaction(delta: float) -> void:
 	)
 
 
-func _wait_for_ability_reaction(definition: Resource) -> bool:
+func _should_wait_for_ability_reaction(definition: Resource) -> bool:
 	var reaction_delay := maxf(ability_reaction_delay_seconds, 0.0)
 	var ability_id := String(definition.get("ability_id")) if definition != null else ""
 	if reaction_delay <= 0.0 or ability_id.is_empty():
@@ -1100,6 +1118,10 @@ func _wait_for_ability_reaction(definition: Resource) -> bool:
 func _clear_ability_reaction() -> void:
 	_pending_ability_reaction_id = ""
 	_ability_reaction_remaining_seconds = 0.0
+
+
+func _started_ability_result(did_start: bool) -> int:
+	return AbilityAttemptResult.STARTED if did_start else AbilityAttemptResult.NONE
 
 
 func _start_ability_cooldown(definition: Resource) -> void:
