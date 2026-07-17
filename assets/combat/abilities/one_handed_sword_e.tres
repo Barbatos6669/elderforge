@@ -18,14 +18,14 @@ tone = "utility"
 [sub_resource type="Resource" id="Resource_movement"]
 script = ExtResource("2_effect")
 label = "Movement"
-value = "Leap 3.65 meters"
+value = "Leap up to 3.65 meters"
 tone = "mobility"
 
 [resource]
 script = ExtResource("1_definition")
 ability_id = "one_handed_sword_e"
 display_name = "Leaping Strike"
-description = "Aim a forward leap and bring your sword down at the landing point, dealing physical damage to enemies around you."
+description = "Aim a landing point within range and bring your sword down there, dealing physical damage to enemies around you."
 tooltip_tags = PackedStringArray("Damage", "Area", "Mobility", "Directional")
 tooltip_effects = Array[Resource]([SubResource("Resource_damage"), SubResource("Resource_area"), SubResource("Resource_movement")])
 input_slot = &"e"
@@ -40,6 +40,7 @@ approach_distance = 1.25
 impact_range_leeway = 0.2
 area_arc_degrees = 360.0
 movement_distance = 3.65
+aim_landing_point = true
 indicator_width = 0.8
 base_damage = 140.0
 damage_multiplier = 1.0

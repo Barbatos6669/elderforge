@@ -145,6 +145,8 @@ var _ability_cast_slot: StringName = &""
 var _ability_cast_target: Node
 var _ability_cast_definition: Resource
 var _ability_cast_direction := Vector3.ZERO
+var _ability_cast_movement_distance := 0.0
+var _ability_cast_landing_position := Vector3.ZERO
 var _ability_movement_remaining_seconds := 0.0
 var _ability_movement_speed := 0.0
 var _dodge_slot: StringName = &""
@@ -775,8 +777,16 @@ func _begin_direction_damage_ability(
 	_ability_cast_target = _target
 	_ability_cast_definition = definition
 	_ability_cast_direction = safe_direction
+	_ability_cast_movement_distance = _directional_damage_movement_distance(definition)
+	_ability_cast_landing_position = (
+		_body.global_position + safe_direction * _ability_cast_movement_distance
+	)
 	_ability_impact_schedule.begin(definition, cast_duration)
-	_begin_directional_damage_movement(definition, cast_duration, impact_fraction)
+	_begin_directional_damage_movement(
+		_ability_cast_movement_distance,
+		cast_duration,
+		impact_fraction
+	)
 	_start_ability_cooldown(definition)
 	_show_direction_damage_telegraph(definition, safe_direction, 0)
 	_play_ability_animation(definition, cast_duration)
@@ -852,17 +862,17 @@ func _update_dodge_ability(delta: float) -> bool:
 
 
 func _begin_directional_damage_movement(
-	definition: Resource,
+	distance: float,
 	cast_duration: float,
 	impact_fraction: float
 ) -> void:
-	var distance := maxf(float(definition.get("movement_distance")), 0.0)
-	if distance <= 0.0:
+	var safe_distance := maxf(distance, 0.0)
+	if safe_distance <= 0.0:
 		_clear_directional_damage_movement()
 		return
 	var movement_duration := maxf(cast_duration * clampf(impact_fraction, 0.0, 1.0), 0.01)
 	_ability_movement_remaining_seconds = movement_duration
-	_ability_movement_speed = distance / movement_duration
+	_ability_movement_speed = safe_distance / movement_duration
 
 
 func _update_directional_damage_movement(delta: float) -> bool:
@@ -987,6 +997,8 @@ func _resolve_ability_damage(impact_target: Node, impact_index: int) -> void:
 func _finish_current_ability() -> void:
 	var finished_slot := _ability_cast_slot
 	_clear_directional_damage_movement()
+	_ability_cast_movement_distance = 0.0
+	_ability_cast_landing_position = Vector3.ZERO
 	_ability_cast_slot = &""
 	_ability_cast_target = null
 	_ability_cast_definition = null
@@ -1002,6 +1014,8 @@ func _interrupt_current_ability(reason: String) -> void:
 	var interrupted_slot := _ability_cast_slot
 	var interrupted_target := _ability_cast_target
 	_clear_directional_damage_movement()
+	_ability_cast_movement_distance = 0.0
+	_ability_cast_landing_position = Vector3.ZERO
 	_ability_impact_schedule.reset()
 	_clear_ability_telegraph()
 	ability_cast_interrupted.emit(interrupted_slot, interrupted_target, reason)
@@ -1028,6 +1042,8 @@ func _reset_active_ability_state() -> void:
 	_ability_cast_target = null
 	_ability_cast_definition = null
 	_ability_cast_direction = Vector3.ZERO
+	_ability_cast_movement_distance = 0.0
+	_ability_cast_landing_position = Vector3.ZERO
 	_clear_directional_damage_movement()
 	_dodge_slot = &""
 	_dodge_definition = null
@@ -1218,12 +1234,11 @@ func _show_direction_damage_telegraph(
 		),
 		0.05
 	)
-	var movement_distance := maxf(float(definition.get("movement_distance")), 0.0)
+	var movement_distance := _ability_cast_movement_distance
 	if movement_distance > 0.0:
-		var landing_center := _body.global_position + direction.normalized() * movement_distance
 		telegraph.call(
 			"show_circle",
-			landing_center,
+			_ability_cast_landing_position,
 			maxf(float(definition.get("attack_range")), 0.35),
 			warning_duration
 		)
@@ -1326,6 +1341,18 @@ func _ability_activation_range(definition: Resource) -> float:
 	return result
 
 
+func _directional_damage_movement_distance(definition: Resource) -> float:
+	if definition == null:
+		return 0.0
+	var maximum_distance := maxf(float(definition.get("movement_distance")), 0.0)
+	if not bool(definition.get("aim_landing_point")):
+		return maximum_distance
+	var target_3d := _target as Node3D
+	if _body == null or target_3d == null:
+		return maximum_distance
+	return minf(_horizontal_distance_to(target_3d.global_position), maximum_distance)
+
+
 func _is_target_in_ability_activation_range(definition: Resource, target: Node) -> bool:
 	var target_3d := target as Node3D
 	if _body == null or target_3d == null or definition == null:
@@ -1354,7 +1381,7 @@ func _directional_target_count(definition: Resource, direction: Vector3) -> int:
 	var count := 0
 	var origin := _body.global_position if _body != null else Vector3.ZERO
 	if definition != null:
-		origin += direction.normalized() * maxf(float(definition.get("movement_distance")), 0.0)
+		origin += direction.normalized() * _directional_damage_movement_distance(definition)
 	for candidate in _directional_target_candidates():
 		var target_3d := candidate as Node3D
 		if (

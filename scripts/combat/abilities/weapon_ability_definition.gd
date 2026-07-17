@@ -59,6 +59,8 @@ extends Resource
 @export_range(1.0, 360.0, 1.0) var area_arc_degrees := 90.0
 ## Horizontal travel authored for directional movement and leap-damage abilities.
 @export_range(0.0, 30.0, 0.05) var movement_distance := 0.0
+## Allows the cursor to choose any landing distance up to movement_distance.
+@export var aim_landing_point := false
 ## Width shown by the directional ground preview.
 @export_range(0.1, 10.0, 0.05) var indicator_width := 1.0
 ## Flat damage applied before physical ability bonuses.

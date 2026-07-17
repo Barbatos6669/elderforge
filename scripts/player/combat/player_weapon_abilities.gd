@@ -79,6 +79,7 @@ var _cast_movement_remaining_seconds := 0.0
 var _cast_movement_finished_this_frame := false
 var _aiming_slot: StringName = &""
 var _aim_direction := Vector3(0.0, 0.0, -1.0)
+var _aim_distance := 0.0
 var _channel_slot: StringName = &""
 var _channel_attacker: Node3D
 var _channel_definition: Resource
@@ -186,6 +187,7 @@ func begin_directional_targeting(slot_id: StringName, attacker: Node3D) -> bool:
 	_pending_slot = &""
 	_pending_target = null
 	_aiming_slot = slot_id
+	_aim_distance = maxf(float(definition.get("movement_distance")), 0.0)
 	_show_directional_indicator(definition)
 	directional_targeting_started.emit(slot_id, definition)
 	return true
@@ -196,14 +198,25 @@ func update_directional_targeting(attacker: Node3D, world_position: Vector3) -> 
 	if attacker == null or not is_directional_targeting():
 		return
 
+	var definition := get_active_ability(_aiming_slot)
+	if definition == null:
+		return
+
 	var offset := world_position - attacker.global_position
 	offset.y = 0.0
 	if offset.length_squared() <= 0.0001:
+		if _uses_aimed_landing(definition):
+			_aim_distance = 0.0
+			_update_directional_indicator(definition)
 		return
 
 	_aim_direction = offset.normalized()
-	var definition := get_active_ability(_aiming_slot)
-	if definition != null and _directional_indicator != null:
+	if _uses_aimed_landing(definition):
+		_aim_distance = minf(
+			offset.length(),
+			maxf(float(definition.get("movement_distance")), 0.0)
+		)
+	if _directional_indicator != null:
 		_update_directional_indicator(definition)
 
 
@@ -237,8 +250,12 @@ func confirm_directional_cast(attacker: Node3D) -> bool:
 	_aiming_slot = &""
 	_hide_directional_indicator()
 	ability_cast_started.emit(slot_id, null, definition)
-	var movement_distance := maxf(float(definition.get("movement_distance")), 0.0)
-	if _uses_directional_movement(definition):
+	var maximum_movement_distance := maxf(float(definition.get("movement_distance")), 0.0)
+	var movement_distance := maximum_movement_distance
+	if _uses_aimed_landing(definition):
+		movement_distance = clampf(_aim_distance, 0.0, maximum_movement_distance)
+	_aim_distance = 0.0
+	if _uses_directional_movement(definition) and movement_distance > 0.0:
 		var movement_duration := cast_duration
 		if _execution_type(definition) == EXECUTION_DAMAGE:
 			movement_duration = maxf(cast_duration * impact_fraction, 0.01)
@@ -255,10 +272,12 @@ func confirm_directional_cast(attacker: Node3D) -> bool:
 
 func cancel_directional_targeting() -> void:
 	if not is_directional_targeting():
+		_aim_distance = 0.0
 		_hide_directional_indicator()
 		return
 	var cancelled_slot := _aiming_slot
 	_aiming_slot = &""
+	_aim_distance = 0.0
 	_hide_directional_indicator()
 	directional_targeting_cancelled.emit(cancelled_slot)
 
@@ -355,6 +374,7 @@ func reset_cast_state() -> void:
 	_clear_directional_movement_state()
 	_cast_impact_schedule.reset()
 	_aiming_slot = &""
+	_aim_distance = 0.0
 	_clear_channel_state()
 	_timeline.reset()
 	_hide_directional_indicator()
@@ -946,10 +966,13 @@ func _update_directional_indicator(definition: Resource) -> void:
 		return
 	if _execution_type(definition) == EXECUTION_DAMAGE:
 		if _uses_directional_movement(definition):
+			var preview_distance := maxf(float(definition.get("movement_distance")), 0.0)
+			if _uses_aimed_landing(definition):
+				preview_distance = _aim_distance
 			_directional_indicator.call(
 				"show_leap",
 				_aim_direction,
-				maxf(float(definition.get("movement_distance")), 0.0),
+				preview_distance,
 				maxf(float(definition.get("attack_range")), 0.1),
 				maxf(float(definition.get("indicator_width")), 0.1)
 			)
@@ -975,6 +998,14 @@ func _uses_directional_movement(definition: Resource) -> bool:
 	if maxf(float(definition.get("movement_distance")), 0.0) <= 0.0:
 		return false
 	return _execution_type(definition) in [EXECUTION_DAMAGE, EXECUTION_DODGE]
+
+
+func _uses_aimed_landing(definition: Resource) -> bool:
+	return (
+		_uses_directional_movement(definition)
+		and _execution_type(definition) == EXECUTION_DAMAGE
+		and bool(definition.get("aim_landing_point"))
+	)
 
 
 func _advance_directional_movement(delta: float) -> void:

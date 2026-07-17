@@ -81,6 +81,7 @@ func _validate_definition(definition: Resource) -> bool:
 	if (
 		not is_equal_approx(float(definition.get("impact_fraction")), 0.53)
 		or not is_equal_approx(float(definition.get("movement_distance")), 3.65)
+		or not bool(definition.get("aim_landing_point"))
 		or not is_equal_approx(float(definition.get("attack_range")), 1.75)
 		or not is_equal_approx(float(definition.get("area_arc_degrees")), 360.0)
 	):
@@ -173,9 +174,19 @@ func _validate_player_cast(fixture: Node3D, source_definition: Resource) -> bool
 	definition.set("energy_cost", 0.0)
 	abilities.set("_active_definitions", {String(E_SLOT): definition})
 
-	var center_target := _add_target(fixture, "CenterTarget", Vector3(0.0, 0.0, -3.65))
-	var side_target := _add_target(fixture, "SideTarget", Vector3(1.5, 0.0, -3.65))
-	var outside_target := _add_target(fixture, "OutsideTarget", Vector3(2.1, 0.0, -3.65))
+	var aimed_landing := Vector3(1.35, 0.0, -1.8)
+	var aimed_direction := aimed_landing.normalized()
+	var center_target := _add_target(fixture, "CenterTarget", aimed_landing)
+	var side_target := _add_target(
+		fixture,
+		"SideTarget",
+		aimed_landing + Vector3(1.2, 0.0, 0.9)
+	)
+	var outside_target := _add_target(
+		fixture,
+		"OutsideTarget",
+		aimed_landing + Vector3(1.68, 0.0, 1.26)
+	)
 	if not abilities.begin_directional_targeting(E_SLOT, attacker):
 		return _fail("Sword E should enter cursor-driven targeting.")
 	abilities.update_directional_targeting(attacker, Vector3(0.0, 0.0, -8.0))
@@ -184,18 +195,27 @@ func _validate_player_cast(fixture: Node3D, source_definition: Resource) -> bool
 	var landing_fill := indicator.get_node_or_null("LandingFill") as MeshInstance3D
 	if landing_fill == null or landing_fill.mesh == null or not landing_fill.visible:
 		return _fail("Sword E landing preview should expose visible circle geometry.")
+	var preview_center := indicator.to_global(landing_fill.position)
+	if Vector2(preview_center.x, preview_center.z).distance_to(Vector2(0.0, -3.65)) > 0.001:
+		return _fail("Sword E should clamp an out-of-range cursor to its maximum range.")
+	abilities.update_directional_targeting(attacker, aimed_landing)
+	preview_center = indicator.to_global(landing_fill.position)
+	if Vector2(preview_center.x, preview_center.z).distance_to(
+		Vector2(aimed_landing.x, aimed_landing.z)
+	) > 0.001:
+		return _fail("Sword E landing circle should follow an in-range cursor point.")
 	if not abilities.confirm_directional_cast(attacker):
 		return _fail("Sword E should commit after the player confirms its direction.")
 	var expected_movement_duration := 1.8 * 0.53
 	if (
 		_movement_events != 1
-		or _movement_direction.distance_to(Vector3.FORWARD) > 0.001
-		or not is_equal_approx(_movement_distance, 3.65)
+		or _movement_direction.distance_to(aimed_direction) > 0.001
+		or not is_equal_approx(_movement_distance, 2.25)
 		or not is_equal_approx(_movement_duration, expected_movement_duration)
 	):
 		return _fail("Sword E should travel to its landing point before the strike frame.")
 
-	attacker.position = Vector3(0.0, 0.0, -3.65)
+	attacker.position = aimed_landing
 	abilities.update_abilities(attacker, expected_movement_duration - 0.01)
 	if not is_equal_approx(_health(center_target).current_health, 500.0):
 		return _fail("Sword E should not damage enemies before the landing frame.")
@@ -243,25 +263,29 @@ func _validate_mob_cast(fixture: Node3D, source_definition: Resource) -> bool:
 	definition.set("energy_cost", 0.0)
 	ai.set("_active_definitions", {String(E_SLOT): definition})
 	ai.set("_target", target)
-	target.position = Vector3(0.0, 0.0, -1.0)
+	target.position = Vector3(0.6, 0.0, -0.8)
 	if ai.call("_best_ready_damage_ability") != null:
-		return _fail("A sword mob should not waste its fixed-distance E while point-blank.")
-	target.position = Vector3(0.0, 0.0, -4.0)
+		return _fail("A sword mob should not waste its mobility E while point-blank.")
+	target.position = Vector3(1.5, 0.0, -2.0)
 	if ai.call("_best_ready_damage_ability") != definition:
 		return _fail("A sword mob should choose E as a useful gap closer.")
-	if not bool(ai.call("_begin_direction_damage_ability", E_SLOT, definition, Vector3.FORWARD)):
+	var mob_aim_direction := target.position.normalized()
+	if not bool(ai.call("_begin_direction_damage_ability", E_SLOT, definition, mob_aim_direction)):
 		return _fail("A sword mob should be able to begin Leaping Strike.")
 	var telegraph := fixture.get_node_or_null("HostileAbilityTelegraph")
 	if (
 		telegraph == null
 		or StringName(String(telegraph.call("get_telegraph_kind"))) != &"circle"
 		or Vector2(telegraph.global_position.x, telegraph.global_position.z)
-		.distance_to(Vector2(0.0, -3.65)) > 0.02
+		.distance_to(Vector2(1.5, -2.0)) > 0.02
 	):
-		return _fail("Mob E should warn with a fixed red circle at its landing point.")
+		return _fail("Mob E should warn at its aimed landing point.")
 	if (
 		not is_equal_approx(float(ai.get("_ability_movement_remaining_seconds")), 1.8 * 0.53)
-		or float(ai.get("_ability_movement_speed")) <= 0.0
+		or not is_equal_approx(
+			float(ai.get("_ability_movement_speed")),
+			2.5 / (1.8 * 0.53)
+		)
 	):
 		return _fail("Mob E should move toward the warned landing point before impact.")
 	for _frame_index in range(57):
@@ -272,7 +296,9 @@ func _validate_mob_cast(fixture: Node3D, source_definition: Resource) -> bool:
 	await physics_frame
 	ai.call("_update_active_ability", 1.0 / 60.0)
 	if (
-		absf(mob.global_position.z + 3.65) > 0.12
+		Vector2(mob.global_position.x, mob.global_position.z).distance_to(
+			Vector2(1.5, -2.0)
+		) > 0.12
 		or not is_equal_approx(target_health.current_health, 340.0)
 	):
 		return _fail("Mob E should travel to its warning circle and damage on landing.")

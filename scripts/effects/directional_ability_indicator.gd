@@ -50,6 +50,7 @@ func show_direction(direction: Vector3, distance: float, width: float) -> void:
 
 	flat_direction = flat_direction.normalized()
 	rotation.y = atan2(-flat_direction.x, -flat_direction.z)
+	_set_travel_visible(true)
 	_origin_disc.visible = true
 	_set_landing_visible(false)
 	_kind = KIND_DIRECTION
@@ -73,6 +74,7 @@ func show_swing_arc(direction: Vector3, radius: float, arc_degrees: float) -> vo
 
 	flat_direction = flat_direction.normalized()
 	rotation.y = atan2(-flat_direction.x, -flat_direction.z)
+	_set_travel_visible(true)
 	_origin_disc.visible = false
 	_set_landing_visible(false)
 	_kind = KIND_SWING
@@ -85,10 +87,11 @@ func show_leap(direction: Vector3, distance: float, landing_radius: float, width
 	if flat_direction.length_squared() <= 0.0001:
 		return
 
-	var safe_distance := maxf(distance, 0.5)
+	var safe_distance := maxf(distance, 0.0)
 	var safe_width := maxf(width, 0.2)
 	var safe_landing_radius := maxf(landing_radius, 0.15)
-	if (
+	var show_travel_path := safe_distance >= 0.5
+	if show_travel_path and (
 		_kind != KIND_LEAP
 		or not is_equal_approx(safe_distance, _last_distance)
 		or not is_equal_approx(safe_width, _last_width)
@@ -101,7 +104,8 @@ func show_leap(direction: Vector3, distance: float, landing_radius: float, width
 	rotation.y = atan2(-flat_direction.x, -flat_direction.z)
 	_landing_outline_mesh.position = Vector3(0.0, 0.006, -safe_distance)
 	_landing_fill_mesh.position = Vector3(0.0, 0.014, -safe_distance)
-	_origin_disc.visible = true
+	_set_travel_visible(show_travel_path)
+	_origin_disc.visible = show_travel_path
 	_set_landing_visible(true)
 	_kind = KIND_LEAP
 	visible = true
@@ -197,6 +201,13 @@ func _set_landing_visible(is_visible: bool) -> void:
 		_landing_outline_mesh.visible = is_visible
 	if _landing_fill_mesh != null:
 		_landing_fill_mesh.visible = is_visible
+
+
+func _set_travel_visible(is_visible: bool) -> void:
+	if _outline_mesh != null:
+		_outline_mesh.visible = is_visible
+	if _fill_mesh != null:
+		_fill_mesh.visible = is_visible
 
 
 func _make_arc_band_mesh(
