@@ -71,13 +71,28 @@ func _run_test() -> void:
 	var player := PLAYER_SCENE.instantiate() as CharacterBody3D
 	player.process_mode = Node.PROCESS_MODE_DISABLED
 	fixture.add_child(player)
-	await process_frame
-	await process_frame
-
 	var animation_controller := player.get_node_or_null("Animation")
 	if animation_controller == null or not animation_controller.has_method("play_weapon_ability"):
 		_fail("Player should expose weapon ability animation playback.")
 		return
+	var immediate_playback_duration := float(animation_controller.call(
+		"play_weapon_ability",
+		W_ANIMATION_PATH,
+		W_ANIMATION_NAME,
+		float(definition.get("cast_duration_seconds"))
+	))
+	var runtime_player := player.find_child("RuntimeAnimationPlayer", true, false) as AnimationPlayer
+	if (
+		not is_equal_approx(immediate_playback_duration, 1.8)
+		or runtime_player == null
+		or runtime_player.current_animation != W_ANIMATION_NAME
+	):
+		_fail("A first-frame Whirling Slash cast should initialize and play immediately.")
+		return
+
+	await process_frame
+	await process_frame
+
 	var playback_duration := float(animation_controller.call(
 		"play_weapon_ability",
 		W_ANIMATION_PATH,
@@ -88,7 +103,7 @@ func _run_test() -> void:
 		_fail("Player animation controller should fit sword W playback to its 1.8-second cast.")
 		return
 
-	var runtime_player := player.find_child("RuntimeAnimationPlayer", true, false) as AnimationPlayer
+	runtime_player = player.find_child("RuntimeAnimationPlayer", true, false) as AnimationPlayer
 	if runtime_player == null or runtime_player.current_animation != W_ANIMATION_NAME:
 		_fail("Player runtime animation library should play the retargeted sword W clip.")
 		return
@@ -101,6 +116,27 @@ func _run_test() -> void:
 	animation_controller.call("play_attack", 1.0)
 	if runtime_player.current_animation != W_ANIMATION_NAME:
 		_fail("Auto-attack animation should not replace Whirling Slash before it finishes.")
+		return
+	runtime_player.seek(runtime_player.current_animation_length * 0.72, true)
+	animation_controller.call("rebuild_animation_player")
+	animation_controller.call("rebuild_animation_player")
+	await process_frame
+	await process_frame
+	runtime_player = player.find_child("RuntimeAnimationPlayer", true, false) as AnimationPlayer
+	if runtime_player == null or runtime_player.current_animation != W_ANIMATION_NAME:
+		_fail("Rebuilding the character model should resume an active Whirling Slash.")
+		return
+	var resumed_progress := (
+		runtime_player.current_animation_position / runtime_player.current_animation_length
+	)
+	if resumed_progress < 0.70 or resumed_progress > 0.74:
+		_fail("Whirling Slash should resume from its pre-rebuild animation frame.")
+		return
+
+	var weapon_abilities := player.get_node("WeaponAbilities")
+	weapon_abilities.set("_active_definitions", {String(W_SLOT): definition})
+	if bool(player.call("request_ability_activation", W_SLOT)):
+		_fail("A new ability should wait for Whirling Slash's final visual frame.")
 		return
 
 	var auto_attack := player.get_node("AutoAttack")
@@ -123,9 +159,51 @@ func _run_test() -> void:
 	if bool(animation_controller.call("is_playing_weapon_ability")):
 		_fail("Weapon ability animation ownership should release after the final frame.")
 		return
+	if not bool(player.call("request_ability_activation", W_SLOT)):
+		_fail("A new ability should become available after Whirling Slash fully finishes.")
+		return
+	weapon_abilities.call("cancel_directional_targeting")
 	animation_controller.call("play_attack", 1.0)
 	if runtime_player.current_animation == W_ANIMATION_NAME:
 		_fail("Auto-attack animation should resume after Whirling Slash fully finishes.")
+		return
+
+	var live_player := PLAYER_SCENE.instantiate() as CharacterBody3D
+	live_player.name = "LiveCastPlayer"
+	fixture.add_child(live_player)
+	var live_abilities := live_player.get_node("WeaponAbilities")
+	live_abilities.set("_active_definitions", {String(W_SLOT): definition})
+	if (
+		not bool(live_abilities.call("begin_directional_targeting", W_SLOT, live_player))
+		or not bool(live_abilities.call("confirm_directional_cast", live_player))
+	):
+		_fail("A first-frame live Whirling Slash cast should commit successfully.")
+		return
+	var live_animation := live_player.get_node("Animation")
+	var live_runtime := live_player.find_child(
+		"RuntimeAnimationPlayer",
+		true,
+		false
+	) as AnimationPlayer
+	if live_runtime == null or live_runtime.current_animation != W_ANIMATION_NAME:
+		_fail("A first-frame live cast should visibly start Whirling Slash.")
+		return
+
+	await create_timer(0.25).timeout
+	live_animation.call("rebuild_animation_player")
+	await process_frame
+	await process_frame
+	live_runtime = live_player.find_child("RuntimeAnimationPlayer", true, false) as AnimationPlayer
+	if live_runtime == null or live_runtime.current_animation != W_ANIMATION_NAME:
+		_fail("A live model rebuild should keep Whirling Slash playing.")
+		return
+	await create_timer(1.25).timeout
+	if live_runtime.current_animation != W_ANIMATION_NAME:
+		_fail("Live Whirling Slash playback should survive through its late animation frames.")
+		return
+	await create_timer(0.45).timeout
+	if bool(live_animation.call("is_playing_weapon_ability")):
+		_fail("Live Whirling Slash playback should release after its complete 1.8-second clip.")
 		return
 
 	fixture.queue_free()

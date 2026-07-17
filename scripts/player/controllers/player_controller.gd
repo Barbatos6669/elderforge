@@ -232,6 +232,8 @@ func _pause_world_movement_for_ui(delta: float) -> void:
 ## `from_pointer` prevents the HUD click that opened an aim preview from also
 ## confirming it on the same press.
 func request_ability_activation(slot_id: StringName, from_pointer := false) -> bool:
+	if _is_weapon_ability_animation_active():
+		return false
 	var definition: Resource = weapon_abilities.get_active_ability(slot_id)
 	if definition == null:
 		return false
@@ -370,10 +372,14 @@ func _update_auto_attack_movement() -> void:
 func _can_update_auto_attack() -> bool:
 	if weapon_abilities.is_casting():
 		return false
+	return not _is_weapon_ability_animation_active()
+
+
+func _is_weapon_ability_animation_active() -> bool:
 	return (
-		animation == null
-		or not animation.has_method("is_playing_weapon_ability")
-		or not bool(animation.call("is_playing_weapon_ability"))
+		animation != null
+		and animation.has_method("is_playing_weapon_ability")
+		and bool(animation.call("is_playing_weapon_ability"))
 	)
 
 

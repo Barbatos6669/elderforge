@@ -60,6 +60,10 @@ var _fit_active_attack_animation_to_cycle := false
 var _queued_weapon_ability_recovery_name: StringName = &""
 var _active_one_shot_animation_name: StringName = &""
 var _is_weapon_ability_active := false
+var _weapon_ability_animation_scene_path := ""
+var _weapon_ability_primary_animation_name: StringName = &""
+var _weapon_ability_recovery_animation_name: StringName = &""
+var _pending_weapon_ability_resume: Dictionary = {}
 
 
 func _ready() -> void:
@@ -73,7 +77,15 @@ func _initialize() -> void:
 
 ## Rebuilds the runtime AnimationPlayer after the visible character model swaps.
 func rebuild_animation_player() -> void:
+	_capture_weapon_ability_resume()
+	if not _is_weapon_ability_active:
+		_queued_weapon_ability_recovery_name = &""
+		_active_one_shot_animation_name = &""
+		_is_attacking = false
 	if _animation_player != null and is_instance_valid(_animation_player):
+		var animation_parent := _animation_player.get_parent()
+		if animation_parent != null:
+			animation_parent.remove_child(_animation_player)
 		_animation_player.queue_free()
 	_animation_player = null
 	_animation_library = null
@@ -150,9 +162,9 @@ func set_gathering(is_gathering: bool, context: Dictionary = {}) -> void:
 func play_attack(attacks_per_second: float = 1.0) -> void:
 	if _is_dead:
 		return
-	if _animation_player == null:
-		return
 	if _is_weapon_ability_active:
+		return
+	if not _ensure_animation_player_ready():
 		return
 
 	var active_attack_animation_name := _current_attack_animation_name()
@@ -160,7 +172,7 @@ func play_attack(attacks_per_second: float = 1.0) -> void:
 		return
 
 	_queued_weapon_ability_recovery_name = &""
-	_is_weapon_ability_active = false
+	_clear_weapon_ability_state()
 	_is_attacking = true
 	var playback_speed := maxf(attacks_per_second, 0.01) * attack_speed_scale
 	if _fit_active_attack_animation_to_cycle:
@@ -182,7 +194,7 @@ func play_weapon_ability(
 	desired_duration_seconds: float = 0.0,
 	recovery_animation_name: StringName = &""
 ) -> float:
-	if _is_dead or _animation_player == null:
+	if _is_dead or not _ensure_animation_player_ready():
 		return 0.0
 	if not _ensure_one_shot_animation_loaded(animation_name, animation_scene_path):
 		return 0.0
@@ -212,6 +224,10 @@ func play_weapon_ability(
 	_queued_weapon_ability_recovery_name = recovery_animation_name
 	_active_one_shot_animation_name = animation_name
 	_is_weapon_ability_active = true
+	_weapon_ability_animation_scene_path = animation_scene_path
+	_weapon_ability_primary_animation_name = animation_name
+	_weapon_ability_recovery_animation_name = recovery_animation_name
+	_pending_weapon_ability_resume.clear()
 	_is_attacking = true
 	_animation_player.speed_scale = playback_speed
 	_animation_player.play(animation_name, blend_time)
@@ -237,7 +253,7 @@ func play_death(speed_scale: float = 1.0) -> float:
 	_is_dead = true
 	_queued_weapon_ability_recovery_name = &""
 	_active_one_shot_animation_name = &""
-	_is_weapon_ability_active = false
+	_clear_weapon_ability_state()
 	_is_attacking = false
 	_is_gathering = false
 	_is_moving = false
@@ -261,7 +277,7 @@ func reset_animation_state() -> void:
 	_is_dead = false
 	_queued_weapon_ability_recovery_name = &""
 	_active_one_shot_animation_name = &""
-	_is_weapon_ability_active = false
+	_clear_weapon_ability_state()
 	_is_attacking = false
 	_is_gathering = false
 	_is_moving = false
@@ -327,7 +343,8 @@ func _setup_animation_player() -> void:
 	source_root.queue_free()
 	_reset_active_equipment_animation_names()
 	_refresh_equipped_animation_profile(true)
-	_play_current_state(true)
+	if not _resume_weapon_ability_after_rebuild():
+		_play_current_state(true)
 
 
 func _add_animation_to_library(
@@ -419,9 +436,111 @@ func _on_animation_finished(animation_name: StringName) -> void:
 			return
 
 	_active_one_shot_animation_name = &""
-	_is_weapon_ability_active = false
+	_clear_weapon_ability_state()
 	_is_attacking = false
 	_play_current_state(true)
+
+
+func _ensure_animation_player_ready() -> bool:
+	if _animation_player == null or not is_instance_valid(_animation_player):
+		_animation_player = null
+		_animation_library = null
+		_setup_animation_player()
+	return _animation_player != null and is_instance_valid(_animation_player)
+
+
+func _capture_weapon_ability_resume() -> void:
+	if not _is_weapon_ability_active:
+		_pending_weapon_ability_resume.clear()
+		return
+	if (
+		(_animation_player == null or not is_instance_valid(_animation_player))
+		and not _pending_weapon_ability_resume.is_empty()
+	):
+		return
+
+	var current_animation_name := _active_one_shot_animation_name
+	var current_position := 0.0
+	var current_speed_scale := 1.0
+	if _animation_player != null and is_instance_valid(_animation_player):
+		if not String(_animation_player.current_animation).is_empty():
+			current_animation_name = _animation_player.current_animation
+		current_position = maxf(_animation_player.current_animation_position, 0.0)
+		current_speed_scale = maxf(_animation_player.speed_scale, 0.01)
+
+	_pending_weapon_ability_resume = {
+		"animation_scene_path": _weapon_ability_animation_scene_path,
+		"primary_animation_name": _weapon_ability_primary_animation_name,
+		"recovery_animation_name": _weapon_ability_recovery_animation_name,
+		"current_animation_name": current_animation_name,
+		"current_position": current_position,
+		"speed_scale": current_speed_scale,
+		"queued_recovery_name": _queued_weapon_ability_recovery_name,
+	}
+
+
+func _resume_weapon_ability_after_rebuild() -> bool:
+	if _pending_weapon_ability_resume.is_empty() or _animation_player == null:
+		return false
+
+	var resume_state := _pending_weapon_ability_resume.duplicate()
+	_pending_weapon_ability_resume.clear()
+	var animation_scene_path := String(resume_state.get("animation_scene_path", ""))
+	var primary_animation_name := StringName(String(resume_state.get("primary_animation_name", "")))
+	var recovery_animation_name := StringName(String(resume_state.get("recovery_animation_name", "")))
+	var current_animation_name := StringName(String(resume_state.get("current_animation_name", "")))
+	var current_position := maxf(float(resume_state.get("current_position", 0.0)), 0.0)
+	if (
+		String(current_animation_name).is_empty()
+		or not _ensure_one_shot_animation_loaded(current_animation_name, animation_scene_path)
+	):
+		_clear_weapon_ability_state()
+		_is_attacking = false
+		return false
+
+	var current_animation := _animation_player.get_animation(current_animation_name)
+	if current_animation == null:
+		_clear_weapon_ability_state()
+		_is_attacking = false
+		return false
+	if current_position >= current_animation.length - 0.001:
+		if current_animation_name == primary_animation_name and not String(recovery_animation_name).is_empty():
+			current_animation_name = recovery_animation_name
+			current_position = 0.0
+			if not _ensure_one_shot_animation_loaded(current_animation_name, animation_scene_path):
+				_clear_weapon_ability_state()
+				_is_attacking = false
+				return false
+		else:
+			_clear_weapon_ability_state()
+			_is_attacking = false
+			return false
+
+	_weapon_ability_animation_scene_path = animation_scene_path
+	_weapon_ability_primary_animation_name = primary_animation_name
+	_weapon_ability_recovery_animation_name = recovery_animation_name
+	_queued_weapon_ability_recovery_name = StringName(
+		String(resume_state.get("queued_recovery_name", ""))
+	)
+	if current_animation_name == recovery_animation_name:
+		_queued_weapon_ability_recovery_name = &""
+	_active_one_shot_animation_name = current_animation_name
+	_is_weapon_ability_active = true
+	_is_attacking = true
+	_animation_player.speed_scale = maxf(float(resume_state.get("speed_scale", 1.0)), 0.01)
+	_animation_player.play(current_animation_name, 0.0)
+	_animation_player.seek(current_position, true)
+	return true
+
+
+func _clear_weapon_ability_state() -> void:
+	_queued_weapon_ability_recovery_name = &""
+	_active_one_shot_animation_name = &""
+	_is_weapon_ability_active = false
+	_weapon_ability_animation_scene_path = ""
+	_weapon_ability_primary_animation_name = &""
+	_weapon_ability_recovery_animation_name = &""
+	_pending_weapon_ability_resume.clear()
 
 
 func _gathering_animation_data_for_context(context: Dictionary) -> Dictionary:
