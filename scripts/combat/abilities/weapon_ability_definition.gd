@@ -47,9 +47,16 @@ extends Resource
 ## Percent of missing energy restored when the cast begins.
 @export_range(0.0, 100.0, 0.1) var missing_energy_restore_percent := 0.0
 @export_range(0.0, 1.0, 0.01) var impact_fraction := 0.5
+## Optional ordered impact moments for multi-swipe or multi-pulse casts.
+## Empty keeps the legacy single `impact_fraction` behavior.
+@export var impact_fractions: PackedFloat32Array = PackedFloat32Array()
+## Per-impact portions of the authored damage. Missing entries default to 100%.
+@export var impact_damage_scales: PackedFloat32Array = PackedFloat32Array()
 @export_range(0.0, 20.0, 0.05) var attack_range := 2.0
 @export_range(0.0, 20.0, 0.05) var approach_distance := 1.35
 @export_range(0.0, 5.0, 0.05) var impact_range_leeway := 0.35
+## Horizontal arc covered by a directional damage cast.
+@export_range(1.0, 360.0, 1.0) var area_arc_degrees := 90.0
 ## Horizontal travel authored for directional movement abilities.
 @export_range(0.0, 30.0, 0.05) var movement_distance := 0.0
 ## Width shown by the directional ground preview.

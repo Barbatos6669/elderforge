@@ -7,6 +7,12 @@ class_name EnemyMobAI
 extends Node
 
 const AttackTimelineScript := preload("res://scripts/combat/attack_timeline.gd")
+const AbilityImpactScheduleScript := preload(
+	"res://scripts/combat/abilities/ability_impact_schedule.gd"
+)
+const AbilityTargetingMathScript := preload(
+	"res://scripts/combat/abilities/ability_targeting_math.gd"
+)
 const DamageRequestScript := preload("res://scripts/combat/damage_request.gd")
 const DamageResolverScript := preload("res://scripts/combat/damage_resolver.gd")
 const AbilitySlots := preload("res://scripts/combat/abilities/equipment_ability_slots.gd")
@@ -131,12 +137,14 @@ var _suppress_next_loot_drop := false
 var _network_control_timeout := 0.0
 var _damage_resolver = DamageResolverScript.new()
 var _ability_timeline = AttackTimelineScript.new()
+var _ability_impact_schedule = AbilityImpactScheduleScript.new()
 var _active_definitions: Dictionary = {}
 var _active_definition_paths: Dictionary = {}
 var _ability_cooldowns_by_id: Dictionary = {}
 var _ability_cast_slot: StringName = &""
 var _ability_cast_target: Node
 var _ability_cast_definition: Resource
+var _ability_cast_direction := Vector3.ZERO
 var _dodge_slot: StringName = &""
 var _dodge_definition: Resource
 var _dodge_direction := Vector3.ZERO
@@ -233,17 +241,17 @@ func _update_aggro(delta: float) -> void:
 	if _try_combat_dodge_ability(distance_to_target):
 		return
 
-	var ready_target_ability := _best_ready_target_damage_ability()
-	var ready_target_ability_range := (
-		float(ready_target_ability.get("attack_range"))
-		if ready_target_ability != null
+	var ready_damage_ability := _best_ready_damage_ability()
+	var ready_damage_ability_range := (
+		float(ready_damage_ability.get("attack_range"))
+		if ready_damage_ability != null
 		else 0.0
 	)
-	var desired_attack_range := maxf(attack_range, ready_target_ability_range)
+	var desired_attack_range := maxf(attack_range, ready_damage_ability_range)
 	if distance_to_target <= desired_attack_range:
 		_stop_moving(delta)
 		_face_direction(_direction_to(_target.global_position), delta)
-		if _try_target_damage_ability(ready_target_ability):
+		if _try_damage_ability(ready_damage_ability):
 			return
 		if distance_to_target > attack_range:
 			return
@@ -251,8 +259,8 @@ func _update_aggro(delta: float) -> void:
 		return
 
 	var chase_distance := approach_distance
-	if ready_target_ability != null:
-		chase_distance = float(ready_target_ability.get("approach_distance"))
+	if ready_damage_ability != null:
+		chase_distance = float(ready_damage_ability.get("approach_distance"))
 	var chase_destination := _target.global_position - _direction_to(_target.global_position) * chase_distance
 	chase_destination.y = _body.global_position.y
 	_move_toward(chase_destination, delta)
@@ -580,17 +588,24 @@ func _update_active_ability(delta: float) -> bool:
 
 	_stop_moving(delta)
 	var target_3d := _ability_cast_target as Node3D
-	if target_3d != null and is_instance_valid(target_3d):
+	if _targeting_mode(_ability_cast_definition) == TARGETING_DIRECTION:
+		_face_direction(_ability_cast_direction, delta)
+	elif target_3d != null and is_instance_valid(target_3d):
 		_face_direction(_direction_to(target_3d.global_position), delta)
 
-	if _ability_timeline.is_winding_up() and not _can_complete_current_ability():
+	if (
+		_ability_timeline.is_winding_up()
+		and _targeting_mode(_ability_cast_definition) == TARGETING_SELECTED
+		and not _can_complete_current_ability()
+	):
 		_interrupt_current_ability("Target lost")
 
 	var timeline_event: int = _ability_timeline.advance(delta)
-	if timeline_event == AttackTimelineScript.TimelineEvent.IMPACT:
-		if _execution_type(_ability_cast_definition) == EXECUTION_DAMAGE:
-			_resolve_ability_impact()
-	elif timeline_event == AttackTimelineScript.TimelineEvent.READY:
+	var crossed_impacts := _ability_impact_schedule.advance(delta)
+	if _execution_type(_ability_cast_definition) == EXECUTION_DAMAGE:
+		for impact_index in crossed_impacts:
+			_resolve_ability_impact(impact_index)
+	if timeline_event == AttackTimelineScript.TimelineEvent.READY or _ability_timeline.is_ready():
 		_finish_current_ability()
 	return true
 
@@ -648,30 +663,47 @@ func _try_combat_dodge_ability(distance_to_target: float) -> bool:
 	return _begin_dodge_ability(_slot_for_definition(definition), definition, direction)
 
 
-func _try_target_damage_ability(preferred_definition: Resource = null) -> bool:
-	var definition := preferred_definition if preferred_definition != null else _best_ready_target_damage_ability()
+func _try_damage_ability(preferred_definition: Resource = null) -> bool:
+	var definition := preferred_definition if preferred_definition != null else _best_ready_damage_ability()
 	if definition == null or not _has_target():
 		return false
 	if not _is_target_in_ability_range(definition, _target):
 		return false
 
-	return _begin_target_ability(_slot_for_definition(definition), _target, definition)
+	var slot_id := _slot_for_definition(definition)
+	if _targeting_mode(definition) == TARGETING_DIRECTION:
+		return _begin_direction_damage_ability(
+			slot_id,
+			definition,
+			_direction_to(_target.global_position)
+		)
+	return _begin_target_ability(slot_id, _target, definition)
 
 
-func _best_ready_target_damage_ability() -> Resource:
+func _best_ready_damage_ability() -> Resource:
 	if not _has_target():
 		return null
 
+	var fallback: Resource = null
 	for slot_id in AbilitySlots.ACTIVE_SLOT_IDS:
 		var definition := get_active_ability(slot_id)
 		if (
 			definition != null
-			and _targeting_mode(definition) == TARGETING_SELECTED
 			and _execution_type(definition) == EXECUTION_DAMAGE
+			and _targeting_mode(definition) in [TARGETING_SELECTED, TARGETING_DIRECTION]
 			and _can_begin_mob_ability(slot_id, definition)
 		):
-			return definition
-	return null
+			if (
+				_targeting_mode(definition) == TARGETING_DIRECTION
+				and _directional_target_count(
+					definition,
+					_direction_to(_target.global_position)
+				) >= 2
+			):
+				return definition
+			if fallback == null:
+				fallback = definition
+	return fallback
 
 
 func _best_ready_dodge_ability() -> Resource:
@@ -689,7 +721,7 @@ func _best_ready_dodge_ability() -> Resource:
 
 func _begin_target_ability(slot_id: StringName, target: Node, definition: Resource) -> bool:
 	var cast_duration := maxf(float(definition.get("cast_duration_seconds")), 0.01)
-	var impact_fraction := clampf(float(definition.get("impact_fraction")), 0.0, 1.0)
+	var impact_fraction := AbilityImpactScheduleScript.first_impact_fraction(definition)
 	if not _ability_timeline.begin(cast_duration, impact_fraction, 0.0, cast_duration):
 		return false
 	if not _pay_ability_cost(definition):
@@ -700,11 +732,44 @@ func _begin_target_ability(slot_id: StringName, target: Node, definition: Resour
 	_ability_cast_slot = slot_id
 	_ability_cast_target = target
 	_ability_cast_definition = definition
+	_ability_cast_direction = Vector3.ZERO
+	_ability_impact_schedule.begin(definition, cast_duration)
 	_start_ability_cooldown(definition)
 	_show_target_ability_telegraph(target, definition, _telegraph_warning_duration(definition, cast_duration))
 	_play_ability_animation(definition, cast_duration)
 	ability_cast_started.emit(slot_id, target, definition)
 	attack_started.emit(target, 1.0 / cast_duration)
+	return true
+
+
+func _begin_direction_damage_ability(
+	slot_id: StringName,
+	definition: Resource,
+	direction: Vector3
+) -> bool:
+	var safe_direction := Vector3(direction.x, 0.0, direction.z).normalized()
+	if safe_direction == Vector3.ZERO:
+		return false
+
+	var cast_duration := maxf(float(definition.get("cast_duration_seconds")), 0.01)
+	var impact_fraction := AbilityImpactScheduleScript.first_impact_fraction(definition)
+	if not _ability_timeline.begin(cast_duration, impact_fraction, 0.0, cast_duration):
+		return false
+	if not _pay_ability_cost(definition):
+		_ability_timeline.reset()
+		ability_cast_interrupted.emit(slot_id, _target, "Not enough resource")
+		return false
+
+	_ability_cast_slot = slot_id
+	_ability_cast_target = _target
+	_ability_cast_definition = definition
+	_ability_cast_direction = safe_direction
+	_ability_impact_schedule.begin(definition, cast_duration)
+	_start_ability_cooldown(definition)
+	_show_direction_damage_telegraph(definition, safe_direction, 0)
+	_play_ability_animation(definition, cast_duration)
+	ability_cast_started.emit(slot_id, _target, definition)
+	attack_started.emit(_target, 1.0 / cast_duration)
 	return true
 
 
@@ -802,22 +867,57 @@ func _update_channel_ability(delta: float) -> bool:
 	return true
 
 
-func _resolve_ability_impact() -> void:
+func _resolve_ability_impact(impact_index: int) -> void:
+	if _targeting_mode(_ability_cast_definition) == TARGETING_DIRECTION:
+		_resolve_directional_ability_impact(impact_index)
+		var next_impact_index := impact_index + 1
+		if next_impact_index < _ability_impact_schedule.get_impact_count():
+			_show_direction_damage_telegraph(
+				_ability_cast_definition,
+				_ability_cast_direction,
+				next_impact_index
+			)
+		else:
+			_clear_ability_telegraph()
+		return
+
 	var impact_target := _ability_cast_target
 	_clear_ability_telegraph()
 	if not _can_complete_current_ability():
 		ability_cast_interrupted.emit(_ability_cast_slot, impact_target, "Target left ability range")
+		_ability_impact_schedule.reset()
 		return
 
+	_resolve_ability_damage(impact_target, impact_index)
+
+
+func _resolve_directional_ability_impact(impact_index: int) -> void:
+	if _body == null or _ability_cast_direction == Vector3.ZERO or not is_inside_tree():
+		return
+
+	for candidate in _directional_target_candidates():
+		var target_3d := candidate as Node3D
+		if target_3d == null or _is_target_defeated(target_3d):
+			continue
+		if not _is_target_in_directional_area(
+			_ability_cast_definition,
+			_ability_cast_direction,
+			target_3d
+		):
+			continue
+		_resolve_ability_damage(target_3d, impact_index)
+
+
+func _resolve_ability_damage(impact_target: Node, impact_index: int) -> void:
 	var target_health := _find_health(impact_target)
 	if target_health == null or not target_health.has_method("apply_damage"):
-		ability_cast_interrupted.emit(_ability_cast_slot, impact_target, "Target has no health component")
 		return
 
 	var request := DamageRequestScript.create(
 		_body if _body != null else self,
 		impact_target,
-		_ability_damage(_ability_cast_definition),
+		_ability_damage(_ability_cast_definition)
+		* _ability_impact_schedule.get_damage_scale(impact_index),
 		_ability_damage_type(_ability_cast_definition),
 		target_health
 	)
@@ -832,6 +932,8 @@ func _finish_current_ability() -> void:
 	_ability_cast_slot = &""
 	_ability_cast_target = null
 	_ability_cast_definition = null
+	_ability_cast_direction = Vector3.ZERO
+	_ability_impact_schedule.reset()
 	_clear_ability_telegraph()
 	ability_cast_finished.emit(finished_slot)
 
@@ -841,6 +943,7 @@ func _interrupt_current_ability(reason: String) -> void:
 		return
 	var interrupted_slot := _ability_cast_slot
 	var interrupted_target := _ability_cast_target
+	_ability_impact_schedule.reset()
 	_clear_ability_telegraph()
 	ability_cast_interrupted.emit(interrupted_slot, interrupted_target, reason)
 
@@ -860,10 +963,12 @@ func _clear_channel_state() -> void:
 
 func _reset_active_ability_state() -> void:
 	_ability_timeline.reset()
+	_ability_impact_schedule.reset()
 	_ability_cooldowns_by_id.clear()
 	_ability_cast_slot = &""
 	_ability_cast_target = null
 	_ability_cast_definition = null
+	_ability_cast_direction = Vector3.ZERO
 	_dodge_slot = &""
 	_dodge_definition = null
 	_dodge_direction = Vector3.ZERO
@@ -1031,6 +1136,39 @@ func _show_direction_ability_telegraph(definition: Resource, direction: Vector3,
 	)
 
 
+func _show_direction_damage_telegraph(
+	definition: Resource,
+	direction: Vector3,
+	impact_index: int
+) -> void:
+	if not show_hostile_ability_telegraphs or _body == null or definition == null:
+		return
+
+	var telegraph := _active_ability_telegraph
+	if telegraph == null or not is_instance_valid(telegraph):
+		telegraph = _create_ability_telegraph()
+	if telegraph == null:
+		return
+
+	var previous_impact_index := impact_index - 1
+	var warning_duration := maxf(
+		_ability_impact_schedule.get_seconds_between_impacts(
+			previous_impact_index,
+			impact_index
+		),
+		0.05
+	)
+	telegraph.call(
+		"show_swing_arc",
+		_body.global_position,
+		direction,
+		maxf(float(definition.get("attack_range")), 0.35),
+		warning_duration,
+		float(definition.get("area_arc_degrees")),
+		impact_index % 2 == 1
+	)
+
+
 func _telegraph_warning_duration(definition: Resource, cast_duration: float) -> float:
 	var safe_cast_duration := maxf(cast_duration, 0.05)
 	if _execution_type(definition) == EXECUTION_DAMAGE:
@@ -1104,6 +1242,48 @@ func _is_target_in_ability_range(definition: Resource, target: Node, extra_range
 	var offset := target_3d.global_position - _body.global_position
 	offset.y = 0.0
 	return offset.length() <= float(definition.get("attack_range")) + maxf(extra_range, 0.0)
+
+
+func _directional_target_count(definition: Resource, direction: Vector3) -> int:
+	var count := 0
+	for candidate in _directional_target_candidates():
+		var target_3d := candidate as Node3D
+		if (
+			target_3d != null
+			and not _is_target_defeated(target_3d)
+			and _is_target_in_directional_area(definition, direction, target_3d)
+		):
+			count += 1
+	return count
+
+
+func _directional_target_candidates() -> Array[Node]:
+	var candidates: Array[Node] = []
+	if is_inside_tree():
+		for candidate in get_tree().get_nodes_in_group(target_group):
+			if candidate is Node and not candidates.has(candidate):
+				candidates.append(candidate as Node)
+	if _ability_cast_target != null and is_instance_valid(_ability_cast_target):
+		if not candidates.has(_ability_cast_target):
+			candidates.append(_ability_cast_target)
+	return candidates
+
+
+func _is_target_in_directional_area(
+	definition: Resource,
+	direction: Vector3,
+	target: Node3D
+) -> bool:
+	if _body == null or definition == null or target == null:
+		return false
+	return AbilityTargetingMathScript.is_point_in_arc(
+		_body.global_position,
+		direction,
+		target.global_position,
+		maxf(float(definition.get("attack_range")), 0.0),
+		float(definition.get("area_arc_degrees")),
+		maxf(float(definition.get("impact_range_leeway")), 0.0)
+	)
 
 
 func _targeting_mode(definition: Resource) -> String:

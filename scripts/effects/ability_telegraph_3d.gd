@@ -97,7 +97,8 @@ func show_swing_arc(
 	direction: Vector3,
 	radius: float,
 	duration_seconds: float,
-	arc_degrees: float = 180.0
+	arc_degrees: float = 180.0,
+	reverse_fill: bool = false
 ) -> void:
 	var flat_direction := Vector3(direction.x, 0.0, direction.z)
 	if flat_direction.length_squared() <= 0.0001:
@@ -109,8 +110,12 @@ func show_swing_arc(
 	_set_duration(duration_seconds)
 	_swing_radius = maxf(radius, 0.35)
 	var half_arc := deg_to_rad(clampf(arc_degrees, 20.0, 360.0)) * 0.5
-	_swing_start_angle = -PI * 0.5 - half_arc
-	_swing_end_angle = -PI * 0.5 + half_arc
+	if reverse_fill:
+		_swing_start_angle = -PI * 0.5 + half_arc
+		_swing_end_angle = -PI * 0.5 - half_arc
+	else:
+		_swing_start_angle = -PI * 0.5 - half_arc
+		_swing_end_angle = -PI * 0.5 + half_arc
 	_swing_progress = 0.0
 	_set_ground_position(origin)
 	flat_direction = flat_direction.normalized()
@@ -148,6 +153,10 @@ func get_telegraph_kind() -> StringName:
 
 func get_fill_progress() -> float:
 	return _swing_progress if _kind == KIND_SWING else 1.0
+
+
+func get_swing_fill_direction() -> float:
+	return signf(_swing_end_angle - _swing_start_angle) if _kind == KIND_SWING else 0.0
 
 
 func _ensure_nodes() -> void:

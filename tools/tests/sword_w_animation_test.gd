@@ -24,6 +24,17 @@ func _run_test() -> void:
 	):
 		_fail("Sword W should point at the retargeted Whirling Slash animation.")
 		return
+	if (
+		String(definition.get("targeting_mode")) != "direction"
+		or PackedFloat32Array(definition.get("impact_fractions"))
+		!= PackedFloat32Array([0.36, 0.72])
+		or PackedFloat32Array(definition.get("impact_damage_scales"))
+		!= PackedFloat32Array([0.5, 0.5])
+		or not is_equal_approx(float(definition.get("attack_range")), 3.0)
+		or not is_equal_approx(float(definition.get("area_arc_degrees")), 180.0)
+	):
+		_fail("Sword W should define a three-meter, two-hit directional semicircle.")
+		return
 
 	var animation_scene := load(W_ANIMATION_PATH) as PackedScene
 	if animation_scene == null:

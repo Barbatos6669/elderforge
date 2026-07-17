@@ -44,7 +44,7 @@ a swing after it has already committed.
    bar, while item data controls movement speed and interruption rules.
 6. A committed cast spends energy, starts its cooldown by stable ability id,
    and plays its authored animation.
-7. Damage resolves at its authored impact point; movement abilities ask the
+7. Damage resolves at each authored impact point; movement abilities ask the
    movement motor for collision-aware forced movement.
 8. Every bound HUD slot observes the component and renders remaining cooldown.
 
@@ -55,9 +55,12 @@ data hookup unless it needs behavior beyond the common targeted-melee contract.
 
 The same one-handed sword supplies `Whirling Slash` on W. Its user-provided
 Mixamo motion is retargeted onto the Elderforge humanoid skeleton, stripped of
-horizontal root travel, and fitted to a 1.8-second targeted-melee cast. The hit
-lands at 70% of the spin for 80 base physical damage plus 150% auto-attack
-damage. Its trusted network id and data live in
+horizontal root travel, and fitted to a 1.8-second directional cast. The player
+aims a three-meter forward semicircle, then the horizontal and descending
+swipes resolve at 36% and 72% of the motion. Each pulse rechecks who remains in
+the area and deals half of the total 80 base physical damage plus 150%
+auto-attack scaling. Equipped mobs telegraph the same area and prefer W over Q
+when it can catch at least two players. Its trusted network id and data live in
 `assets/combat/abilities/one_handed_sword_w.tres`.
 
 The first directional implementation is `Dodge Roll`: a five-second-cooldown F
@@ -180,6 +183,14 @@ Run the focused combat checks from the repository root:
 & 'C:\Godot\Godot_v4.7-stable_win64_console.exe' `
   --headless --path . `
   --script res://tools/tests/weapon_ability_test.gd
+
+& 'C:\Godot\Godot_v4.7-stable_win64_console.exe' `
+  --headless --path . `
+  --script res://tools/tests/weapon_directional_aoe_test.gd
+
+& 'C:\Godot\Godot_v4.7-stable_win64_console.exe' `
+  --headless --path . `
+  --script res://tools/tests/sword_w_animation_test.gd
 
 & 'C:\Godot\Godot_v4.7-stable_win64_console.exe' `
   --headless --path . `

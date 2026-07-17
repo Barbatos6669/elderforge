@@ -5,6 +5,10 @@
 class_name DirectionalAbilityIndicator
 extends Node3D
 
+const KIND_NONE := &"none"
+const KIND_DIRECTION := &"direction"
+const KIND_SWING := &"swing"
+
 @export var fill_color := Color(1.0, 0.78, 0.18, 0.30)
 @export var outline_color := Color(1.0, 0.86, 0.35, 0.82)
 @export_range(0.0, 0.5, 0.005) var ground_offset := 0.07
@@ -14,6 +18,9 @@ var _fill_mesh: MeshInstance3D
 var _origin_disc: MeshInstance3D
 var _last_distance := -1.0
 var _last_width := -1.0
+var _last_arc_radius := -1.0
+var _last_arc_degrees := -1.0
+var _kind: StringName = KIND_NONE
 
 
 func _ready() -> void:
@@ -30,20 +37,53 @@ func show_direction(direction: Vector3, distance: float, width: float) -> void:
 
 	var safe_distance := maxf(distance, 0.5)
 	var safe_width := maxf(width, 0.2)
-	if not is_equal_approx(safe_distance, _last_distance) or not is_equal_approx(safe_width, _last_width):
+	if (
+		_kind != KIND_DIRECTION
+		or not is_equal_approx(safe_distance, _last_distance)
+		or not is_equal_approx(safe_width, _last_width)
+	):
 		_rebuild_geometry(safe_distance, safe_width)
 
 	flat_direction = flat_direction.normalized()
 	rotation.y = atan2(-flat_direction.x, -flat_direction.z)
+	_origin_disc.visible = true
+	_kind = KIND_DIRECTION
+	visible = true
+
+
+## Shows the complete area covered by an aimed directional sword sweep.
+func show_swing_arc(direction: Vector3, radius: float, arc_degrees: float) -> void:
+	var flat_direction := Vector3(direction.x, 0.0, direction.z)
+	if flat_direction.length_squared() <= 0.0001:
+		return
+
+	var safe_radius := maxf(radius, 0.5)
+	var safe_arc_degrees := clampf(arc_degrees, 20.0, 360.0)
+	if (
+		_kind != KIND_SWING
+		or not is_equal_approx(safe_radius, _last_arc_radius)
+		or not is_equal_approx(safe_arc_degrees, _last_arc_degrees)
+	):
+		_rebuild_swing_arc(safe_radius, safe_arc_degrees)
+
+	flat_direction = flat_direction.normalized()
+	rotation.y = atan2(-flat_direction.x, -flat_direction.z)
+	_origin_disc.visible = false
+	_kind = KIND_SWING
 	visible = true
 
 
 func hide_indicator() -> void:
 	visible = false
+	_kind = KIND_NONE
 
 
 func is_showing() -> bool:
 	return visible
+
+
+func get_indicator_kind() -> StringName:
+	return _kind
 
 
 func _build_nodes() -> void:
@@ -77,6 +117,80 @@ func _rebuild_geometry(distance: float, width: float) -> void:
 	_last_width = width
 	_outline_mesh.mesh = _make_arrow_mesh(distance, width * 1.14, outline_color)
 	_fill_mesh.mesh = _make_arrow_mesh(distance - 0.04, width, fill_color)
+
+
+func _rebuild_swing_arc(radius: float, arc_degrees: float) -> void:
+	_last_arc_radius = radius
+	_last_arc_degrees = arc_degrees
+	var half_arc := deg_to_rad(arc_degrees) * 0.5
+	var start_angle := -PI * 0.5 - half_arc
+	var end_angle := -PI * 0.5 + half_arc
+	_outline_mesh.mesh = _make_arc_band_mesh(
+		start_angle,
+		end_angle,
+		radius + 0.06,
+		maxf(radius - 0.04, 0.01),
+		outline_color
+	)
+	_fill_mesh.mesh = _make_sector_mesh(start_angle, end_angle, radius, fill_color)
+
+
+func _make_arc_band_mesh(
+	start_angle: float,
+	end_angle: float,
+	outer_radius: float,
+	inner_radius: float,
+	color: Color
+) -> ArrayMesh:
+	var angle_delta := end_angle - start_angle
+	var segment_count := maxi(ceili(absf(angle_delta) / TAU * 64.0), 3)
+	var vertices := PackedVector3Array()
+	var indices := PackedInt32Array()
+	for index in range(segment_count):
+		var current_angle := start_angle + angle_delta * float(index) / float(segment_count)
+		var next_angle := start_angle + angle_delta * float(index + 1) / float(segment_count)
+		var vertex_start := vertices.size()
+		vertices.append(_arc_point(outer_radius, current_angle))
+		vertices.append(_arc_point(outer_radius, next_angle))
+		vertices.append(_arc_point(inner_radius, next_angle))
+		vertices.append(_arc_point(inner_radius, current_angle))
+		indices.append_array([
+			vertex_start,
+			vertex_start + 1,
+			vertex_start + 2,
+			vertex_start,
+			vertex_start + 2,
+			vertex_start + 3,
+		])
+	return _mesh_from_arrays(vertices, indices, color)
+
+
+func _make_sector_mesh(start_angle: float, end_angle: float, radius: float, color: Color) -> ArrayMesh:
+	var angle_delta := end_angle - start_angle
+	var segment_count := maxi(ceili(absf(angle_delta) / TAU * 64.0), 1)
+	var vertices := PackedVector3Array([Vector3.ZERO])
+	var indices := PackedInt32Array()
+	for index in range(segment_count + 1):
+		var angle := start_angle + angle_delta * float(index) / float(segment_count)
+		vertices.append(_arc_point(radius, angle))
+	for index in range(1, vertices.size() - 1):
+		indices.append_array([0, index, index + 1])
+	return _mesh_from_arrays(vertices, indices, color)
+
+
+func _mesh_from_arrays(vertices: PackedVector3Array, indices: PackedInt32Array, color: Color) -> ArrayMesh:
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_INDEX] = indices
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	mesh.surface_set_material(0, _make_material(color))
+	return mesh
+
+
+func _arc_point(radius: float, angle: float) -> Vector3:
+	return Vector3(cos(angle) * radius, 0.0, sin(angle) * radius)
 
 
 func _make_arrow_mesh(distance: float, width: float, color: Color) -> ArrayMesh:

@@ -3,6 +3,7 @@ extends SceneTree
 const CombatHealthScript := preload("res://scripts/combat/combat_health.gd")
 const EnemyMobAIScript := preload("res://scripts/entities/enemy_mob_ai.gd")
 const SlashAbility := preload("res://assets/combat/abilities/one_handed_sword_q.tres")
+const WhirlingSlashAbility := preload("res://assets/combat/abilities/one_handed_sword_w.tres")
 const RollAbility := preload("res://assets/combat/abilities/leather_boots_roll.tres")
 
 
@@ -53,6 +54,7 @@ func _run_test() -> void:
 	var target := CharacterBody3D.new()
 	target.name = "Target"
 	target.position = Vector3(1.0, 0.0, -1.0)
+	target.add_to_group("player")
 	fixture.add_child(target)
 
 	var health := CombatHealthScript.new()
@@ -92,6 +94,57 @@ func _run_test() -> void:
 	await process_frame
 	if is_instance_valid(target_telegraph) and not target_telegraph.is_queued_for_deletion():
 		_fail("Target telegraph should clear at ability impact.")
+		return
+
+	ai.call("_reset_active_ability_state")
+	animation.play_count = 0
+	health.set_current_health(500.0)
+	var whirling_slash := WhirlingSlashAbility.duplicate()
+	whirling_slash.set("energy_cost", 0.0)
+	ai.set("_target", target)
+	if not bool(ai.call(
+		"_begin_direction_damage_ability",
+		&"w",
+		whirling_slash,
+		Vector3(1.0, 0.0, -1.0).normalized()
+	)):
+		_fail("Mob Whirling Slash should begin as a directional damage cast.")
+		return
+
+	var first_swipe_telegraph := fixture.get_node_or_null("HostileAbilityTelegraph")
+	if not _is_showing_kind(first_swipe_telegraph, &"swing"):
+		_fail("Whirling Slash should show a semicircle swing telegraph.")
+		return
+	if float(first_swipe_telegraph.call("get_swing_fill_direction")) <= 0.0:
+		_fail("Whirling Slash's first warning should fill with the horizontal swipe.")
+		return
+	first_swipe_telegraph.call("_process", 0.324)
+	var first_swipe_progress := float(first_swipe_telegraph.call("get_fill_progress"))
+	if first_swipe_progress < 0.45 or first_swipe_progress > 0.55:
+		_fail("Whirling Slash's first warning should fill toward swipe one.")
+		return
+
+	ai.call("_update_active_ability", 0.648)
+	if not _is_showing_kind(first_swipe_telegraph, &"swing"):
+		_fail("Whirling Slash should immediately warn for swipe two after swipe one.")
+		return
+	if not is_equal_approx(float(first_swipe_telegraph.call("get_fill_progress")), 0.0):
+		_fail("Whirling Slash's second warning should restart hollow.")
+		return
+	if float(first_swipe_telegraph.call("get_swing_fill_direction")) >= 0.0:
+		_fail("Whirling Slash's second warning should fill in the reverse sweep direction.")
+		return
+	if not is_equal_approx(health.current_health, 445.0):
+		_fail("Whirling Slash's first telegraph completion should deal one half-damage hit.")
+		return
+
+	ai.call("_update_active_ability", 0.648)
+	await process_frame
+	if is_instance_valid(first_swipe_telegraph) and not first_swipe_telegraph.is_queued_for_deletion():
+		_fail("Whirling Slash telegraph should clear after swipe two.")
+		return
+	if not is_equal_approx(health.current_health, 390.0):
+		_fail("Whirling Slash's second telegraph completion should deal its second hit.")
 		return
 
 	ai.call("_reset_active_ability_state")

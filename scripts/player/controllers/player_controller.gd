@@ -602,6 +602,10 @@ func _on_weapon_ability_cast_started(_slot_id: StringName, target: Node, definit
 		var direction := target_3d.global_position - global_position
 		direction.y = 0.0
 		facing.face_direction(direction)
+	elif String(definition.get("targeting_mode")) == "direction":
+		var cast_direction: Vector3 = weapon_abilities.get_direction_to_target(self)
+		if cast_direction != Vector3.ZERO:
+			facing.face_direction(cast_direction)
 	_play_weapon_ability_animation(definition)
 
 

@@ -3,9 +3,9 @@
 Equipment abilities are split into data and runtime behavior:
 
 - `weapon_ability_definition.gd` describes one spell: energy cost, cooldown,
-  range, damage type, damage scaling, animation, impact timing, optional damage
-  immunity, finite absorb shields, missing-energy restoration, and tooltip
-  presentation.
+  range and arc, damage type, damage scaling, animation, one or more impact
+  timings, optional damage immunity, finite absorb shields, missing-energy
+  restoration, and tooltip presentation.
 - `weapon_ability_catalog.gd` maps network-safe ids to trusted resources.
 - Ability resources live under `assets/combat/abilities/`.
 - `player_weapon_abilities.gd` owns targeting, casting, impact, and cooldowns
@@ -32,8 +32,8 @@ before typed combat helpers or signals receive them.
 Abilities support two targeting modes:
 
 - `selected_target` approaches and attacks the selected hostile target.
-- `direction` previews a ground indicator toward the mouse before the player
-  confirms or cancels the cast.
+- `direction` previews either a movement arrow or damage area toward the mouse
+  before the player confirms or cancels the cast.
 - `self` commits immediately against the wearer. It can either use the shared
   `PlayerChanneling` timer or apply an instant self effect.
 
@@ -67,8 +67,9 @@ uses no type bonus. The shared `DamageResolver` then checks armor for physical
 damage, magical resistance for magical damage, or bypasses defense for true
 damage. Sword Slash on Q uses 100 base physical damage and zero auto-attack
 scaling. Whirling Slash on W uses 80 base physical damage plus 150% auto-attack
-damage, lands late in its retargeted spinning animation, and has an independent
-eight-second cooldown.
+damage across two equal hits at 36% and 72% of its retargeted animation. Each
+hit rechecks hostiles inside the aimed three-meter forward semicircle. The
+ability has an independent eight-second cooldown.
 
 Mana is checked when an ability is requested and charged only when its cast
 actually begins. Approaching a target or losing it before cast start is free;

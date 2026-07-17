@@ -6,37 +6,42 @@
 [sub_resource type="Resource" id="Resource_damage"]
 script = ExtResource("2_effect")
 label = "Damage"
-value = "80 + 150% Attack Damage"
+value = "2 hits totaling 80 + 150% Attack Damage"
 tone = "damage"
 
 [sub_resource type="Resource" id="Resource_range"]
 script = ExtResource("2_effect")
-label = "Range"
-value = "2.4 meters"
+label = "Area"
+value = "3-meter forward semicircle"
 tone = "mobility"
 
 [sub_resource type="Resource" id="Resource_timing"]
 script = ExtResource("2_effect")
-label = "Impact"
-value = "Late in the spin"
+label = "Impacts"
+value = "Horizontal spin, then descending slash"
 tone = "utility"
 
 [resource]
 script = ExtResource("1_definition")
 ability_id = "one_handed_sword_w"
 display_name = "Whirling Slash"
-description = "Vault into a full-body spinning slash against the selected hostile target. The strike lands late in the spin for heavy physical damage."
-tooltip_tags = PackedStringArray("Damage", "Melee", "Single Target")
+description = "Aim a broad forward sweep, then spin through two damaging sword arcs. Enemies can move out before the second swipe to avoid its damage."
+tooltip_tags = PackedStringArray("Damage", "Area", "Directional")
 tooltip_effects = Array[Resource]([SubResource("Resource_damage"), SubResource("Resource_range"), SubResource("Resource_timing")])
 input_slot = &"w"
 icon_id = "whirling_slash"
+targeting_mode = "direction"
 energy_cost = 12.0
 cooldown_seconds = 8.0
 cast_duration_seconds = 1.8
-impact_fraction = 0.7
-attack_range = 2.4
-approach_distance = 1.5
-impact_range_leeway = 0.45
+impact_fraction = 0.36
+impact_fractions = PackedFloat32Array(0.36, 0.72)
+impact_damage_scales = PackedFloat32Array(0.5, 0.5)
+attack_range = 3.0
+approach_distance = 2.2
+impact_range_leeway = 0.2
+area_arc_degrees = 180.0
+indicator_width = 3.0
 base_damage = 80.0
 damage_multiplier = 1.5
 animation_scene_path = "res://assets/animations/abilities/one_handed_sword/sword_and_shield_slash.glb"

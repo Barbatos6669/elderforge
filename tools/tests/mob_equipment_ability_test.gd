@@ -18,6 +18,8 @@ func _run_test() -> void:
 		return
 	if not await _test_sword_w_ability_lands_when_q_is_cooling_down():
 		return
+	if not await _test_sword_w_is_preferred_for_clustered_players():
+		return
 	if not await _test_helmet_shield_is_used_defensively():
 		return
 	if not await _test_boots_roll_repositions_mob():
@@ -118,6 +120,13 @@ func _test_sword_w_ability_lands_when_q_is_cooling_down() -> bool:
 	if w_definition == null or String(w_definition.get("ability_id")) != "one_handed_sword_w":
 		_fail("Mob sword loadout should bind Whirling Slash on W.")
 		return false
+	if (
+		String(w_definition.get("targeting_mode")) != "direction"
+		or PackedFloat32Array(w_definition.get("impact_fractions"))
+		!= PackedFloat32Array([0.36, 0.72])
+	):
+		_fail("Mob Whirling Slash should use its directional two-swipe contract.")
+		return false
 
 	ai.set("_ability_cooldowns_by_id", {"one_handed_sword_q": 5.0})
 	ai.set("_target", target)
@@ -126,15 +135,56 @@ func _test_sword_w_ability_lands_when_q_is_cooling_down() -> bool:
 		_fail("Mob Whirling Slash should spend its authored 12 energy.")
 		return false
 	if not is_equal_approx(target_health.current_health, 500.0):
-		_fail("Mob Whirling Slash should wait for its late impact frame.")
+		_fail("Mob Whirling Slash should wait for its first authored swipe.")
 		return false
 
-	ai.call("_update_active_ability", 1.26)
+	ai.call("_update_active_ability", 0.64)
+	if not is_equal_approx(target_health.current_health, 500.0):
+		_fail("Mob Whirling Slash fired before the horizontal swipe reached contact.")
+		return false
+	ai.call("_update_active_ability", 0.01)
+	if not is_equal_approx(target_health.current_health, 445.0):
+		_fail("Mob Whirling Slash should deal half its total damage on swipe one.")
+		return false
+	ai.call("_update_active_ability", 0.64)
+	if not is_equal_approx(target_health.current_health, 445.0):
+		_fail("Mob Whirling Slash fired its descending swipe too early.")
+		return false
+	ai.call("_update_active_ability", 0.01)
 	if not is_equal_approx(target_health.current_health, 390.0):
-		_fail("Mob Whirling Slash should deal 80 plus 150% attack damage.")
+		_fail("Mob Whirling Slash should deal the remaining half on swipe two.")
 		return false
 	if ai.get_ability_cooldown_remaining(&"w") <= 0.0:
 		_fail("Mob Whirling Slash should start its own cooldown.")
+		return false
+
+	fixture.queue_free()
+	await process_frame
+	return true
+
+
+func _test_sword_w_is_preferred_for_clustered_players() -> bool:
+	var fixture := _make_fixture("MobSwordWClusterFixture")
+	var mob_data := _spawn_mob(fixture, PackedStringArray(["one_handed_sword_t1"]))
+	var ai := mob_data["ai"] as EnemyMobAI
+	var mana := mob_data["mana"] as ResourcePool
+	await process_frame
+
+	var primary_data := _spawn_player_target(fixture, Vector3(0.0, 0.0, 1.5), 500.0)
+	var primary := primary_data["target"] as CharacterBody3D
+	_spawn_player_target(fixture, Vector3(1.0, 0.0, 1.5), 500.0)
+	await process_frame
+
+	ai.set("_target", primary)
+	ai.call("_update_aggro", 0.1)
+	if not is_equal_approx(mana.current_resource, 108.0):
+		_fail("A sword mob should spend W's energy when two players are in its sweep.")
+		return false
+	if ai.get_ability_cooldown_remaining(&"w") <= 0.0:
+		_fail("A sword mob should prefer Whirling Slash against a clustered pair.")
+		return false
+	if ai.get_ability_cooldown_remaining(&"q") > 0.0:
+		_fail("Cluster targeting should leave Sword Slash ready after choosing W.")
 		return false
 
 	fixture.queue_free()

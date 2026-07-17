@@ -129,8 +129,10 @@ choice, or playtest flow changes.
   with a radial five-second cooldown.
 - Added `Whirling Slash` on the sword's W slot. Its downloaded Mixamo motion is
   retargeted to the Elderforge skeleton, converted to an in-place 1.8-second
-  spin, and lands late for 80 base physical damage plus 150% attack damage.
-  Sword-equipped mobs bind and use the same W spell when Q is unavailable.
+  spin, and drives two equal damage pulses at its 36% and 72% swipe contacts.
+  The player aims a three-meter forward semicircle, and each pulse rechecks
+  which hostiles remain inside it. Sword-equipped mobs telegraph the same area,
+  use both swipes, and prefer W over Q when it can hit at least two players.
 - Added stable ability-id multiplayer events so remote players see weapon spell
   animations while the existing playtest combat-state path synchronizes mob
   damage.
@@ -198,6 +200,8 @@ C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --scene res://s
 C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --scene res://scenes/ui/auth/CharacterCustomizationScreen.tscn --quit-after 1
 C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --script res://tools/tests/combat_damage_resolver_test.gd
 C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --script res://tools/tests/weapon_ability_test.gd
+C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --script res://tools/tests/weapon_directional_aoe_test.gd
+C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --script res://tools/tests/sword_w_animation_test.gd
 C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --script res://tools/tests/mob_damage_resolver_test.gd
 C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --script res://tools/tests/mob_equipment_ability_test.gd
 C:\Godot\Godot_v4.7-stable_win64_console.exe --headless --path . --script res://tools/tests/mob_base_stats_test.gd

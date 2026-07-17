@@ -7,6 +7,12 @@ class_name PlayerWeaponAbilities
 extends Node
 
 const AttackTimelineScript := preload("res://scripts/combat/attack_timeline.gd")
+const AbilityImpactScheduleScript := preload(
+	"res://scripts/combat/abilities/ability_impact_schedule.gd"
+)
+const AbilityTargetingMathScript := preload(
+	"res://scripts/combat/abilities/ability_targeting_math.gd"
+)
 const DamageRequestScript := preload("res://scripts/combat/damage_request.gd")
 const DamageResolverScript := preload("res://scripts/combat/damage_resolver.gd")
 const PlayerStatsScript := preload("res://scripts/player/stats/player_stats.gd")
@@ -76,6 +82,7 @@ var _channel_attacker: Node3D
 var _channel_definition: Resource
 var _channel_tick_count := 0
 var _timeline = AttackTimelineScript.new()
+var _cast_impact_schedule = AbilityImpactScheduleScript.new()
 var _damage_resolver = DamageResolverScript.new()
 var _cooldowns_by_ability_id := {}
 
@@ -195,12 +202,7 @@ func update_directional_targeting(attacker: Node3D, world_position: Vector3) -> 
 	_aim_direction = offset.normalized()
 	var definition := get_active_ability(_aiming_slot)
 	if definition != null and _directional_indicator != null:
-		_directional_indicator.call(
-			"show_direction",
-			_aim_direction,
-			maxf(float(definition.get("movement_distance")), 0.0),
-			maxf(float(definition.get("indicator_width")), 0.1)
-		)
+		_update_directional_indicator(definition)
 
 
 ## Commits the currently aimed directional ability.
@@ -215,7 +217,7 @@ func confirm_directional_cast(attacker: Node3D) -> bool:
 		return false
 
 	var cast_duration := maxf(float(definition.get("cast_duration_seconds")), 0.01)
-	var impact_fraction := clampf(float(definition.get("impact_fraction")), 0.0, 1.0)
+	var impact_fraction := AbilityImpactScheduleScript.first_impact_fraction(definition)
 	if not _timeline.begin(cast_duration, impact_fraction, 0.0, cast_duration):
 		return false
 	if not _pay_ability_cost(attacker, definition):
@@ -228,6 +230,7 @@ func confirm_directional_cast(attacker: Node3D) -> bool:
 	_cast_target = null
 	_cast_definition = definition
 	_cast_direction = _aim_direction.normalized()
+	_cast_impact_schedule.begin(definition, cast_duration)
 	_start_cooldown(attacker, slot_id, definition)
 	_aiming_slot = &""
 	_hide_directional_indicator()
@@ -265,15 +268,17 @@ func update_abilities(attacker: Node3D, delta: float) -> void:
 		if (
 			_timeline.is_winding_up()
 			and _execution_type(_cast_definition) == EXECUTION_DAMAGE
+			and _targeting_mode(_cast_definition) == TARGETING_SELECTED
 			and not _can_complete_current_cast(attacker)
 		):
 			_interrupt_current_cast("Target lost")
 
 		var timeline_event: int = _timeline.advance(delta)
-		if timeline_event == AttackTimelineScript.TimelineEvent.IMPACT:
-			if _execution_type(_cast_definition) == EXECUTION_DAMAGE:
-				_resolve_cast_impact(attacker)
-		elif timeline_event == AttackTimelineScript.TimelineEvent.READY:
+		var crossed_impacts := _cast_impact_schedule.advance(delta)
+		if _execution_type(_cast_definition) == EXECUTION_DAMAGE:
+			for impact_index in crossed_impacts:
+				_resolve_cast_impact(attacker, impact_index)
+		if timeline_event == AttackTimelineScript.TimelineEvent.READY or _timeline.is_ready():
 			_finish_current_cast()
 		return
 
@@ -338,6 +343,7 @@ func reset_cast_state() -> void:
 	_cast_target = null
 	_cast_definition = null
 	_cast_direction = Vector3.ZERO
+	_cast_impact_schedule.reset()
 	_aiming_slot = &""
 	_clear_channel_state()
 	_timeline.reset()
@@ -389,7 +395,7 @@ func should_hold_position(attacker: Node3D) -> bool:
 func get_direction_to_target(attacker: Node3D) -> Vector3:
 	if is_directional_targeting():
 		return _aim_direction
-	if is_directional_movement_active():
+	if not _timeline.is_ready() and _cast_direction != Vector3.ZERO:
 		return _cast_direction
 
 	var target: Variant = _current_action_target()
@@ -456,7 +462,7 @@ func _begin_target_cast(attacker: Node3D) -> void:
 		return
 
 	var cast_duration := maxf(float(definition.get("cast_duration_seconds")), 0.01)
-	var impact_fraction := clampf(float(definition.get("impact_fraction")), 0.0, 1.0)
+	var impact_fraction := AbilityImpactScheduleScript.first_impact_fraction(definition)
 	if not _timeline.begin(cast_duration, impact_fraction, 0.0, cast_duration):
 		return
 	if not _pay_ability_cost(attacker, definition):
@@ -472,30 +478,62 @@ func _begin_target_cast(attacker: Node3D) -> void:
 	_cast_definition = definition
 	_cast_target = pending_target
 	_cast_direction = Vector3.ZERO
+	_cast_impact_schedule.begin(definition, cast_duration)
 	_pending_slot = &""
 	_pending_target = null
 	_start_cooldown(attacker, _cast_slot, _cast_definition)
 	ability_cast_started.emit(_cast_slot, _cast_target, _cast_definition)
 
 
-func _resolve_cast_impact(attacker: Node3D) -> void:
+func _resolve_cast_impact(attacker: Node3D, impact_index: int) -> void:
+	if _targeting_mode(_cast_definition) == TARGETING_DIRECTION:
+		_resolve_directional_cast_impact(attacker, impact_index)
+		return
+
 	var impact_target := _valid_target_node(_cast_target)
 	if not _can_attack_target(impact_target) or _is_target_defeated(impact_target):
 		ability_cast_interrupted.emit(_cast_slot, impact_target, "Target lost before impact")
+		_cast_impact_schedule.reset()
 		return
 	if not _is_target_in_range(attacker, impact_target, _impact_range_leeway()):
 		ability_cast_interrupted.emit(_cast_slot, impact_target, "Target left ability range")
+		_cast_impact_schedule.reset()
 		return
+
+	_resolve_damage_against_target(attacker, impact_target, impact_index)
+
+
+func _resolve_directional_cast_impact(attacker: Node3D, impact_index: int) -> void:
+	if attacker == null or _cast_direction == Vector3.ZERO or not is_inside_tree():
+		return
+
+	for candidate in get_tree().get_nodes_in_group("selectable_3d"):
+		var target := _valid_target_node(candidate)
+		var target_3d := target as Node3D
+		if target_3d == null or not _can_attack_target(target) or _is_target_defeated(target):
+			continue
+		if not AbilityTargetingMathScript.is_point_in_arc(
+			attacker.global_position,
+			_cast_direction,
+			target_3d.global_position,
+			maxf(float(_cast_definition.get("attack_range")), 0.0),
+			float(_cast_definition.get("area_arc_degrees")),
+			_impact_range_leeway()
+		):
+			continue
+		_resolve_damage_against_target(attacker, target, impact_index)
+
+
+func _resolve_damage_against_target(attacker: Node3D, impact_target: Node, impact_index: int) -> void:
 
 	var health := _find_target_health(impact_target)
 	if health == null or not health.has_method("apply_damage"):
-		ability_cast_interrupted.emit(_cast_slot, impact_target, "Target has no health component")
 		return
 
 	var request := DamageRequestScript.create(
 		attacker,
 		impact_target,
-		_ability_damage(attacker),
+		_ability_damage(attacker) * _cast_impact_schedule.get_damage_scale(impact_index),
 		_ability_damage_type(_cast_definition),
 		health
 	)
@@ -510,6 +548,7 @@ func _finish_current_cast() -> void:
 	_cast_target = null
 	_cast_definition = null
 	_cast_direction = Vector3.ZERO
+	_cast_impact_schedule.reset()
 	ability_cast_finished.emit(finished_slot)
 
 
@@ -519,6 +558,7 @@ func _interrupt_current_cast(reason: String) -> void:
 	var interrupted_slot := _cast_slot
 	var interrupted_target := _valid_target_node(_cast_target)
 	_cast_target = null
+	_cast_impact_schedule.reset()
 	ability_cast_interrupted.emit(interrupted_slot, interrupted_target, reason)
 
 
@@ -881,6 +921,20 @@ func _is_health_defeated(health: Node) -> bool:
 
 func _show_directional_indicator(definition: Resource) -> void:
 	if _directional_indicator == null or definition == null:
+		return
+	_update_directional_indicator(definition)
+
+
+func _update_directional_indicator(definition: Resource) -> void:
+	if _directional_indicator == null or definition == null:
+		return
+	if _execution_type(definition) == EXECUTION_DAMAGE:
+		_directional_indicator.call(
+			"show_swing_arc",
+			_aim_direction,
+			maxf(float(definition.get("attack_range")), 0.0),
+			float(definition.get("area_arc_degrees"))
+		)
 		return
 	_directional_indicator.call(
 		"show_direction",
