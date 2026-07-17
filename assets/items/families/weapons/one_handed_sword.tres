@@ -18,7 +18,8 @@ equipment_scene_path_template = "res://scenes/equipment/weapons/one_handed_sword
 equipment_attachment_profile_path = "res://assets/models/equipment/attachments/one_handed_sword_main_hand.tres"
 equipment_animation_profile_path_template = "res://assets/animations/equipment/one_handed_sword_animation_profile.tres"
 ability_path_templates = {
-"q": "res://assets/combat/abilities/one_handed_sword_q.tres"
+"q": "res://assets/combat/abilities/one_handed_sword_q.tres",
+"w": "res://assets/combat/abilities/one_handed_sword_w.tres"
 }
 stat_modifiers = {
 "auto_attack_damage": 20.0

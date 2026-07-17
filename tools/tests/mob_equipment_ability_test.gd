@@ -16,6 +16,8 @@ func _run_test() -> void:
 		return
 	if not await _test_sword_ability_lands_through_mob_ai():
 		return
+	if not await _test_sword_w_ability_lands_when_q_is_cooling_down():
+		return
 	if not await _test_helmet_shield_is_used_defensively():
 		return
 	if not await _test_boots_roll_repositions_mob():
@@ -43,6 +45,7 @@ func _test_loadout_unlocks_equipment_abilities() -> bool:
 	var ai := mob_data["ai"] as EnemyMobAI
 	var expected := {
 		&"q": "one_handed_sword_q",
+		&"w": "one_handed_sword_w",
 		&"r": "moonleaf_binding",
 		&"d": "energizing_shield",
 		&"f": "leather_boots_roll",
@@ -94,6 +97,44 @@ func _test_sword_ability_lands_through_mob_ai() -> bool:
 		return false
 	if mob.global_position.distance_to(Vector3.ZERO) > 0.01:
 		_fail("Mob should hold position while casting Sword Slash in range.")
+		return false
+
+	fixture.queue_free()
+	await process_frame
+	return true
+
+
+func _test_sword_w_ability_lands_when_q_is_cooling_down() -> bool:
+	var fixture := _make_fixture("MobSwordWAbilityFixture")
+	var mob_data := _spawn_mob(fixture, PackedStringArray(["one_handed_sword_t1"]))
+	var ai := mob_data["ai"] as EnemyMobAI
+	var mana := mob_data["mana"] as ResourcePool
+	await process_frame
+
+	var target_data := _spawn_player_target(fixture, Vector3(0.0, 0.0, 1.5), 500.0)
+	var target := target_data["target"] as CharacterBody3D
+	var target_health := target_data["health"] as CombatHealth
+	var w_definition := ai.get_active_ability(&"w")
+	if w_definition == null or String(w_definition.get("ability_id")) != "one_handed_sword_w":
+		_fail("Mob sword loadout should bind Whirling Slash on W.")
+		return false
+
+	ai.set("_ability_cooldowns_by_id", {"one_handed_sword_q": 5.0})
+	ai.set("_target", target)
+	ai.call("_update_aggro", 0.1)
+	if not is_equal_approx(mana.current_resource, 108.0):
+		_fail("Mob Whirling Slash should spend its authored 12 energy.")
+		return false
+	if not is_equal_approx(target_health.current_health, 500.0):
+		_fail("Mob Whirling Slash should wait for its late impact frame.")
+		return false
+
+	ai.call("_update_active_ability", 1.26)
+	if not is_equal_approx(target_health.current_health, 390.0):
+		_fail("Mob Whirling Slash should deal 80 plus 150% attack damage.")
+		return false
+	if ai.get_ability_cooldown_remaining(&"w") <= 0.0:
+		_fail("Mob Whirling Slash should start its own cooldown.")
 		return false
 
 	fixture.queue_free()

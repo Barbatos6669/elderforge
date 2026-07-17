@@ -53,6 +53,13 @@ UAL2 `Sword_Regular_A` strike followed by `Sword_Regular_A_Rec`. Ability data li
 `assets/combat/abilities/one_handed_sword_q.tres`; adding another weapon Q is a
 data hookup unless it needs behavior beyond the common targeted-melee contract.
 
+The same one-handed sword supplies `Whirling Slash` on W. Its user-provided
+Mixamo motion is retargeted onto the Elderforge humanoid skeleton, stripped of
+horizontal root travel, and fitted to a 1.8-second targeted-melee cast. The hit
+lands at 70% of the spin for 80 base physical damage plus 150% auto-attack
+damage. Its trusted network id and data live in
+`assets/combat/abilities/one_handed_sword_w.tres`.
+
 The first directional implementation is `Dodge Roll`: a five-second-cooldown F
 ability supplied by leather boots. It uses the UAL1 `Roll` clip and travels up
 to four meters. A collision can shorten the movement. Input cannot replace the

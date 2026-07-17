@@ -20,7 +20,10 @@ uniform float roughness : hint_range(0.0, 1.0, 0.05) = 1.0;
 uniform float specular : hint_range(0.0, 1.0, 0.05) = 0.0;
 uniform bool use_local_y_clip = false;
 uniform float local_y_clip_min = 0.0;
+uniform float local_y_neck_min = 0.0;
+uniform float local_x_neck_half_width = 0.0;
 
+varying float local_x;
 varying float local_y;
 
 
@@ -35,12 +38,14 @@ float stepped_light(float value) {
 
 
 void vertex() {
+	local_x = VERTEX.x;
 	local_y = VERTEX.y;
 }
 
 
 void fragment() {
-	if (use_local_y_clip && local_y < local_y_clip_min) {
+	bool inside_neck = local_y >= local_y_neck_min && abs(local_x) <= local_x_neck_half_width;
+	if (use_local_y_clip && local_y < local_y_clip_min && !inside_neck) {
 		discard;
 	}
 

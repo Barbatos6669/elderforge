@@ -127,6 +127,10 @@ choice, or playtest flow changes.
   equipped one-handed sword, chains UAL2 `Sword_Regular_A` into `Sword_Regular_A_Rec`,
   lands at its authored contact point, and appears in a bottom-center Q slot
   with a radial five-second cooldown.
+- Added `Whirling Slash` on the sword's W slot. Its downloaded Mixamo motion is
+  retargeted to the Elderforge skeleton, converted to an in-place 1.8-second
+  spin, and lands late for 80 base physical damage plus 150% attack damage.
+  Sword-equipped mobs bind and use the same W spell when Q is unavailable.
 - Added stable ability-id multiplayer events so remote players see weapon spell
   animations while the existing playtest combat-state path synchronizes mob
   damage.

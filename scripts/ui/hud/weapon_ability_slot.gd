@@ -288,6 +288,8 @@ func _icon_background_color() -> Color:
 		return Color(0.075, 0.20, 0.12, 1.0)
 	if String(_definition.get("icon_id")) == "energizing_shield":
 		return Color(0.055, 0.13, 0.18, 1.0)
+	if String(_definition.get("icon_id")) == "whirling_slash":
+		return Color(0.045, 0.15, 0.16, 1.0)
 	return Color(0.24, 0.075, 0.055, 1.0)
 
 
@@ -299,6 +301,8 @@ func _draw_ability_icon(rect: Rect2) -> void:
 			_draw_moonleaf_binding_icon(rect)
 		"energizing_shield":
 			_draw_energizing_shield_icon(rect)
+		"whirling_slash":
+			_draw_whirling_slash_icon(rect)
 		_:
 			_draw_sword_slash_icon(rect)
 
@@ -496,6 +500,30 @@ func _draw_sword_slash_icon(rect: Rect2) -> void:
 		maxf(rect.size.x * 0.055, 1.0),
 		true
 	)
+
+
+func _draw_whirling_slash_icon(rect: Rect2) -> void:
+	_draw_sword_slash_icon(rect)
+	var center := rect.get_center()
+	var swirl_color := Color(0.30, 0.92, 0.88, 0.82)
+	var swirl_shadow := Color(0.015, 0.035, 0.04, 0.96)
+	var radius := rect.size.x * 0.43
+	var width := maxf(rect.size.x * 0.065, 1.0)
+	draw_arc(center, radius, -2.8, 0.75, 30, swirl_shadow, width * 1.8, true)
+	draw_arc(center, radius, -2.8, 0.75, 30, swirl_color, width, true)
+	var arrow_tip := center + Vector2(cos(0.75), sin(0.75)) * radius
+	var tangent := Vector2(-sin(0.75), cos(0.75))
+	var inward := (center - arrow_tip).normalized()
+	var arrow := PackedVector2Array([
+		arrow_tip + tangent * rect.size.x * 0.02,
+		arrow_tip - tangent * rect.size.x * 0.16 + inward * rect.size.x * 0.04,
+		arrow_tip - tangent * rect.size.x * 0.03 + inward * rect.size.x * 0.15,
+	])
+	draw_colored_polygon(arrow, swirl_shadow)
+	var arrow_inset := PackedVector2Array()
+	for point in arrow:
+		arrow_inset.append(arrow_tip + (point - arrow_tip) * 0.78)
+	draw_colored_polygon(arrow_inset, swirl_color)
 
 
 func _draw_radial_cooldown(rect: Rect2, fraction: float) -> void:

@@ -65,7 +65,10 @@ Physical abilities use the physical ability percentage bonus, magical
 abilities use the magical ability percentage bonus, and true damage currently
 uses no type bonus. The shared `DamageResolver` then checks armor for physical
 damage, magical resistance for magical damage, or bypasses defense for true
-damage. Sword Slash uses 100 base physical damage and zero auto-attack scaling.
+damage. Sword Slash on Q uses 100 base physical damage and zero auto-attack
+scaling. Whirling Slash on W uses 80 base physical damage plus 150% auto-attack
+damage, lands late in its retargeted spinning animation, and has an independent
+eight-second cooldown.
 
 Mana is checked when an ability is requested and charged only when its cast
 actually begins. Approaching a target or losing it before cast start is free;

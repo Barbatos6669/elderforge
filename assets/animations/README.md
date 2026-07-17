@@ -29,3 +29,14 @@ Current player usage:
 - `UAL1_Standard.glb`: `Idle`, `Jog_Fwd`, and `Punch_Jab`.
 - `UAL2_Standard.glb`: `Shield_OneShot` for the first hand-gathering wood
   prototype.
+
+## Ability Clips
+
+- `abilities/one_handed_sword/sword_and_shield_slash.glb` is the user-provided
+  Mixamo `Sword And Shield Slash` motion retargeted onto Elderforge's Quaternius
+  humanoid skeleton. Horizontal root travel is removed so gameplay movement
+  remains authoritative; vertical motion, the airborne turn, and landing pose
+  are preserved for `Whirling Slash` on W.
+- Regenerate it with `tools/animation/retarget_mixamo_to_elderforge.py`. The
+  script accepts a Mixamo FBX, target Elderforge rig scene, output path, and
+  animation name through Blender's arguments after `--`.

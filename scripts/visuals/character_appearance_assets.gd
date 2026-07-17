@@ -37,8 +37,8 @@ const OUTFIT_BODY_MASKS := {
 	"starter_peasant": {
 		"male": {
 			"local_y_clip_min": 1.56,
-			"local_y_neck_min": 1.50,
-			"local_x_neck_half_width": 0.135,
+			"local_y_neck_min": 1.35,
+			"local_x_neck_half_width": 0.16,
 		},
 		"female": {
 			"local_y_clip_min": 1.51,
