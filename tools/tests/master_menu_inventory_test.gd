@@ -118,16 +118,19 @@ func _helmet_selection_updates_spell_loadout(
 		_fail("Selecting spell-bearing gear should render its spell loadout.")
 		return false
 
-	var default_choice := menu.find_child("SpellChoiceD01", true, false) as Button
-	var alternate_choice := menu.find_child("SpellChoiceD02", true, false) as Button
+	var default_choice := menu.find_child("SpellChoiceD01", true, false) as Control
+	var alternate_choice := menu.find_child("SpellChoiceD02", true, false) as Control
 	if default_choice == null or alternate_choice == null:
 		_fail("The D spell slot should render every available helmet spell.")
 		return false
-	if not default_choice.text.contains("Energizing Shield"):
+	if not _spell_loadout_uses_circular_rows(menu, "D", default_choice):
+		return false
+	var default_definition := default_choice.call("get_ability_definition") as Resource
+	if default_definition == null or String(default_definition.get("display_name")) != "Energizing Shield":
 		_fail("The helmet's authored default spell should be selected first.")
 		return false
 
-	alternate_choice.pressed.emit()
+	alternate_choice.emit_signal("ability_activation_requested")
 	await process_frame
 	await process_frame
 
@@ -141,7 +144,44 @@ func _helmet_selection_updates_spell_loadout(
 	if spell_title == null or spell_title.text != "Guard Focus":
 		_fail("The right panel should focus the newly selected spell.")
 		return false
+	var refreshed_choice := menu.find_child("SpellChoiceD02", true, false) as Control
+	if refreshed_choice == null or not bool(refreshed_choice.call("is_loadout_selected")):
+		_fail("The selected spell icon should use the active loadout ring.")
+		return false
 
+	return true
+
+
+func _spell_loadout_uses_circular_rows(
+	menu: MasterMenu,
+	slot_id: String,
+	selected_choice: Control
+) -> bool:
+	var item_header := menu.find_child("SpellLoadoutItemHeader", true, false) as HBoxContainer
+	var item_icon := menu.find_child("SpellLoadoutItemIcon", true, false) as Control
+	var item_meta := menu.find_child("SpellLoadoutItemMeta", true, false) as Label
+	if item_header == null or item_icon == null or item_meta == null:
+		_fail("Spell loadouts should show the selected item's compact header.")
+		return false
+	if item_icon.custom_minimum_size != Vector2(58.0, 58.0) or item_meta.text.is_empty():
+		_fail("The spell loadout header should include a fixed item icon and item metadata.")
+		return false
+
+	var category_row := menu.find_child("SpellCategory%s" % slot_id, true, false) as HBoxContainer
+	var category_badge := menu.find_child("SpellCategory%sBadge" % slot_id, true, false) as PanelContainer
+	var choice_flow := menu.find_child("SpellChoices%s" % slot_id, true, false) as HFlowContainer
+	if category_row == null or category_badge == null or choice_flow == null:
+		_fail("Each spell category should use a key badge and horizontal icon flow.")
+		return false
+	if selected_choice.get_parent() != choice_flow:
+		_fail("Spell choices should live inside their category's horizontal icon flow.")
+		return false
+	if selected_choice.custom_minimum_size != Vector2(52.0, 52.0):
+		_fail("Spell choices should keep a stable circular icon footprint.")
+		return false
+	if not bool(selected_choice.call("is_loadout_selected")):
+		_fail("The active spell choice should render the selected loadout ring.")
+		return false
 	return true
 
 
@@ -254,8 +294,9 @@ func _weapon_loadout_shows_qwe_categories(menu: MasterMenu) -> bool:
 			_fail("Weapon loadouts should always render the %s spell category." % slot_id)
 			return false
 
-	var q_choice := menu.find_child("SpellChoiceQ01", true, false) as Button
-	if q_choice == null or not q_choice.text.contains("Sword Slash"):
+	var q_choice := menu.find_child("SpellChoiceQ01", true, false) as Control
+	var q_definition := q_choice.call("get_ability_definition") as Resource if q_choice != null else null
+	if q_definition == null or String(q_definition.get("display_name")) != "Sword Slash":
 		_fail("The sword's authored Q spell should appear in the Q category.")
 		return false
 	if menu.find_child("SpellChoiceWEmpty", true, false) == null:

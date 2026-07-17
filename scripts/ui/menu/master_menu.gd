@@ -12,6 +12,7 @@ const MasterMenuTileIconScript := preload("res://scripts/ui/menu/master_menu_til
 const MasterMenuCreaturePortraitScript := preload("res://scripts/ui/menu/master_menu_creature_portrait.gd")
 const InventoryItemIconScript := preload("res://scripts/ui/inventory/inventory_item_icon.gd")
 const EquipmentSlotIconScript := preload("res://scripts/ui/inventory/equipment_slot_icon.gd")
+const WeaponAbilitySlotScript := preload("res://scripts/ui/hud/weapon_ability_slot.gd")
 const InventorySlotButtonScript := preload("res://scripts/ui/inventory/inventory_slot_button.gd")
 const EquipmentSlotButtonScript := preload("res://scripts/ui/inventory/equipment_slot_button.gd")
 const WORLD_INPUT_BLOCKER_GROUP := "blocking_world_input"
@@ -1165,12 +1166,7 @@ func _build_inventory_inspector_panel() -> Control:
 	UiStyle.label_primary(title, 16, 1)
 	layout.add_child(title)
 
-	var item_label := Label.new()
-	item_label.name = "SpellLoadoutItemName"
-	item_label.text = selected_title
-	item_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UiStyle.label_muted(item_label, 12)
-	layout.add_child(item_label)
+	layout.add_child(_build_inventory_spell_item_header(selected_data, selected_title))
 
 	var choice_rows := _inventory_spell_choice_rows(selected_data)
 	_ensure_inventory_spell_focus(choice_rows)
@@ -1208,25 +1204,28 @@ func _build_inventory_inspector_panel() -> Control:
 		var row := row_value as Dictionary
 		var slot_id := String(row.get("slot_id", ""))
 
-		var slot_label := Label.new()
-		slot_label.name = "SpellCategory%s" % slot_id.to_upper()
-		slot_label.text = "%s SPELLS" % slot_id.to_upper()
-		UiStyle.label_primary(slot_label, 12, 1)
-		content.add_child(slot_label)
+		var category_row := HBoxContainer.new()
+		category_row.name = "SpellCategory%s" % slot_id.to_upper()
+		category_row.custom_minimum_size = Vector2(0.0, 58.0)
+		category_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		category_row.add_theme_constant_override("separation", 8)
+		content.add_child(category_row)
+		category_row.add_child(_build_inventory_spell_category_badge(slot_id))
+
+		var choices_flow := HFlowContainer.new()
+		choices_flow.name = "SpellChoices%s" % slot_id.to_upper()
+		choices_flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		choices_flow.add_theme_constant_override("h_separation", 4)
+		choices_flow.add_theme_constant_override("v_separation", 4)
+		category_row.add_child(choices_flow)
 
 		var paths := PackedStringArray(row.get("paths", PackedStringArray()))
 		var selected_path := String(row.get("selected_path", ""))
 		if paths.is_empty():
-			var empty_choice := Label.new()
-			empty_choice.name = "SpellChoice%sEmpty" % slot_id.to_upper()
-			empty_choice.text = "No spells unlocked"
-			empty_choice.custom_minimum_size = Vector2(0.0, 34.0)
-			empty_choice.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			UiStyle.label_muted(empty_choice, 12)
-			content.add_child(empty_choice)
+			choices_flow.add_child(_build_inventory_empty_spell_icon(slot_id))
 			continue
 		for choice_index in range(paths.size()):
-			content.add_child(_build_inventory_spell_choice_button(
+			choices_flow.add_child(_build_inventory_spell_choice_icon(
 				item_id,
 				slot_id,
 				paths[choice_index],
@@ -1283,13 +1282,106 @@ func _build_inventory_inspector_panel() -> Control:
 	return panel
 
 
-func _build_inventory_spell_choice_button(
+func _build_inventory_spell_item_header(
+	selected_data: Dictionary,
+	selected_title: String
+) -> Control:
+	var header := HBoxContainer.new()
+	header.name = "SpellLoadoutItemHeader"
+	header.custom_minimum_size = Vector2(0.0, 62.0)
+	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_theme_constant_override("separation", 9)
+
+	if not selected_data.is_empty():
+		var item_icon := InventoryItemIconScript.new() as Control
+		item_icon.name = "SpellLoadoutItemIcon"
+		item_icon.custom_minimum_size = Vector2(58.0, 58.0)
+		item_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		item_icon.call("set_item", selected_data)
+		header.add_child(item_icon)
+
+	var details := VBoxContainer.new()
+	details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	details.alignment = BoxContainer.ALIGNMENT_CENTER
+	details.add_theme_constant_override("separation", 2)
+	header.add_child(details)
+
+	var item_label := Label.new()
+	item_label.name = "SpellLoadoutItemName"
+	item_label.text = selected_title
+	item_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UiStyle.label_primary(item_label, 14, 1)
+	details.add_child(item_label)
+
+	var item_meta := Label.new()
+	item_meta.name = "SpellLoadoutItemMeta"
+	item_meta.text = _inventory_spell_item_meta(selected_data)
+	item_meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UiStyle.label_muted(item_meta, 11)
+	details.add_child(item_meta)
+	return header
+
+
+func _inventory_spell_item_meta(selected_data: Dictionary) -> String:
+	if selected_data.is_empty():
+		return "No item selected"
+
+	var parts := PackedStringArray()
+	parts.append(String(selected_data.get("category", "Gear")))
+	var tier_roman := String(selected_data.get("tier_roman", "")).strip_edges()
+	if not tier_roman.is_empty():
+		parts.append("Tier %s" % tier_roman)
+	var equip_slot := String(selected_data.get("equip_slot", "")).strip_edges()
+	if not equip_slot.is_empty():
+		parts.append(_equipment_slot_label(equip_slot))
+	var unit_weight := float(selected_data.get("unit_weight", 0.0))
+	if unit_weight > 0.0:
+		parts.append("%s kg" % _format_decimal(unit_weight))
+	return " | ".join(parts)
+
+
+func _build_inventory_spell_category_badge(slot_id: String) -> Control:
+	var badge := PanelContainer.new()
+	badge.name = "SpellCategory%sBadge" % slot_id.to_upper()
+	badge.custom_minimum_size = Vector2(42.0, 42.0)
+	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	badge.tooltip_text = "%s spell category" % slot_id.to_upper()
+	var badge_style := UiStyle.style_box(
+		Color(0.055, 0.052, 0.044, 0.96),
+		Color(0.62, 0.48, 0.20, 0.88),
+		1,
+		21
+	)
+	badge.add_theme_stylebox_override("panel", badge_style)
+
+	var label := Label.new()
+	label.text = slot_id.to_upper()
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	UiStyle.label_primary(label, 15, 1)
+	badge.add_child(label)
+	return badge
+
+
+func _build_inventory_empty_spell_icon(slot_id: String) -> Control:
+	var icon := WeaponAbilitySlotScript.new() as Control
+	icon.name = "SpellChoice%sEmpty" % slot_id.to_upper()
+	icon.custom_minimum_size = Vector2(52.0, 52.0)
+	icon.modulate = Color(0.72, 0.72, 0.68, 0.62)
+	icon.call("set_key_hint_visible", false)
+	icon.call("set_loadout_selected", false)
+	icon.call("set_interaction_enabled", false)
+	icon.tooltip_text = "No spells unlocked"
+	return icon
+
+
+func _build_inventory_spell_choice_icon(
 	item_id: String,
 	slot_id: String,
 	ability_path: String,
 	is_selected: bool,
 	choice_index: int
-) -> Button:
+) -> Control:
 	var definition := _load_inventory_ability(ability_path)
 	var display_name := (
 		String(definition.get("display_name"))
@@ -1297,32 +1389,25 @@ func _build_inventory_spell_choice_button(
 		else ability_path.get_file().get_basename().capitalize()
 	)
 
-	var button := Button.new()
-	button.name = "SpellChoice%s%02d" % [slot_id.to_upper(), choice_index + 1]
-	button.custom_minimum_size = Vector2(0.0, 44.0)
-	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button.focus_mode = Control.FOCUS_NONE
-	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	button.clip_text = true
-	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	button.text = "%s%s" % [display_name, "  SELECTED" if is_selected else ""]
-	button.tooltip_text = String(definition.get("description")) if definition != null else display_name
-	button.add_theme_font_size_override("font_size", 13)
-	button.add_theme_color_override("font_color", UiStyle.COLOR_TEXT_PRIMARY)
-	button.add_theme_color_override("font_hover_color", Color.WHITE)
-	button.add_theme_color_override("font_pressed_color", Color.WHITE)
-	button.add_theme_stylebox_override("normal", UiStyle.master_menu_detail_item_style(is_selected))
-	button.add_theme_stylebox_override("hover", UiStyle.master_menu_detail_item_style(true))
-	button.add_theme_stylebox_override("pressed", UiStyle.master_menu_detail_item_style(true))
-	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	button.set_meta("ability_path", ability_path)
-	button.set_meta("ability_slot_id", slot_id)
-	button.pressed.connect(_on_inventory_spell_choice_pressed.bind(
+	var icon := WeaponAbilitySlotScript.new() as Control
+	icon.name = "SpellChoice%s%02d" % [slot_id.to_upper(), choice_index + 1]
+	icon.custom_minimum_size = Vector2(52.0, 52.0)
+	icon.call("set_ability", definition)
+	icon.call("set_key_hint_visible", false)
+	icon.call("set_loadout_selected", is_selected)
+	icon.tooltip_text = (
+		"%s\n%s" % [display_name, String(definition.get("description"))]
+		if definition != null
+		else display_name
+	)
+	icon.set_meta("ability_path", ability_path)
+	icon.set_meta("ability_slot_id", slot_id)
+	icon.connect("ability_activation_requested", _on_inventory_spell_choice_pressed.bind(
 		item_id,
 		slot_id,
 		ability_path
 	))
-	return button
+	return icon
 
 
 func _build_inventory_spell_detail_row(label_text: String, value_text: String) -> Control:

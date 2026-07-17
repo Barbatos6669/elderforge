@@ -18,13 +18,16 @@ var _key_hint := "Q"
 var _key_label: Label
 var _cooldown_label: Label
 var _is_hovered := false
+var _show_key_hint := true
+var _uses_loadout_selection := false
+var _is_loadout_selected := false
+var _interaction_enabled := true
 
 
 func _ready() -> void:
 	# STOP gives this visible HUD control a hover target and prevents world clicks
 	# from passing through the spell icon.
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_refresh_interaction_state()
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
 	gui_input.connect(_on_gui_input)
@@ -69,12 +72,29 @@ func _draw() -> void:
 	if cooldown_fraction > 0.0:
 		_draw_radial_cooldown(cooldown_rect, cooldown_fraction)
 
-	var border_color := (
-		Color(1.0, 0.82, 0.30, 1.0)
-		if _definition != null and cooldown_fraction <= 0.0
-		else UiStyle.COLOR_GOLD_SOFT
-	)
-	draw_arc(center, outer_radius, 0.0, TAU, 64, border_color, maxf(unit * 0.025, 1.0), true)
+	var border_color := UiStyle.COLOR_GOLD_SOFT
+	var border_width := maxf(unit * 0.025, 1.0)
+	if _uses_loadout_selection:
+		border_color = (
+			Color(1.0, 0.84, 0.30, 1.0)
+			if _is_loadout_selected
+			else Color(0.38, 0.36, 0.30, 0.92)
+		)
+		border_width = maxf(unit * (0.052 if _is_loadout_selected else 0.022), 1.0)
+	elif _definition != null and cooldown_fraction <= 0.0:
+		border_color = Color(1.0, 0.82, 0.30, 1.0)
+	draw_arc(center, outer_radius, 0.0, TAU, 64, border_color, border_width, true)
+	if _uses_loadout_selection and _is_loadout_selected:
+		draw_arc(
+			center,
+			outer_radius - unit * 0.065,
+			0.0,
+			TAU,
+			64,
+			Color(1.0, 0.94, 0.64, 0.94),
+			maxf(unit * 0.018, 1.0),
+			true
+		)
 	draw_arc(
 		center,
 		inner_radius,
@@ -130,13 +150,41 @@ func get_key_hint() -> String:
 	return _key_hint
 
 
+## Hides the embedded key badge when a parent row already identifies the slot.
+func set_key_hint_visible(is_visible: bool) -> void:
+	_show_key_hint = is_visible
+	if _key_label != null:
+		_key_label.visible = _show_key_hint
+
+
+## Enables the stronger selected/unselected rings used by loadout pickers.
+func set_loadout_selected(is_selected: bool) -> void:
+	_uses_loadout_selection = true
+	_is_loadout_selected = is_selected
+	queue_redraw()
+
+
+func is_loadout_selected() -> bool:
+	return _uses_loadout_selection and _is_loadout_selected
+
+
+## Disables hover/click capture for decorative empty spell placeholders.
+func set_interaction_enabled(is_enabled: bool) -> void:
+	_interaction_enabled = is_enabled
+	_refresh_interaction_state()
+
+
 func _on_mouse_entered() -> void:
+	if not _interaction_enabled:
+		return
 	_is_hovered = true
 	if _definition != null:
 		ability_hint_requested.emit(_definition)
 
 
 func _on_mouse_exited() -> void:
+	if not _interaction_enabled:
+		return
 	_is_hovered = false
 	if _definition != null:
 		ability_hint_dismissed.emit(_definition)
@@ -145,7 +193,8 @@ func _on_mouse_exited() -> void:
 func _on_gui_input(event: InputEvent) -> void:
 	var mouse_event := event as InputEventMouseButton
 	if (
-		mouse_event == null
+		not _interaction_enabled
+		or mouse_event == null
 		or mouse_event.button_index != MOUSE_BUTTON_LEFT
 		or not mouse_event.pressed
 		or _definition == null
@@ -165,6 +214,7 @@ func _build_labels() -> void:
 	_key_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_key_label.add_theme_color_override("font_color", UiStyle.COLOR_TEXT_PRIMARY)
 	_key_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	_key_label.visible = _show_key_hint
 	add_child(_key_label)
 
 	_cooldown_label = Label.new()
@@ -206,9 +256,23 @@ func _refresh_labels() -> void:
 		return
 
 	_key_label.modulate = Color.WHITE if _definition != null else Color(0.55, 0.55, 0.55, 1.0)
+	_key_label.visible = _show_key_hint
 	_cooldown_label.visible = _definition != null and _remaining_seconds > 0.0
 	if _cooldown_label.visible:
 		_cooldown_label.text = str(ceili(_remaining_seconds))
+
+
+func _refresh_interaction_state() -> void:
+	mouse_filter = (
+		Control.MOUSE_FILTER_STOP
+		if _interaction_enabled
+		else Control.MOUSE_FILTER_IGNORE
+	)
+	mouse_default_cursor_shape = (
+		Control.CURSOR_POINTING_HAND
+		if _interaction_enabled
+		else Control.CURSOR_ARROW
+	)
 
 
 func _cooldown_fraction() -> float:
