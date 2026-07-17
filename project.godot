@@ -37,6 +37,7 @@ import/blender/enabled=false
 3d_physics/layer_2="ResourceObstacle"
 3d_physics/layer_3="PlayerHover"
 3d_physics/layer_4="Selectable"
+3d_physics/layer_5="Entity"
 
 [physics]
 

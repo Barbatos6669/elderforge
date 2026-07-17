@@ -158,6 +158,11 @@ The root `Player` node uses `scripts/player/controllers/player_controller.gd`.
 That controller should stay small. Its job is to coordinate the modules, not to
 own every system.
 
+Player, mob, animal, and NPC bodies use the `Entity` physics layer. Their
+movement masks include `World` and `ResourceObstacle`, but not `Entity`, so
+actors pass through one another while terrain and authored obstacles still
+block movement. Hover and selection areas remain on their dedicated layers.
+
 ## Player Controller Flow
 
 Every physics frame, `PlayerController` coordinates this simplified flow:
