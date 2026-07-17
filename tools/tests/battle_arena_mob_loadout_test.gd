@@ -79,6 +79,10 @@ func _run_test() -> void:
 		if definition == null or String(definition.get("ability_id")) != String(expected_abilities[slot_id]):
 			_fail("Ability Raider should bind %s on slot %s." % [expected_abilities[slot_id], slot_id])
 			return
+	if not _has_value(ai, "ability_reaction_delay_seconds", 0.3, "Ability Raider"):
+		return
+	if not _has_value(ai, "defensive_ability_health_ratio", 0.5, "Ability Raider"):
+		return
 
 	var skeleton := ability_raider.get_node_or_null("Visuals/BaseCharacter/Armature/Skeleton3D")
 	if skeleton == null:

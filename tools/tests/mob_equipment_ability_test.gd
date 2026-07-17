@@ -14,6 +14,8 @@ func _initialize() -> void:
 func _run_test() -> void:
 	if not await _test_loadout_unlocks_equipment_abilities():
 		return
+	if not await _test_equipment_abilities_respect_reaction_delay():
+		return
 	if not await _test_sword_ability_lands_through_mob_ai():
 		return
 	if not await _test_sword_w_ability_lands_when_q_is_cooling_down():
@@ -58,6 +60,45 @@ func _test_loadout_unlocks_equipment_abilities() -> bool:
 		if definition == null or String(definition.get("ability_id")) != String(expected[slot_id]):
 			_fail("Mob loadout did not unlock ability %s on slot %s." % [expected[slot_id], slot_id])
 			return false
+
+	fixture.queue_free()
+	await process_frame
+	return true
+
+
+func _test_equipment_abilities_respect_reaction_delay() -> bool:
+	var fixture := _make_fixture("MobAbilityReactionFixture")
+	var mob_data := _spawn_mob(
+		fixture,
+		PackedStringArray(["leather_helmet_t1"]),
+		60.0,
+		60.0
+	)
+	var ai := mob_data["ai"] as EnemyMobAI
+	var health := mob_data["health"] as CombatHealth
+	ai.ability_reaction_delay_seconds = 0.3
+	await process_frame
+	health.set_current_health(60.0)
+
+	var target_data := _spawn_player_target(fixture, Vector3(0.0, 0.0, 1.0), 500.0)
+	var target := target_data["target"] as CharacterBody3D
+	ai.set("_target", target)
+	ai.call("_update_aggro", 0.1)
+	if health.has_absorb_shield():
+		_fail("Mob equipment abilities should not fire on the exact decision frame.")
+		return false
+
+	ai.call("_advance_ability_reaction", 0.29)
+	ai.call("_update_aggro", 0.1)
+	if health.has_absorb_shield():
+		_fail("Mob equipment abilities should wait for the full reaction delay.")
+		return false
+
+	ai.call("_advance_ability_reaction", 0.02)
+	ai.call("_update_aggro", 0.1)
+	if not health.has_absorb_shield():
+		_fail("Mob equipment abilities should fire once their reaction delay finishes.")
+		return false
 
 	fixture.queue_free()
 	await process_frame
@@ -201,7 +242,7 @@ func _test_helmet_shield_is_used_defensively() -> bool:
 	var bubble := mob_data["bubble"] as Node3D
 	var mana := mob_data["mana"] as ResourcePool
 	await process_frame
-	health.set_current_health(60.0)
+	health.set_current_health(61.0)
 	mana.set_current_resource(60.0)
 
 	var target_data := _spawn_player_target(fixture, Vector3(0.0, 0.0, 1.0), 500.0)
@@ -209,8 +250,14 @@ func _test_helmet_shield_is_used_defensively() -> bool:
 
 	ai.set("_target", target)
 	ai.call("_update_aggro", 0.1)
+	if health.has_absorb_shield():
+		_fail("Mob Energizing Shield should remain unused above 50% health.")
+		return false
+
+	health.set_current_health(60.0)
+	ai.call("_update_aggro", 0.1)
 	if not health.has_absorb_shield():
-		_fail("Low-health mob with a helmet should use Energizing Shield.")
+		_fail("Mob Energizing Shield should become usable at 50% health.")
 		return false
 	if not is_equal_approx(health.get_absorb_shield_current(), 834.0):
 		_fail("Mob Energizing Shield should use the item-authored shield amount.")
@@ -342,6 +389,7 @@ func _spawn_mob(
 	ai.name = "AI"
 	ai.aggro_radius = 8.0
 	ai.leash_radius = 20.0
+	ai.ability_reaction_delay_seconds = 0.0
 	ai.set_physics_process(false)
 	mob.add_child(ai)
 

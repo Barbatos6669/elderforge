@@ -93,8 +93,10 @@ signal respawned
 @export var ability_equipment_slots: Dictionary = (
 	AbilitySlots.EQUIPMENT_SLOT_BY_ABILITY.duplicate()
 )
+## Briefly holds a chosen combat ability so mobs do not react on the exact decision frame.
+@export_range(0.0, 2.0, 0.05) var ability_reaction_delay_seconds := 0.3
 ## Defensive self-casts are saved until the mob has actually been pressured.
-@export_range(0.05, 1.0, 0.05) var defensive_ability_health_ratio := 0.75
+@export_range(0.05, 1.0, 0.05) var defensive_ability_health_ratio := 0.5
 ## Mobs use healing/restoration channels only after combat drops.
 @export_range(0.05, 1.0, 0.05) var recovery_ability_health_ratio := 0.55
 ## Dodge rolls become defensive at low health and offensive as a gap closer.
@@ -130,6 +132,8 @@ var _target: Node3D
 var _collision_shapes: Array[CollisionShape3D] = []
 var _home_position := Vector3.ZERO
 var _cooldown_remaining := 0.0
+var _pending_ability_reaction_id := ""
+var _ability_reaction_remaining_seconds := 0.0
 var _original_collision_layer := 0
 var _original_collision_mask := 0
 var _is_respawning := false
@@ -206,6 +210,7 @@ func _physics_process(delta: float) -> void:
 		return
 
 	_advance_ability_cooldowns(delta)
+	_advance_ability_reaction(delta)
 	if _update_active_ability(delta):
 		return
 
@@ -243,6 +248,9 @@ func _update_aggro(delta: float) -> void:
 		_face_direction(_direction_to(_target.global_position), delta)
 		return
 	if _try_combat_dodge_ability(distance_to_target):
+		if _dodge_definition == null:
+			_stop_moving(delta)
+			_face_direction(_direction_to(_target.global_position), delta)
 		return
 
 	var ready_damage_ability := _best_ready_damage_ability()
@@ -257,6 +265,7 @@ func _update_aggro(delta: float) -> void:
 		_face_direction(_direction_to(_target.global_position), delta)
 		if _try_damage_ability(ready_damage_ability):
 			return
+		_clear_ability_reaction()
 		if distance_to_target > attack_range:
 			return
 		_update_attack(delta)
@@ -267,6 +276,7 @@ func _update_aggro(delta: float) -> void:
 		chase_distance = float(ready_damage_ability.get("approach_distance"))
 	var chase_destination := _target.global_position - _direction_to(_target.global_position) * chase_distance
 	chase_destination.y = _body.global_position.y
+	_clear_ability_reaction()
 	_move_toward(chase_destination, delta)
 
 
@@ -363,6 +373,7 @@ func _find_aggro_target() -> Node3D:
 
 
 func _drop_aggro() -> void:
+	_clear_ability_reaction()
 	if _target == null:
 		return
 
@@ -627,6 +638,8 @@ func _try_combat_self_ability() -> bool:
 			and _execution_type(definition) == EXECUTION_SHIELD
 			and _can_begin_mob_ability(slot_id, definition)
 		):
+			if _wait_for_ability_reaction(definition):
+				return true
 			return _begin_self_ability(slot_id, definition)
 	return false
 
@@ -665,6 +678,8 @@ func _try_combat_dodge_ability(distance_to_target: float) -> bool:
 	if direction == Vector3.ZERO:
 		return false
 
+	if _wait_for_ability_reaction(definition):
+		return true
 	return _begin_dodge_ability(_slot_for_definition(definition), definition, direction)
 
 
@@ -674,6 +689,8 @@ func _try_damage_ability(preferred_definition: Resource = null) -> bool:
 		return false
 	if not _is_target_in_ability_activation_range(definition, _target):
 		return false
+	if _wait_for_ability_reaction(definition):
+		return true
 
 	var slot_id := _slot_for_definition(definition)
 	if _targeting_mode(definition) == TARGETING_DIRECTION:
@@ -1038,6 +1055,7 @@ func _reset_active_ability_state() -> void:
 	_ability_timeline.reset()
 	_ability_impact_schedule.reset()
 	_ability_cooldowns_by_id.clear()
+	_clear_ability_reaction()
 	_ability_cast_slot = &""
 	_ability_cast_target = null
 	_ability_cast_definition = null
@@ -1052,6 +1070,36 @@ func _reset_active_ability_state() -> void:
 	_dodge_speed = 0.0
 	_clear_ability_telegraph()
 	_clear_channel_state()
+
+
+func _advance_ability_reaction(delta: float) -> void:
+	_ability_reaction_remaining_seconds = maxf(
+		_ability_reaction_remaining_seconds - maxf(delta, 0.0),
+		0.0
+	)
+
+
+func _wait_for_ability_reaction(definition: Resource) -> bool:
+	var reaction_delay := maxf(ability_reaction_delay_seconds, 0.0)
+	var ability_id := String(definition.get("ability_id")) if definition != null else ""
+	if reaction_delay <= 0.0 or ability_id.is_empty():
+		_clear_ability_reaction()
+		return false
+
+	if _pending_ability_reaction_id != ability_id:
+		_pending_ability_reaction_id = ability_id
+		_ability_reaction_remaining_seconds = reaction_delay
+
+	if _ability_reaction_remaining_seconds > 0.0:
+		return true
+
+	_clear_ability_reaction()
+	return false
+
+
+func _clear_ability_reaction() -> void:
+	_pending_ability_reaction_id = ""
+	_ability_reaction_remaining_seconds = 0.0
 
 
 func _start_ability_cooldown(definition: Resource) -> void:
