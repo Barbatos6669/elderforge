@@ -24,6 +24,7 @@ func _run_test() -> void:
 	inventory.starting_silver = 1234
 	inventory.debug_seed_item_ids = PackedStringArray(["timber_t1", "stone_t1"])
 	inventory.debug_seed_quantity = 7
+	inventory.debug_main_hand_item_id = "one_handed_sword_t1"
 	inventory.debug_equipped_item_ids = PackedStringArray(["leather_helmet_t1"])
 	fixture.add_child(inventory)
 	var helmet_definition := inventory.get_definition("leather_helmet_t1")
@@ -49,6 +50,8 @@ func _run_test() -> void:
 	if not await _dragging_helmet_to_bag_unequips(menu, inventory):
 		return
 	if not await _dragging_bag_helmet_to_head_equips(menu, inventory):
+		return
+	if not await _weapon_loadout_shows_qwe_categories(menu):
 		return
 
 	fixture.queue_free()
@@ -232,6 +235,34 @@ func _dragging_bag_helmet_to_head_equips(menu: MasterMenu, inventory: PlayerInve
 	var spell_title := menu.find_child("SelectedSpellTitle", true, false) as Label
 	if spell_title == null or spell_title.text != "Guard Focus":
 		_fail("The re-equipped helmet should retain its selected spell.")
+		return false
+
+	return true
+
+
+func _weapon_loadout_shows_qwe_categories(menu: MasterMenu) -> bool:
+	var main_hand_slot := menu.find_child("MainHandEquipmentSlot", true, false) as Button
+	if main_hand_slot == null:
+		_fail("Weapon loadout test requires the equipped main-hand sword.")
+		return false
+
+	main_hand_slot.pressed.emit()
+	await process_frame
+
+	for slot_id in ["Q", "W", "E"]:
+		if menu.find_child("SpellCategory%s" % slot_id, true, false) == null:
+			_fail("Weapon loadouts should always render the %s spell category." % slot_id)
+			return false
+
+	var q_choice := menu.find_child("SpellChoiceQ01", true, false) as Button
+	if q_choice == null or not q_choice.text.contains("Sword Slash"):
+		_fail("The sword's authored Q spell should appear in the Q category.")
+		return false
+	if menu.find_child("SpellChoiceWEmpty", true, false) == null:
+		_fail("The empty W category should remain visible until a spell unlocks.")
+		return false
+	if menu.find_child("SpellChoiceEEmpty", true, false) == null:
+		_fail("The empty E category should remain visible until a spell unlocks.")
 		return false
 
 	return true

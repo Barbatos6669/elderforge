@@ -19,9 +19,10 @@ action-bar slot. Tiered item families author defaults through
 and publishes it back through the effective `ability_paths` dictionary. The
 canonical active layout is Q/W/E for the weapon, R for chest armor, D for the
 helmet, and F for boots. Weapon passives are always-on data and do not consume
-an active key. Adding another common equipment spell normally means creating a
-`.tres` ability and pointing the item family at it instead of editing player
-code.
+an active key. Q, W, and E are independent weapon spell categories with one
+selected spell per category. Adding another common equipment spell normally
+means creating a `.tres` ability and pointing the item family at it instead of
+editing player code.
 
 Targeted cast requests accept an untrusted `Variant` at their public boundary,
 then normalize it to a live `Node`. This matters because Godot Node references

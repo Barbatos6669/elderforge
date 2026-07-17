@@ -1209,12 +1209,22 @@ func _build_inventory_inspector_panel() -> Control:
 		var slot_id := String(row.get("slot_id", ""))
 
 		var slot_label := Label.new()
-		slot_label.text = "%s SPELL" % slot_id.to_upper()
+		slot_label.name = "SpellCategory%s" % slot_id.to_upper()
+		slot_label.text = "%s SPELLS" % slot_id.to_upper()
 		UiStyle.label_primary(slot_label, 12, 1)
 		content.add_child(slot_label)
 
 		var paths := PackedStringArray(row.get("paths", PackedStringArray()))
 		var selected_path := String(row.get("selected_path", ""))
+		if paths.is_empty():
+			var empty_choice := Label.new()
+			empty_choice.name = "SpellChoice%sEmpty" % slot_id.to_upper()
+			empty_choice.text = "No spells unlocked"
+			empty_choice.custom_minimum_size = Vector2(0.0, 34.0)
+			empty_choice.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			UiStyle.label_muted(empty_choice, 12)
+			content.add_child(empty_choice)
+			continue
 		for choice_index in range(paths.size()):
 			content.add_child(_build_inventory_spell_choice_button(
 				item_id,
@@ -1224,13 +1234,13 @@ func _build_inventory_inspector_panel() -> Control:
 				choice_index
 			))
 
-	var separator := HSeparator.new()
-	separator.add_theme_constant_override("separation", 5)
-	content.add_child(separator)
-
 	var focused_definition := _load_inventory_ability(_selected_inventory_spell_path)
 	if focused_definition == null:
 		return panel
+
+	var separator := HSeparator.new()
+	separator.add_theme_constant_override("separation", 5)
+	content.add_child(separator)
 
 	var spell_title := Label.new()
 	spell_title.name = "SelectedSpellTitle"
@@ -2364,17 +2374,25 @@ func _selected_inventory_description(selected_data: Dictionary) -> String:
 
 func _inventory_spell_choice_rows(slot_data: Dictionary) -> Array:
 	var choices := slot_data.get("ability_choices", {}) as Dictionary
-	if choices == null or choices.is_empty():
+	if choices == null:
+		choices = {}
+	var expected_slots := _inventory_expected_ability_slots(slot_data)
+	if choices.is_empty() and expected_slots.is_empty():
 		return []
 
 	var selected_paths := slot_data.get("ability_paths", {}) as Dictionary
 	var rows: Array = []
 	var consumed := {}
 	for slot_id in INVENTORY_ABILITY_SLOT_ORDER:
-		if not choices.has(slot_id):
+		if not choices.has(slot_id) and not expected_slots.has(slot_id):
 			continue
 		consumed[slot_id] = true
-		_append_inventory_spell_choice_row(rows, slot_id, choices[slot_id], selected_paths)
+		_append_inventory_spell_choice_row(
+			rows,
+			slot_id,
+			choices.get(slot_id, PackedStringArray()),
+			selected_paths
+		)
 
 	var remaining_slots: Array[String] = []
 	for raw_slot_id in choices.keys():
@@ -2385,6 +2403,20 @@ func _inventory_spell_choice_rows(slot_data: Dictionary) -> Array:
 	for slot_id in remaining_slots:
 		_append_inventory_spell_choice_row(rows, slot_id, choices[slot_id], selected_paths)
 	return rows
+
+
+func _inventory_expected_ability_slots(slot_data: Dictionary) -> Array[String]:
+	match String(slot_data.get("equip_slot", "")).strip_edges().to_lower():
+		"main_hand":
+			return ["q", "w", "e"]
+		"chest":
+			return ["r"]
+		"head":
+			return ["d"]
+		"shoes":
+			return ["f"]
+		_:
+			return []
 
 
 func _append_inventory_spell_choice_row(
@@ -2405,11 +2437,8 @@ func _append_inventory_spell_choice_row(
 		var path := String(raw_paths).strip_edges()
 		if not path.is_empty():
 			paths.append(path)
-	if paths.is_empty():
-		return
-
 	var selected_path := String(selected_paths.get(slot_id, ""))
-	if not paths.has(selected_path):
+	if not paths.is_empty() and not paths.has(selected_path):
 		selected_path = paths[0]
 	rows.append({
 		"slot_id": slot_id,

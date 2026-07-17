@@ -16,9 +16,10 @@ The master menu is the fullscreen hub for player-facing submenus.
   between the bag and its compatible equipment slot to equip, unequip, or swap
   it. Selecting a weapon or armor piece opens its right-side spell loadout,
   grouped by action key, where the player can choose from every spell unlocked
-  by that item tier. Materials and gear without active spells show an empty
-  loadout state. Other inventory drag/drop commands still live in the retired
-  companion inventory window.
+  by that item tier. Weapons always show separate Q, W, and E categories, even
+  while a category has no unlocked spell. Materials and gear without active
+  slots show an empty loadout state. Other inventory drag/drop commands still
+  live in the retired companion inventory window.
 - Clicking a second-level button, or a main hub button without second-level
   buttons, opens detail mode. Detail mode hides the hub tiles/news, shows the
   section page, and uses the top rotary selector to cycle through Creatures,

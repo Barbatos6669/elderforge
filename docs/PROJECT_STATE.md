@@ -99,7 +99,8 @@ choice, or playtest flow changes.
   between the bag and its compatible equipment slot to equip, unequip, or swap
   it. The right panel presents the selected item's tier-gated spell choices,
   grouped by action key, persisted by item id, and rebound into combat
-  immediately when changed.
+  immediately when changed. Weapons always expose independent Q, W, and E
+  categories, including locked or currently empty categories.
 - Expanded the equipment ability HUD to eight stable circular slots. Equipped
   items bind through one canonical ownership contract: weapon Q/W/E, chest R,
   helmet D, boots F, plus two future utility placeholders. The sword supplies Q,
