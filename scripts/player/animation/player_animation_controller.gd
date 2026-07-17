@@ -59,6 +59,7 @@ var _active_attack_impact_fraction := -1.0
 var _fit_active_attack_animation_to_cycle := false
 var _queued_weapon_ability_recovery_name: StringName = &""
 var _active_one_shot_animation_name: StringName = &""
+var _is_weapon_ability_active := false
 
 
 func _ready() -> void:
@@ -151,12 +152,15 @@ func play_attack(attacks_per_second: float = 1.0) -> void:
 		return
 	if _animation_player == null:
 		return
+	if _is_weapon_ability_active:
+		return
 
 	var active_attack_animation_name := _current_attack_animation_name()
 	if not _animation_player.has_animation(active_attack_animation_name):
 		return
 
 	_queued_weapon_ability_recovery_name = &""
+	_is_weapon_ability_active = false
 	_is_attacking = true
 	var playback_speed := maxf(attacks_per_second, 0.01) * attack_speed_scale
 	if _fit_active_attack_animation_to_cycle:
@@ -207,6 +211,7 @@ func play_weapon_ability(
 
 	_queued_weapon_ability_recovery_name = recovery_animation_name
 	_active_one_shot_animation_name = animation_name
+	_is_weapon_ability_active = true
 	_is_attacking = true
 	_animation_player.speed_scale = playback_speed
 	_animation_player.play(animation_name, blend_time)
@@ -232,6 +237,7 @@ func play_death(speed_scale: float = 1.0) -> float:
 	_is_dead = true
 	_queued_weapon_ability_recovery_name = &""
 	_active_one_shot_animation_name = &""
+	_is_weapon_ability_active = false
 	_is_attacking = false
 	_is_gathering = false
 	_is_moving = false
@@ -255,6 +261,7 @@ func reset_animation_state() -> void:
 	_is_dead = false
 	_queued_weapon_ability_recovery_name = &""
 	_active_one_shot_animation_name = &""
+	_is_weapon_ability_active = false
 	_is_attacking = false
 	_is_gathering = false
 	_is_moving = false
@@ -269,6 +276,11 @@ func is_playing_move_animation() -> bool:
 		_animation_player != null
 		and _animation_player.current_animation == _current_move_animation_name()
 	)
+
+
+## Reports whether an equipment ability still owns the one-shot animation layer.
+func is_playing_weapon_ability() -> bool:
+	return _is_weapon_ability_active
 
 
 ## Returns normalized progress through the current animation, from 0.0 to 1.0.
@@ -407,6 +419,7 @@ func _on_animation_finished(animation_name: StringName) -> void:
 			return
 
 	_active_one_shot_animation_name = &""
+	_is_weapon_ability_active = false
 	_is_attacking = false
 	_play_current_state(true)
 

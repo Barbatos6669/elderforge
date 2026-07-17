@@ -20,7 +20,9 @@ GDScript notes:
   animation scene.
 - The controller receives simple state calls like `set_moving(true)` instead of
   reading movement input directly.
-- `play_attack()` is called by the player controller when auto-attack lands.
+- `play_attack()` is called by the player controller when an auto-attack swing
+  begins. Equipment ability one-shots own the animation layer until their final
+  frame, so a queued basic swing cannot replace a spell animation early.
 - `play_death()` is called by mob AI when a humanoid enemy is defeated, then
   `reset_animation_state()` returns it to idle on respawn.
 - `set_gathering(true, context)` is called while a gathering channel is active.

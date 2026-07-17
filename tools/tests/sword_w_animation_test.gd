@@ -6,6 +6,14 @@ const W_ANIMATION_PATH := (
 	"res://assets/animations/abilities/one_handed_sword/sword_and_shield_slash.glb"
 )
 const W_ANIMATION_NAME := &"Sword_Whirling_Slash"
+const W_SLOT := &"w"
+
+
+class HostileTarget:
+	extends Node3D
+
+	func is_hostile() -> bool:
+		return true
 
 
 func _initialize() -> void:
@@ -83,6 +91,41 @@ func _run_test() -> void:
 	var runtime_player := player.find_child("RuntimeAnimationPlayer", true, false) as AnimationPlayer
 	if runtime_player == null or runtime_player.current_animation != W_ANIMATION_NAME:
 		_fail("Player runtime animation library should play the retargeted sword W clip.")
+		return
+	if (
+		not animation_controller.has_method("is_playing_weapon_ability")
+		or not bool(animation_controller.call("is_playing_weapon_ability"))
+	):
+		_fail("Animation controller should track an active weapon ability one-shot.")
+		return
+	animation_controller.call("play_attack", 1.0)
+	if runtime_player.current_animation != W_ANIMATION_NAME:
+		_fail("Auto-attack animation should not replace Whirling Slash before it finishes.")
+		return
+
+	var auto_attack := player.get_node("AutoAttack")
+	var hostile := HostileTarget.new()
+	hostile.name = "Hostile"
+	hostile.position = Vector3(0.0, 0.0, -1.0)
+	fixture.add_child(hostile)
+	if not bool(auto_attack.call("start_attack", hostile, player)):
+		_fail("Sword W regression fixture should be able to queue an auto-attack target.")
+		return
+	player.call("_on_weapon_ability_cast_started", W_SLOT, null, definition)
+	if bool(auto_attack.call("has_active_target")):
+		_fail("Committing Whirling Slash should cancel the overlapping auto-attack action.")
+		return
+	if runtime_player.current_animation != W_ANIMATION_NAME:
+		_fail("Whirling Slash should still own animation playback after cancelling auto-attack.")
+		return
+	runtime_player.seek(runtime_player.current_animation_length - 0.001, true)
+	runtime_player.advance(0.01)
+	if bool(animation_controller.call("is_playing_weapon_ability")):
+		_fail("Weapon ability animation ownership should release after the final frame.")
+		return
+	animation_controller.call("play_attack", 1.0)
+	if runtime_player.current_animation == W_ANIMATION_NAME:
+		_fail("Auto-attack animation should resume after Whirling Slash fully finishes.")
 		return
 
 	fixture.queue_free()

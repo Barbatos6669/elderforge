@@ -187,7 +187,7 @@ func _physics_process(delta: float) -> void:
 	facing.face_direction(visual_direction)
 	animation.set_moving(is_moving)
 	footstep_audio.set_moving(is_moving)
-	if not weapon_abilities.is_directional_movement_active():
+	if _can_update_auto_attack():
 		auto_attack.update_attack(self, delta)
 	channeling.update_channel(delta)
 
@@ -223,7 +223,8 @@ func _pause_world_movement_for_ui(delta: float) -> void:
 	animation.set_moving(false)
 	footstep_audio.set_moving(false)
 	weapon_abilities.cancel_directional_targeting()
-	auto_attack.update_attack(self, delta)
+	if _can_update_auto_attack():
+		auto_attack.update_attack(self, delta)
 	channeling.update_channel(delta)
 
 
@@ -364,6 +365,16 @@ func _update_auto_attack_movement() -> void:
 		movement_motor.stop(self)
 	else:
 		movement_motor.set_destination(auto_attack.get_approach_destination(self))
+
+
+func _can_update_auto_attack() -> bool:
+	if weapon_abilities.is_casting():
+		return false
+	return (
+		animation == null
+		or not animation.has_method("is_playing_weapon_ability")
+		or not bool(animation.call("is_playing_weapon_ability"))
+	)
 
 
 func _update_weapon_ability_movement() -> void:
@@ -586,6 +597,7 @@ func _on_weapon_ability_cast_started(_slot_id: StringName, target: Node, definit
 	_apply_ability_start_effects(definition)
 	var execution_type := String(definition.get("execution_type"))
 	if execution_type == "damage":
+		auto_attack.stop_attack()
 		_mark_combat_activity()
 		movement_motor.stop(self)
 	else:
