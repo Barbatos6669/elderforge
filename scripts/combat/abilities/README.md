@@ -71,6 +71,13 @@ damage across two equal hits at 36% and 72% of its retargeted animation. Each
 hit rechecks hostiles inside the aimed three-meter forward semicircle. The
 ability has an independent eight-second cooldown.
 
+Leaping Strike on E is a directional mobility attack. It travels 3.65 meters
+with collision, lands at 53% of its 1.8-second cast, and damages enemies in a
+1.75-meter circle for 140 base physical damage plus 100% auto-attack damage.
+Its player preview shows both the travel path and landing area. Equipped mobs
+use the same spell as a gap closer or clustered-area attack and warn players
+with a fixed landing circle before impact. Its cooldown is 12 seconds.
+
 Mana is checked when an ability is requested and charged only when its cast
 actually begins. Approaching a target or losing it before cast start is free;
 an interrupted committed cast remains paid. `ResourcePool.try_spend()` prevents

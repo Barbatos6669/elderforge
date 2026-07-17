@@ -145,6 +145,8 @@ var _ability_cast_slot: StringName = &""
 var _ability_cast_target: Node
 var _ability_cast_definition: Resource
 var _ability_cast_direction := Vector3.ZERO
+var _ability_movement_remaining_seconds := 0.0
+var _ability_movement_speed := 0.0
 var _dodge_slot: StringName = &""
 var _dodge_definition: Resource
 var _dodge_direction := Vector3.ZERO
@@ -243,7 +245,7 @@ func _update_aggro(delta: float) -> void:
 
 	var ready_damage_ability := _best_ready_damage_ability()
 	var ready_damage_ability_range := (
-		float(ready_damage_ability.get("attack_range"))
+		_ability_activation_range(ready_damage_ability)
 		if ready_damage_ability != null
 		else 0.0
 	)
@@ -586,7 +588,8 @@ func _update_active_ability(delta: float) -> bool:
 	if _ability_timeline.is_ready():
 		return false
 
-	_stop_moving(delta)
+	if not _update_directional_damage_movement(delta):
+		_stop_moving(delta)
 	var target_3d := _ability_cast_target as Node3D
 	if _targeting_mode(_ability_cast_definition) == TARGETING_DIRECTION:
 		_face_direction(_ability_cast_direction, delta)
@@ -667,7 +670,7 @@ func _try_damage_ability(preferred_definition: Resource = null) -> bool:
 	var definition := preferred_definition if preferred_definition != null else _best_ready_damage_ability()
 	if definition == null or not _has_target():
 		return false
-	if not _is_target_in_ability_range(definition, _target):
+	if not _is_target_in_ability_activation_range(definition, _target):
 		return false
 
 	var slot_id := _slot_for_definition(definition)
@@ -685,6 +688,7 @@ func _best_ready_damage_ability() -> Resource:
 		return null
 
 	var fallback: Resource = null
+	var gap_closer: Resource = null
 	for slot_id in AbilitySlots.ACTIVE_SLOT_IDS:
 		var definition := get_active_ability(slot_id)
 		if (
@@ -701,9 +705,16 @@ func _best_ready_damage_ability() -> Resource:
 				) >= 2
 			):
 				return definition
+			if _is_useful_directional_gap_closer(definition):
+				gap_closer = definition
+			if (
+				_targeting_mode(definition) == TARGETING_DIRECTION
+				and maxf(float(definition.get("movement_distance")), 0.0) > 0.0
+			):
+				continue
 			if fallback == null:
 				fallback = definition
-	return fallback
+	return gap_closer if gap_closer != null else fallback
 
 
 func _best_ready_dodge_ability() -> Resource:
@@ -765,6 +776,7 @@ func _begin_direction_damage_ability(
 	_ability_cast_definition = definition
 	_ability_cast_direction = safe_direction
 	_ability_impact_schedule.begin(definition, cast_duration)
+	_begin_directional_damage_movement(definition, cast_duration, impact_fraction)
 	_start_ability_cooldown(definition)
 	_show_direction_damage_telegraph(definition, safe_direction, 0)
 	_play_ability_animation(definition, cast_duration)
@@ -837,6 +849,51 @@ func _update_dodge_ability(delta: float) -> bool:
 		_clear_ability_telegraph()
 		ability_cast_finished.emit(finished_slot)
 	return true
+
+
+func _begin_directional_damage_movement(
+	definition: Resource,
+	cast_duration: float,
+	impact_fraction: float
+) -> void:
+	var distance := maxf(float(definition.get("movement_distance")), 0.0)
+	if distance <= 0.0:
+		_clear_directional_damage_movement()
+		return
+	var movement_duration := maxf(cast_duration * clampf(impact_fraction, 0.0, 1.0), 0.01)
+	_ability_movement_remaining_seconds = movement_duration
+	_ability_movement_speed = distance / movement_duration
+
+
+func _update_directional_damage_movement(delta: float) -> bool:
+	if (
+		_ability_movement_remaining_seconds <= 0.0
+		or _ability_movement_speed <= 0.0
+		or _ability_cast_direction == Vector3.ZERO
+	):
+		return false
+
+	var frame_delta := maxf(delta, 0.0)
+	if frame_delta <= 0.0:
+		return true
+	var elapsed := minf(frame_delta, _ability_movement_remaining_seconds)
+	var final_frame_scale := elapsed / frame_delta
+	_body.velocity.x = _ability_cast_direction.x * _ability_movement_speed * final_frame_scale
+	_body.velocity.y = 0.0
+	_body.velocity.z = _ability_cast_direction.z * _ability_movement_speed * final_frame_scale
+	_body.move_and_slide()
+	_ability_movement_remaining_seconds = maxf(
+		_ability_movement_remaining_seconds - elapsed,
+		0.0
+	)
+	_face_direction(_ability_cast_direction, delta)
+	_set_moving_animation(true)
+	return true
+
+
+func _clear_directional_damage_movement() -> void:
+	_ability_movement_remaining_seconds = 0.0
+	_ability_movement_speed = 0.0
 
 
 func _update_channel_ability(delta: float) -> bool:
@@ -929,6 +986,7 @@ func _resolve_ability_damage(impact_target: Node, impact_index: int) -> void:
 
 func _finish_current_ability() -> void:
 	var finished_slot := _ability_cast_slot
+	_clear_directional_damage_movement()
 	_ability_cast_slot = &""
 	_ability_cast_target = null
 	_ability_cast_definition = null
@@ -943,6 +1001,7 @@ func _interrupt_current_ability(reason: String) -> void:
 		return
 	var interrupted_slot := _ability_cast_slot
 	var interrupted_target := _ability_cast_target
+	_clear_directional_damage_movement()
 	_ability_impact_schedule.reset()
 	_clear_ability_telegraph()
 	ability_cast_interrupted.emit(interrupted_slot, interrupted_target, reason)
@@ -969,6 +1028,7 @@ func _reset_active_ability_state() -> void:
 	_ability_cast_target = null
 	_ability_cast_definition = null
 	_ability_cast_direction = Vector3.ZERO
+	_clear_directional_damage_movement()
 	_dodge_slot = &""
 	_dodge_definition = null
 	_dodge_direction = Vector3.ZERO
@@ -1158,6 +1218,16 @@ func _show_direction_damage_telegraph(
 		),
 		0.05
 	)
+	var movement_distance := maxf(float(definition.get("movement_distance")), 0.0)
+	if movement_distance > 0.0:
+		var landing_center := _body.global_position + direction.normalized() * movement_distance
+		telegraph.call(
+			"show_circle",
+			landing_center,
+			maxf(float(definition.get("attack_range")), 0.35),
+			warning_duration
+		)
+		return
 	telegraph.call(
 		"show_swing_arc",
 		_body.global_position,
@@ -1244,14 +1314,58 @@ func _is_target_in_ability_range(definition: Resource, target: Node, extra_range
 	return offset.length() <= float(definition.get("attack_range")) + maxf(extra_range, 0.0)
 
 
+func _ability_activation_range(definition: Resource) -> float:
+	if definition == null:
+		return 0.0
+	var result := maxf(float(definition.get("attack_range")), 0.0)
+	if (
+		_targeting_mode(definition) == TARGETING_DIRECTION
+		and _execution_type(definition) == EXECUTION_DAMAGE
+	):
+		result += maxf(float(definition.get("movement_distance")), 0.0)
+	return result
+
+
+func _is_target_in_ability_activation_range(definition: Resource, target: Node) -> bool:
+	var target_3d := target as Node3D
+	if _body == null or target_3d == null or definition == null:
+		return false
+	return _horizontal_distance_to(target_3d.global_position) <= _ability_activation_range(definition)
+
+
+func _is_useful_directional_gap_closer(definition: Resource) -> bool:
+	if (
+		definition == null
+		or _body == null
+		or not _has_target()
+		or _targeting_mode(definition) != TARGETING_DIRECTION
+		or _execution_type(definition) != EXECUTION_DAMAGE
+	):
+		return false
+	var movement_distance := maxf(float(definition.get("movement_distance")), 0.0)
+	if movement_distance <= 0.0:
+		return false
+	var distance_to_target := _horizontal_distance_to(_target.global_position)
+	var landing_radius := maxf(float(definition.get("attack_range")), 0.0)
+	return distance_to_target > landing_radius and distance_to_target <= movement_distance + landing_radius
+
+
 func _directional_target_count(definition: Resource, direction: Vector3) -> int:
 	var count := 0
+	var origin := _body.global_position if _body != null else Vector3.ZERO
+	if definition != null:
+		origin += direction.normalized() * maxf(float(definition.get("movement_distance")), 0.0)
 	for candidate in _directional_target_candidates():
 		var target_3d := candidate as Node3D
 		if (
 			target_3d != null
 			and not _is_target_defeated(target_3d)
-			and _is_target_in_directional_area(definition, direction, target_3d)
+			and _is_target_in_directional_area_from_origin(
+				definition,
+				direction,
+				target_3d,
+				origin
+			)
 		):
 			count += 1
 	return count
@@ -1276,8 +1390,24 @@ func _is_target_in_directional_area(
 ) -> bool:
 	if _body == null or definition == null or target == null:
 		return false
+	return _is_target_in_directional_area_from_origin(
+		definition,
+		direction,
+		target,
+		_body.global_position
+	)
+
+
+func _is_target_in_directional_area_from_origin(
+	definition: Resource,
+	direction: Vector3,
+	target: Node3D,
+	origin: Vector3
+) -> bool:
+	if definition == null or target == null:
+		return false
 	return AbilityTargetingMathScript.is_point_in_arc(
-		_body.global_position,
+		origin,
 		direction,
 		target.global_position,
 		maxf(float(definition.get("attack_range")), 0.0),

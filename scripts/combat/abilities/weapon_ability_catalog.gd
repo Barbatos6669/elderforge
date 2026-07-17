@@ -7,6 +7,7 @@ extends RefCounted
 const ABILITY_PATHS := {
 	"one_handed_sword_q": "res://assets/combat/abilities/one_handed_sword_q.tres",
 	"one_handed_sword_w": "res://assets/combat/abilities/one_handed_sword_w.tres",
+	"one_handed_sword_e": "res://assets/combat/abilities/one_handed_sword_e.tres",
 	"moonleaf_binding": "res://assets/combat/abilities/moonleaf_binding.tres",
 	"energizing_shield": "res://assets/combat/abilities/energizing_shield.tres",
 	"leather_boots_roll": "res://assets/combat/abilities/leather_boots_roll.tres",

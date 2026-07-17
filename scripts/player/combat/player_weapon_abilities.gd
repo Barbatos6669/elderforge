@@ -75,6 +75,8 @@ var _cast_slot: StringName = &""
 var _cast_target: Node
 var _cast_definition: Resource
 var _cast_direction := Vector3.ZERO
+var _cast_movement_remaining_seconds := 0.0
+var _cast_movement_finished_this_frame := false
 var _aiming_slot: StringName = &""
 var _aim_direction := Vector3(0.0, 0.0, -1.0)
 var _channel_slot: StringName = &""
@@ -235,12 +237,18 @@ func confirm_directional_cast(attacker: Node3D) -> bool:
 	_aiming_slot = &""
 	_hide_directional_indicator()
 	ability_cast_started.emit(slot_id, null, definition)
-	if _execution_type(definition) == EXECUTION_DODGE:
+	var movement_distance := maxf(float(definition.get("movement_distance")), 0.0)
+	if _uses_directional_movement(definition):
+		var movement_duration := cast_duration
+		if _execution_type(definition) == EXECUTION_DAMAGE:
+			movement_duration = maxf(cast_duration * impact_fraction, 0.01)
+		_cast_movement_remaining_seconds = movement_duration
+		_cast_movement_finished_this_frame = false
 		directional_movement_started.emit(
 			slot_id,
 			_cast_direction,
-			maxf(float(definition.get("movement_distance")), 0.0),
-			cast_duration
+			movement_distance,
+			movement_duration
 		)
 	return true
 
@@ -258,6 +266,7 @@ func cancel_directional_targeting() -> void:
 ## Advances cooldowns and the current cast. Call once per local physics frame.
 func update_abilities(attacker: Node3D, delta: float) -> void:
 	_advance_cooldowns(delta)
+	_advance_directional_movement(delta)
 	if is_channeling_ability():
 		if attacker == null or _is_attacker_defeated(attacker):
 			cancel_active_channel("Wearer unavailable")
@@ -343,6 +352,7 @@ func reset_cast_state() -> void:
 	_cast_target = null
 	_cast_definition = null
 	_cast_direction = Vector3.ZERO
+	_clear_directional_movement_state()
 	_cast_impact_schedule.reset()
 	_aiming_slot = &""
 	_clear_channel_state()
@@ -379,7 +389,11 @@ func is_directional_movement_active() -> bool:
 	return (
 		not _timeline.is_ready()
 		and _cast_definition != null
-		and _execution_type(_cast_definition) == EXECUTION_DODGE
+		and _uses_directional_movement(_cast_definition)
+		and (
+			_cast_movement_remaining_seconds > 0.0
+			or _cast_movement_finished_this_frame
+		)
 	)
 
 
@@ -544,6 +558,7 @@ func _resolve_damage_against_target(attacker: Node3D, impact_target: Node, impac
 
 func _finish_current_cast() -> void:
 	var finished_slot := _cast_slot
+	_clear_directional_movement_state()
 	_cast_slot = &""
 	_cast_target = null
 	_cast_definition = null
@@ -557,6 +572,7 @@ func _interrupt_current_cast(reason: String) -> void:
 		return
 	var interrupted_slot := _cast_slot
 	var interrupted_target := _valid_target_node(_cast_target)
+	_clear_directional_movement_state()
 	_cast_target = null
 	_cast_impact_schedule.reset()
 	ability_cast_interrupted.emit(interrupted_slot, interrupted_target, reason)
@@ -929,6 +945,15 @@ func _update_directional_indicator(definition: Resource) -> void:
 	if _directional_indicator == null or definition == null:
 		return
 	if _execution_type(definition) == EXECUTION_DAMAGE:
+		if _uses_directional_movement(definition):
+			_directional_indicator.call(
+				"show_leap",
+				_aim_direction,
+				maxf(float(definition.get("movement_distance")), 0.0),
+				maxf(float(definition.get("attack_range")), 0.1),
+				maxf(float(definition.get("indicator_width")), 0.1)
+			)
+			return
 		_directional_indicator.call(
 			"show_swing_arc",
 			_aim_direction,
@@ -942,6 +967,30 @@ func _update_directional_indicator(definition: Resource) -> void:
 		maxf(float(definition.get("movement_distance")), 0.0),
 		maxf(float(definition.get("indicator_width")), 0.1)
 	)
+
+
+func _uses_directional_movement(definition: Resource) -> bool:
+	if definition == null or _targeting_mode(definition) != TARGETING_DIRECTION:
+		return false
+	if maxf(float(definition.get("movement_distance")), 0.0) <= 0.0:
+		return false
+	return _execution_type(definition) in [EXECUTION_DAMAGE, EXECUTION_DODGE]
+
+
+func _advance_directional_movement(delta: float) -> void:
+	_cast_movement_finished_this_frame = false
+	if _cast_movement_remaining_seconds <= 0.0:
+		return
+	_cast_movement_remaining_seconds = maxf(
+		_cast_movement_remaining_seconds - maxf(delta, 0.0),
+		0.0
+	)
+	_cast_movement_finished_this_frame = _cast_movement_remaining_seconds <= 0.0
+
+
+func _clear_directional_movement_state() -> void:
+	_cast_movement_remaining_seconds = 0.0
+	_cast_movement_finished_this_frame = false
 
 
 func _hide_directional_indicator() -> void:

@@ -8,6 +8,7 @@ extends Node3D
 const KIND_NONE := &"none"
 const KIND_DIRECTION := &"direction"
 const KIND_SWING := &"swing"
+const KIND_LEAP := &"leap"
 
 @export var fill_color := Color(1.0, 0.78, 0.18, 0.30)
 @export var outline_color := Color(1.0, 0.86, 0.35, 0.82)
@@ -16,10 +17,13 @@ const KIND_SWING := &"swing"
 var _outline_mesh: MeshInstance3D
 var _fill_mesh: MeshInstance3D
 var _origin_disc: MeshInstance3D
+var _landing_outline_mesh: MeshInstance3D
+var _landing_fill_mesh: MeshInstance3D
 var _last_distance := -1.0
 var _last_width := -1.0
 var _last_arc_radius := -1.0
 var _last_arc_degrees := -1.0
+var _last_landing_radius := -1.0
 var _kind: StringName = KIND_NONE
 
 
@@ -47,6 +51,7 @@ func show_direction(direction: Vector3, distance: float, width: float) -> void:
 	flat_direction = flat_direction.normalized()
 	rotation.y = atan2(-flat_direction.x, -flat_direction.z)
 	_origin_disc.visible = true
+	_set_landing_visible(false)
 	_kind = KIND_DIRECTION
 	visible = true
 
@@ -69,7 +74,36 @@ func show_swing_arc(direction: Vector3, radius: float, arc_degrees: float) -> vo
 	flat_direction = flat_direction.normalized()
 	rotation.y = atan2(-flat_direction.x, -flat_direction.z)
 	_origin_disc.visible = false
+	_set_landing_visible(false)
 	_kind = KIND_SWING
+	visible = true
+
+
+## Shows the collision-aware travel path and the circular landing damage area.
+func show_leap(direction: Vector3, distance: float, landing_radius: float, width: float) -> void:
+	var flat_direction := Vector3(direction.x, 0.0, direction.z)
+	if flat_direction.length_squared() <= 0.0001:
+		return
+
+	var safe_distance := maxf(distance, 0.5)
+	var safe_width := maxf(width, 0.2)
+	var safe_landing_radius := maxf(landing_radius, 0.15)
+	if (
+		_kind != KIND_LEAP
+		or not is_equal_approx(safe_distance, _last_distance)
+		or not is_equal_approx(safe_width, _last_width)
+	):
+		_rebuild_geometry(safe_distance, safe_width)
+	if not is_equal_approx(safe_landing_radius, _last_landing_radius):
+		_rebuild_landing_circle(safe_landing_radius)
+
+	flat_direction = flat_direction.normalized()
+	rotation.y = atan2(-flat_direction.x, -flat_direction.z)
+	_landing_outline_mesh.position = Vector3(0.0, 0.006, -safe_distance)
+	_landing_fill_mesh.position = Vector3(0.0, 0.014, -safe_distance)
+	_origin_disc.visible = true
+	_set_landing_visible(true)
+	_kind = KIND_LEAP
 	visible = true
 
 
@@ -111,6 +145,17 @@ func _build_nodes() -> void:
 	_origin_disc.mesh = disc
 	add_child(_origin_disc)
 
+	_landing_outline_mesh = MeshInstance3D.new()
+	_landing_outline_mesh.name = "LandingOutline"
+	_landing_outline_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_landing_outline_mesh)
+
+	_landing_fill_mesh = MeshInstance3D.new()
+	_landing_fill_mesh.name = "LandingFill"
+	_landing_fill_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_landing_fill_mesh)
+	_set_landing_visible(false)
+
 
 func _rebuild_geometry(distance: float, width: float) -> void:
 	_last_distance = distance
@@ -133,6 +178,25 @@ func _rebuild_swing_arc(radius: float, arc_degrees: float) -> void:
 		outline_color
 	)
 	_fill_mesh.mesh = _make_sector_mesh(start_angle, end_angle, radius, fill_color)
+
+
+func _rebuild_landing_circle(radius: float) -> void:
+	_last_landing_radius = radius
+	_landing_outline_mesh.mesh = _make_arc_band_mesh(
+		0.0,
+		TAU,
+		radius + 0.07,
+		maxf(radius - 0.03, 0.01),
+		outline_color
+	)
+	_landing_fill_mesh.mesh = _make_sector_mesh(0.0, TAU, radius, fill_color)
+
+
+func _set_landing_visible(is_visible: bool) -> void:
+	if _landing_outline_mesh != null:
+		_landing_outline_mesh.visible = is_visible
+	if _landing_fill_mesh != null:
+		_landing_fill_mesh.visible = is_visible
 
 
 func _make_arc_band_mesh(

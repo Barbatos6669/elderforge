@@ -37,6 +37,11 @@ Current player usage:
   humanoid skeleton. Horizontal root travel is removed so gameplay movement
   remains authoritative; vertical motion, the airborne turn, and landing pose
   are preserved for `Whirling Slash` on W.
+- `abilities/one_handed_sword/sword_and_shield_attack.glb` is the user-provided
+  Mixamo `Sword And Shield Attack` motion used by `Leaping Strike` on E. Its
+  3.65-meter forward travel is removed from the clip and applied through the
+  collision-aware movement motor, while the overhead jump and landing recovery
+  remain on the skeleton. The sword reaches its landing contact at 53%.
 - Regenerate it with `tools/animation/retarget_mixamo_to_elderforge.py`. The
   script accepts a Mixamo FBX, target Elderforge rig scene, output path, and
   animation name through Blender's arguments after `--`.

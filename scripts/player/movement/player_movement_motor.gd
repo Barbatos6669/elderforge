@@ -121,10 +121,14 @@ func move_to_destination(character: CharacterBody3D, delta: float) -> Vector3:
 
 
 func _move_forced(character: CharacterBody3D, delta: float) -> Vector3:
-	var elapsed := minf(maxf(delta, 0.0), _forced_remaining_seconds)
-	character.velocity.x = _forced_direction.x * _forced_speed
+	var frame_delta := maxf(delta, 0.0)
+	if frame_delta <= 0.0:
+		return _forced_direction
+	var elapsed := minf(frame_delta, _forced_remaining_seconds)
+	var final_frame_scale := elapsed / frame_delta
+	character.velocity.x = _forced_direction.x * _forced_speed * final_frame_scale
 	_apply_vertical_velocity(character, elapsed)
-	character.velocity.z = _forced_direction.z * _forced_speed
+	character.velocity.z = _forced_direction.z * _forced_speed * final_frame_scale
 	character.move_and_slide()
 	_forced_remaining_seconds = maxf(_forced_remaining_seconds - elapsed, 0.0)
 

@@ -69,6 +69,7 @@ func _run_test() -> void:
 	var expected_abilities := {
 		&"q": "one_handed_sword_q",
 		&"w": "one_handed_sword_w",
+		&"e": "one_handed_sword_e",
 		&"r": "moonleaf_binding",
 		&"d": "energizing_shield",
 		&"f": "leather_boots_roll",

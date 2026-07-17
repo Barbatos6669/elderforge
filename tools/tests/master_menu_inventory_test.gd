@@ -304,8 +304,10 @@ func _weapon_loadout_shows_qwe_categories(menu: MasterMenu) -> bool:
 	if w_definition == null or String(w_definition.get("display_name")) != "Whirling Slash":
 		_fail("The sword's authored W spell should appear in the W category.")
 		return false
-	if menu.find_child("SpellChoiceEEmpty", true, false) == null:
-		_fail("The empty E category should remain visible until a spell unlocks.")
+	var e_choice := menu.find_child("SpellChoiceE01", true, false) as Control
+	var e_definition := e_choice.call("get_ability_definition") as Resource if e_choice != null else null
+	if e_definition == null or String(e_definition.get("display_name")) != "Leaping Strike":
+		_fail("The sword's authored E spell should appear in the E category.")
 		return false
 
 	return true

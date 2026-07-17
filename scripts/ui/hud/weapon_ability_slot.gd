@@ -290,6 +290,8 @@ func _icon_background_color() -> Color:
 		return Color(0.055, 0.13, 0.18, 1.0)
 	if String(_definition.get("icon_id")) == "whirling_slash":
 		return Color(0.045, 0.15, 0.16, 1.0)
+	if String(_definition.get("icon_id")) == "leaping_strike":
+		return Color(0.18, 0.085, 0.035, 1.0)
 	return Color(0.24, 0.075, 0.055, 1.0)
 
 
@@ -303,6 +305,8 @@ func _draw_ability_icon(rect: Rect2) -> void:
 			_draw_energizing_shield_icon(rect)
 		"whirling_slash":
 			_draw_whirling_slash_icon(rect)
+		"leaping_strike":
+			_draw_leaping_strike_icon(rect)
 		_:
 			_draw_sword_slash_icon(rect)
 
@@ -524,6 +528,31 @@ func _draw_whirling_slash_icon(rect: Rect2) -> void:
 	for point in arrow:
 		arrow_inset.append(arrow_tip + (point - arrow_tip) * 0.78)
 	draw_colored_polygon(arrow_inset, swirl_color)
+
+
+func _draw_leaping_strike_icon(rect: Rect2) -> void:
+	_draw_sword_slash_icon(rect)
+	var impact_center := rect.position + rect.size * Vector2(0.52, 0.76)
+	var impact_color := Color(1.0, 0.76, 0.22, 0.90)
+	var impact_shadow := Color(0.06, 0.025, 0.01, 0.96)
+	var impact_radius := rect.size.x * 0.30
+	var width := maxf(rect.size.x * 0.055, 1.0)
+	draw_arc(impact_center, impact_radius, PI, TAU, 24, impact_shadow, width * 1.9, true)
+	draw_arc(impact_center, impact_radius, PI, TAU, 24, impact_color, width, true)
+	var plunge_start := rect.position + rect.size * Vector2(0.52, 0.08)
+	var plunge_end := rect.position + rect.size * Vector2(0.52, 0.58)
+	draw_line(plunge_start, plunge_end, impact_shadow, width * 2.4, true)
+	draw_line(plunge_start, plunge_end, impact_color, width, true)
+	var arrow := PackedVector2Array([
+		plunge_end + Vector2(0.0, rect.size.y * 0.12),
+		plunge_end + Vector2(-rect.size.x * 0.10, -rect.size.y * 0.02),
+		plunge_end + Vector2(rect.size.x * 0.10, -rect.size.y * 0.02),
+	])
+	draw_colored_polygon(arrow, impact_shadow)
+	var inset := PackedVector2Array()
+	for point in arrow:
+		inset.append(arrow[0] + (point - arrow[0]) * 0.72)
+	draw_colored_polygon(inset, impact_color)
 
 
 func _draw_radial_cooldown(rect: Rect2, fraction: float) -> void:
